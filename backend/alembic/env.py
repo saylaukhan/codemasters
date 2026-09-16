@@ -1,28 +1,32 @@
 """Alembic environment: async engine, database URL from Settings.
 
-Migrations are forward-only (ADR-003, CONTRIBUTING.md §6). ``target_metadata`` is wired to the
-SQLAlchemy models in T-02; until then autogenerate has nothing to compare against.
+Migrations are forward-only (ADR-003, CONTRIBUTING.md §6). Autogenerate compares the database
+with ``app.models``; it does not know about hypertables, extensions and RLS, so every generated
+revision is read and completed by hand.
 """
 
 import asyncio
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import Connection, MetaData, pool
+from geoalchemy2 import alembic_helpers
+from sqlalchemy import Connection, pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import get_settings
+from app.models import Base
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Models arrive in T-02: `from app.models import Base; target_metadata = Base.metadata`.
-target_metadata: MetaData | None = None
+target_metadata = Base.metadata
 
+# A URL set by the caller wins (tests migrate a testcontainers database); otherwise Settings.
 # configparser interpolation treats "%" specially, so escape it in the URL.
-config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
+if not config.get_main_option("sqlalchemy.url"):
+    config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:
@@ -33,6 +37,9 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        # PostGIS: render geoalchemy2 types with their import, skip spatial_ref_sys.
+        render_item=alembic_helpers.render_item,
+        include_object=alembic_helpers.include_object,
     )
 
     with context.begin_transaction():
@@ -41,7 +48,12 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Run migrations on an already established (sync-style) connection."""
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        render_item=alembic_helpers.render_item,
+        include_object=alembic_helpers.include_object,
+    )
 
     with context.begin_transaction():
         context.run_migrations()

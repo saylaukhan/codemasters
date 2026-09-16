@@ -1,7 +1,8 @@
 """Async SQLAlchemy engine and session factory built from ``Settings.database_url``.
 
 Both are created lazily and cached, so importing this module does not open connections and
-does not require a configured environment. Models and migrations arrive in T-02.
+does not require a configured environment. Models live in ``app.models``, migrations in
+``alembic/versions/``.
 """
 
 from collections.abc import AsyncIterator
