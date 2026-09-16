@@ -52,7 +52,7 @@ HTTPS/TLS отправляет результаты в API, а тот сохра
 
 ## Структура репозитория
 
-Папки с кодом создаются в T-01; сейчас есть только `docs/` и файлы правил.
+Папки с кодом созданы в T-01 (каркас: дымовые тесты, `make check`, compose, CI); функции появляются по задачам из `docs/tasks/README.md`.
 
 ```text
 agent/               Go — агент: служба Windows / systemd, замеры, очередь, MSI
@@ -70,7 +70,7 @@ docs/                документация: задачи, ADR, чек-лис�
 
 ## Команды
 
-Появятся в T-01 вместе с `Makefile`; до этого шаги чек-листа выполняются вручную (ADR-001).
+Полный список — `make help`.
 
 ```bash
 make up            # docker compose up -d db redis speedtest — инфраструктура для разработки
@@ -83,7 +83,7 @@ make agent-run     # go run ./cmd/vko-agent run --config ./agent/dev.yaml (бе�
 make check         # ВСЁ: check-agent + check-backend + check-web — перед каждым слиянием
 ```
 
-Установка с нуля: `git clone git@github.com:saylaukhan/codemasters.git && cd codemasters && cp .env.example .env && make up && make migrate && make seed`.
+Установка с нуля: `git clone git@github.com:saylaukhan/codemasters.git && cd codemasters && cp .env.example .env && make install && make up && make migrate && make seed`.
 Нужны Go 1.23+, Python 3.12+ (uv или venv), Node.js 24, Docker Desktop, git. Полный список
 целей — в AGENTS.md §7 (блок команд `make …`); dev-пользователи — в CONTRIBUTING.md §1.
 
@@ -99,8 +99,8 @@ Pull Request'ов нет. Гейт перед слиянием — [docs/checkli
 
 ## Статус
 
-Сентябрь 2026. Кода в репозитории нет — только документация. Идёт этап 0 плана (plan.md §14):
-задачи T-01…T-04 — каркас (репозиторий, Docker Compose, CI), схема БД, контракт API, GeoJSON
-районов ВКО и тестовые школы; вместе с ними в разделе «A. Каркас» задач — T-05, сервер замеров
-(в плане — этап 1).
+Сентябрь 2026. Готов каркас репозитория (T-01): `make check` зелёный для агента, backend и
+панели, Docker Compose, CI. Функции ТЗ не реализованы. Идёт этап 0 плана (plan.md §14):
+дальше T-02 (схема БД), T-03 (контракт API), T-04 (GeoJSON районов и тестовые школы),
+T-05 (сервер замеров).
 Статусы задач (`todo | in-progress | done (дата)`) — в [docs/tasks/README.md](docs/tasks/README.md).

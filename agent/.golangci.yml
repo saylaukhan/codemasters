@@ -1,0 +1,9 @@
+# golangci-lint v2 configuration, shared by `make check-agent` and CI (ci.yml).
+# The std-error-handling preset restores the standard v1 exclusions (unchecked errors of
+# fmt.Fprint*, Close, Flush and friends on writers); no linter is disabled.
+version: "2"
+
+linters:
+  exclusions:
+    presets:
+      - std-error-handling

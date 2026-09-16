@@ -1,0 +1,54 @@
+# Builds the Windows agent binary. The MSI packaging (WiX v4) and Authenticode signing
+# steps are added in T-49; until then the workflow publishes vko-agent.exe as an artifact.
+name: Agent MSI
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    name: build-windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: agent/go.mod
+          cache: false
+
+      - name: Resolve version (tag or short sha)
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build vko-agent.exe
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: "0"
+        run: >
+          go build
+          -ldflags "-X github.com/saylaukhan/codemasters/agent/internal/buildinfo.Version=${{ steps.version.outputs.version }}"
+          -o dist/vko-agent.exe ./cmd/vko-agent
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vko-agent-${{ steps.version.outputs.version }}
+          path: agent/dist/vko-agent.exe
+          if-no-files-found: error
+
+      # - name: Build MSI (WiX v4) — появится в T-49
+      # - name: Sign MSI (Authenticode) — появится в T-49

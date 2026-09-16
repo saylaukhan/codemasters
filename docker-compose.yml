@@ -1,0 +1,109 @@
+# Development and single-host deployment stack (ADR-002).
+# Local development: `make up` starts only db, redis and speedtest; api, worker, beat and web
+# run on the host (`make api`, `make worker`, `make web`).
+# Full stack behind Caddy: `docker compose up -d` (needs .env — see .env.example).
+name: vko-monitor
+
+# Shared definition for the three backend processes (api, worker, beat).
+x-backend: &backend
+  build: ./backend
+  # One image shared by api, worker and beat instead of three identical builds.
+  image: vko-monitor-backend
+  env_file:
+    # Optional, so `docker compose down`, `ps` and `logs` work without .env;
+    # `make up` still refuses to start without the file (see Makefile).
+    - path: .env
+      required: false
+  environment:
+    # Inside the compose network the hosts are the service names, not localhost.
+    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    REDIS_URL: redis://redis:6379/0
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  db:
+    # PostgreSQL 16 + TimescaleDB + PostGIS in one image.
+    image: timescale/timescaledb-ha:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      # Loopback only: the host needs it for `make api` / `make migrate`, the internet does not.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      # PGDATA of the timescaledb-ha image.
+      - pgdata:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      # Loopback only: Redis has no password.
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  speedtest:
+    # LibreSpeed measurement server. Server configuration and the ndt7 fallback — T-05.
+    image: adolfintel/speedtest
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  api:
+    <<: *backend
+    ports:
+      - "8000:8000"
+
+  worker:
+    <<: *backend
+    command: celery -A app.workers.celery_app worker --loglevel=info
+
+  beat:
+    <<: *backend
+    command: celery -A app.workers.celery_app beat --loglevel=info
+
+  web:
+    build: ./web
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      CADDY_DOMAIN: ${CADDY_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  caddy_data:
+  caddy_config:

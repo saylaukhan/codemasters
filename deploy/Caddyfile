@@ -1,0 +1,20 @@
+# Reverse proxy in front of the API and the web panel (ADR-002).
+#
+# TLS is automatic: when CADDY_DOMAIN is a real public domain whose DNS points at this host,
+# Caddy obtains and renews a Let's Encrypt certificate on its own (ports 80 and 443 must be
+# reachable from the internet). With the default "localhost" Caddy serves a locally trusted
+# self-signed certificate instead.
+
+{$CADDY_DOMAIN:localhost} {
+	encode gzip zstd
+
+	# API, Swagger (/api/docs) and the OpenAPI schema (/api/openapi.json).
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	# Everything else is the SPA served by nginx in the web container.
+	handle {
+		reverse_proxy web:80
+	}
+}
