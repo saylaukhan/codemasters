@@ -231,6 +231,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Сводка главного экрана: KPI
+         * @description Восемь KPI из ТЗ п. 4 по школам в области видимости, отобранным фильтрами; status — статус школы на момент period_to (ADR-004), как на карте. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Замеры, средние и проблемные устройства — за период, по основным линиям, без Wi-Fi (ADR-012).
+         */
+        get: operations["get_dashboard_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/map/schools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Школы на карте ВКО: GeoJSON с фильтрами
+         * @description GeoJSON FeatureCollection (RFC 7946) активных школ в области видимости, без пагинации. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Статус — на момент period_to (ADR-004), как в сводке; показатели — последний замер основной линии в периоде, без Wi-Fi (ADR-012). Школа без координат приходит с geometry = null.
+         */
+        get: operations["get_school_map"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -337,6 +377,64 @@ export interface components {
             permissions: string[];
         };
         /**
+         * DashboardSummary
+         * @description KPIs in the order of ТЗ п. 4 for the applied period.
+         *
+         *     Measurement values cover main lines only, without Wi-Fi (ADR-012).
+         */
+        DashboardSummary: {
+            /**
+             * Period From
+             * Format: date-time
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             */
+            period_to: string;
+            /**
+             * Schools Count
+             * @description Подключённые школы: активные школы по фильтрам
+             */
+            schools_count: number;
+            /**
+             * Devices Count
+             * @description Зарегистрированные компьютеры, кроме заблокированных
+             */
+            devices_count: number;
+            /**
+             * Active Devices Count
+             * @description Устройства, выходившие на связь за период: heartbeat или замер
+             */
+            active_devices_count: number;
+            /**
+             * Measurements Count
+             * @description Замеры за период
+             */
+            measurements_count: number;
+            /**
+             * Avg Download Mbps
+             * @description null — замеров за период нет
+             */
+            avg_download_mbps: number | null;
+            /**
+             * Avg Upload Mbps
+             * @description null — замеров за период нет
+             */
+            avg_upload_mbps: number | null;
+            /**
+             * Avg Ping Ms
+             * @description null — замеров за период нет
+             */
+            avg_ping_ms: number | null;
+            /**
+             * Problem Devices Count
+             * @description Устройства, чей последний замер за период — unstable, critical или offline
+             */
+            problem_devices_count: number;
+        };
+        /**
          * DeviceRegisterRequest
          * @description First start of an agent: one-time installation code issued for a school.
          */
@@ -375,6 +473,29 @@ export interface components {
             device_id: number;
             /** Device Token */
             device_token: string;
+        };
+        /**
+         * GeoJsonPoint
+         * @description GeoJSON Point geometry (RFC 7946 §3.1.2) in WGS 84.
+         */
+        GeoJsonPoint: {
+            /**
+             * Type
+             * @constant
+             */
+            type: "Point";
+            /**
+             * Coordinates
+             * @description [долгота, широта], WGS 84
+             * @example [
+             *       82.6286,
+             *       49.9483
+             *     ]
+             */
+            coordinates: [
+                number,
+                number
+            ];
         };
         /**
          * HealthResponse
@@ -596,6 +717,102 @@ export interface components {
              */
             end: string;
         };
+        /**
+         * SchoolMapFeature
+         * @description One school; ``id`` is ``schools.id``, the target of the school card.
+         */
+        SchoolMapFeature: {
+            /**
+             * Type
+             * @constant
+             */
+            type: "Feature";
+            /** Id */
+            id: number;
+            /** @description null — у школы нет координат */
+            geometry: components["schemas"]["GeoJsonPoint"] | null;
+            properties: components["schemas"]["SchoolMapProperties"];
+        };
+        /**
+         * SchoolMapFeatureCollection
+         * @description Every active school matching the filters: the map is a whole set, not a paginated list.
+         */
+        SchoolMapFeatureCollection: {
+            /**
+             * Type
+             * @constant
+             */
+            type: "FeatureCollection";
+            /** Features */
+            features: components["schemas"]["SchoolMapFeature"][];
+        };
+        /**
+         * SchoolMapProperties
+         * @description Popover of a school (T-23); values below a threshold are highlighted by the panel.
+         *
+         *     Line fields and metrics refer to the main line (``lines.status = main``); metrics exclude
+         *     Wi-Fi (ADR-012).
+         */
+        SchoolMapProperties: {
+            /**
+             * School Code
+             * @description School ID
+             */
+            school_code: string;
+            /**
+             * Full Name
+             * @description Полное наименование школы
+             */
+            full_name: string;
+            /**
+             * Region Name
+             * @description Район/город
+             */
+            region_name: string;
+            /** Provider Name */
+            provider_name: string | null;
+            /** Connection Type Name */
+            connection_type_name: string | null;
+            /**
+             * Contract Down Mbps
+             * @description Договорная скорость Download
+             */
+            contract_down_mbps: number | null;
+            /**
+             * Contract Up Mbps
+             * @description Договорная скорость Upload
+             */
+            contract_up_mbps: number | null;
+            status: components["schemas"]["SchoolStatus"];
+            /** Download Mbps */
+            download_mbps: number | null;
+            /** Upload Mbps */
+            upload_mbps: number | null;
+            /** Ping Ms */
+            ping_ms: number | null;
+            /**
+             * Last Measured At
+             * @description Время последнего замера в периоде
+             */
+            last_measured_at: string | null;
+            /**
+             * Download Min Mbps
+             * @description Порог Download из снимка этого замера
+             */
+            download_min_mbps: number | null;
+            /**
+             * Upload Min Mbps
+             * @description Порог Upload из снимка этого замера
+             */
+            upload_min_mbps: number | null;
+            /**
+             * Ping Max Ms
+             * @description Порог Ping из снимка этого замера
+             */
+            ping_max_ms: number | null;
+        };
+        /** @enum {string} */
+        SchoolStatus: "normal" | "unstable" | "critical" | "offline" | "no_data";
         /**
          * SpeedtestServers
          * @description Measurement servers: LibreSpeed is the main one, ndt7 the fallback (ADR-012).
@@ -1260,6 +1477,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurrentUser"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_dashboard_summary: {
+        parameters: {
+            query?: {
+                region_id?: number | null;
+                provider_id?: number | null;
+                connection_type_id?: number | null;
+                /** @description Статусы школы; несколько — повтором параметра */
+                status?: components["schemas"]["SchoolStatus"][] | null;
+                /** @description Начало периода, включительно; по умолчанию — period_to минус 24 ч */
+                period_from?: string | null;
+                /** @description Конец периода, не включая; по умолчанию — текущий момент */
+                period_to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSummary"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_school_map: {
+        parameters: {
+            query?: {
+                region_id?: number | null;
+                provider_id?: number | null;
+                connection_type_id?: number | null;
+                /** @description Статусы школы; несколько — повтором параметра */
+                status?: components["schemas"]["SchoolStatus"][] | null;
+                /** @description Начало периода, включительно; по умолчанию — без нижней границы */
+                period_from?: string | null;
+                /** @description Конец периода, не включая; по умолчанию — текущий момент */
+                period_to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolMapFeatureCollection"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
                 };
             };
             /** @description Ошибка (RFC 9457) */

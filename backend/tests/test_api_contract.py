@@ -285,6 +285,8 @@ PLAN_ENDPOINTS = {
     "POST /api/auth/refresh",
     "POST /api/auth/logout",
     "GET /api/auth/me",
+    "GET /api/dashboard/summary",
+    "GET /api/map/schools",
 }
 
 
