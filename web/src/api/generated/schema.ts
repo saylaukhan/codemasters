@@ -271,6 +271,232 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/schools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Список школ со средними показателями и статусом
+         * @description Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Сортировка серверная; без sort — по названию.
+         */
+        get: operations["list_schools"];
+        put?: never;
+        /**
+         * Создать школу
+         * @description Неизвестный region_id — 422.
+         */
+        post: operations["create_school"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schools/{school_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Карточка школы: статус и текущие показатели */
+        get: operations["get_school"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить или деактивировать школу
+         * @description Рабочие часы (working_hours) настраиваются в T-37. Неизвестный region_id — 422.
+         */
+        patch: operations["update_school"];
+        trace?: never;
+    };
+    "/api/schools/{school_id}/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Компьютеры школы с последними замерами */
+        get: operations["list_school_devices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schools/{school_id}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Линии школы с договорными значениями */
+        get: operations["list_school_lines"];
+        put?: never;
+        /**
+         * Добавить линию школы
+         * @description Неизвестный provider_id или connection_type_id — 422.
+         */
+        post: operations["create_school_line"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schools/{school_id}/lines/{line_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить линию школы
+         * @description Неизвестный provider_id или connection_type_id — 422.
+         */
+        patch: operations["update_school_line"];
+        trace?: never;
+    };
+    "/api/schools/{school_id}/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ответственные лица школы */
+        get: operations["list_school_contacts"];
+        put?: never;
+        /** Добавить ответственное лицо школы */
+        post: operations["create_school_contact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schools/{school_id}/contacts/{contact_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Изменить ответственное лицо школы */
+        patch: operations["update_school_contact"];
+        trace?: never;
+    };
+    "/api/devices/enrollment-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Выдать одноразовый код установки агента для школы
+         * @description Неизвестный school_id — 422.
+         */
+        post: operations["create_enrollment_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/devices/{device_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Карточка устройства */
+        get: operations["get_device"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/devices/{device_id}/measurements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** История замеров устройства, новые сверху */
+        get: operations["list_device_measurements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/devices/{device_id}/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Заблокировать устройство: запросы агента отклоняются, история остаётся */
+        post: operations["block_device"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/devices/{device_id}/unblock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Разблокировать устройство */
+        post: operations["unblock_device"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -347,6 +573,30 @@ export interface components {
         };
         /** @enum {string} */
         ConnectionStatus: "online" | "offline";
+        /**
+         * ContractCompliance
+         * @description Sustained mismatch of a line with its contract speed (ТЗ п. 14, T-29).
+         *
+         *     The window and the share threshold come from the settings, not from code.
+         */
+        ContractCompliance: {
+            /**
+             * Sustained Mismatch
+             * @description Доля замеров ниже договора выше порога
+             */
+            sustained_mismatch: boolean;
+            /**
+             * Below Contract Pct
+             * @description Доля замеров ниже договора за окно, %
+             * @example 62
+             */
+            below_contract_pct: number;
+            /**
+             * Window Days
+             * @example 7
+             */
+            window_days: number;
+        };
         /**
          * CurrentUser
          * @description User of the access token: role, scope and permissions to shape the panel.
@@ -435,6 +685,118 @@ export interface components {
             problem_devices_count: number;
         };
         /**
+         * DeviceDetail
+         * @description Device card (ТЗ п. 4): the list row plus the school, the OS and the registration time.
+         */
+        DeviceDetail: {
+            /**
+             * Id
+             * @description Device ID
+             */
+            id: number;
+            /**
+             * Device Uid
+             * @description Постоянный идентификатор ПК от агента
+             */
+            device_uid: string;
+            /** Hostname */
+            hostname: string | null;
+            /** Monitoring Point Id */
+            monitoring_point_id: number;
+            /** Monitoring Point Name */
+            monitoring_point_name: string;
+            /**
+             * Room
+             * @description Кабинет точки мониторинга
+             */
+            room: string | null;
+            /** Line Id */
+            line_id: number;
+            line_status: components["schemas"]["LineStatus"];
+            /** Agent Version */
+            agent_version: string | null;
+            /**
+             * Last Seen At
+             * @description Последняя связь с агентом
+             */
+            last_seen_at: string | null;
+            status: components["schemas"]["DeviceStatus"];
+            /** @description По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data */
+            current_status: components["schemas"]["SchoolStatus"];
+            latest_measurement: components["schemas"]["LatestMeasurement"] | null;
+            /** Os */
+            os: string | null;
+            /** School Id */
+            school_id: number;
+            /**
+             * School Code
+             * @description School ID
+             */
+            school_code: string;
+            /** School Name */
+            school_name: string;
+            /**
+             * Registered At
+             * Format: date-time
+             */
+            registered_at: string;
+        };
+        /**
+         * DeviceListItem
+         * @description Computer of a school in the school card (ТЗ п. 4).
+         */
+        DeviceListItem: {
+            /**
+             * Id
+             * @description Device ID
+             */
+            id: number;
+            /**
+             * Device Uid
+             * @description Постоянный идентификатор ПК от агента
+             */
+            device_uid: string;
+            /** Hostname */
+            hostname: string | null;
+            /** Monitoring Point Id */
+            monitoring_point_id: number;
+            /** Monitoring Point Name */
+            monitoring_point_name: string;
+            /**
+             * Room
+             * @description Кабинет точки мониторинга
+             */
+            room: string | null;
+            /** Line Id */
+            line_id: number;
+            line_status: components["schemas"]["LineStatus"];
+            /** Agent Version */
+            agent_version: string | null;
+            /**
+             * Last Seen At
+             * @description Последняя связь с агентом
+             */
+            last_seen_at: string | null;
+            status: components["schemas"]["DeviceStatus"];
+            /** @description По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data */
+            current_status: components["schemas"]["SchoolStatus"];
+            latest_measurement: components["schemas"]["LatestMeasurement"] | null;
+        };
+        /**
+         * DeviceListItemPage
+         * @description Page of the devices of a school.
+         */
+        DeviceListItemPage: {
+            /** Items */
+            items: components["schemas"]["DeviceListItem"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
          * DeviceRegisterRequest
          * @description First start of an agent: one-time installation code issued for a school.
          */
@@ -474,6 +836,37 @@ export interface components {
             /** Device Token */
             device_token: string;
         };
+        /** @enum {string} */
+        DeviceStatus: "active" | "blocked";
+        /**
+         * EnrollmentCodeCreate
+         * @description Request for a one-time agent installation code for a school (plan.md §4.1).
+         */
+        EnrollmentCodeCreate: {
+            /** School Id */
+            school_id: number;
+        };
+        /**
+         * EnrollmentCodeIssued
+         * @description Issued installation code: shown once, the server keeps only its hash (ADR-005).
+         */
+        EnrollmentCodeIssued: {
+            /**
+             * Code
+             * @description Код для параметра установки ENROLL_CODE; повторно не показывается
+             * @example VKO-7F3K-92QD
+             */
+            code: string;
+            /** School Id */
+            school_id: number;
+            /**
+             * Expires At
+             * Format: date-time
+             * @description Окончание срока действия; по умолчанию 7 дней с выдачи (ADR-005)
+             * @example 2026-09-24T04:00:00Z
+             */
+            expires_at: string;
+        };
         /**
          * GeoJsonPoint
          * @description GeoJSON Point geometry (RFC 7946 §3.1.2) in WGS 84.
@@ -496,6 +889,22 @@ export interface components {
                 number,
                 number
             ];
+        };
+        /**
+         * GeoPoint
+         * @description Map point in WGS 84 (ТЗ п. 13).
+         */
+        GeoPoint: {
+            /**
+             * Lat
+             * @example 49.9483
+             */
+            lat: number;
+            /**
+             * Lon
+             * @example 82.6286
+             */
+            lon: number;
         };
         /**
          * HealthResponse
@@ -530,6 +939,165 @@ export interface components {
         };
         /** @enum {string} */
         IfaceType: "ethernet" | "wifi" | "other";
+        /**
+         * LatestMeasurement
+         * @description Values of the latest measurement shown in cards and lists (ТЗ п. 4, п. 13).
+         */
+        LatestMeasurement: {
+            /**
+             * Measured At
+             * Format: date-time
+             * @description Момент замера на ПК
+             */
+            measured_at: string;
+            connection_status: components["schemas"]["ConnectionStatus"];
+            /** Download Mbps */
+            download_mbps: number | null;
+            /** Upload Mbps */
+            upload_mbps: number | null;
+            /** Ping Ms */
+            ping_ms: number | null;
+            /** Jitter Ms */
+            jitter_ms: number | null;
+            /** Packet Loss Pct */
+            packet_loss_pct: number | null;
+            iface_type: components["schemas"]["IfaceType"] | null;
+            /** @description Пороги, применённые при оценке этого замера (ТЗ п. 11) */
+            thresholds_snapshot: components["schemas"]["ThresholdValues"] | null;
+            /** @description Пусто, если замер не оценён */
+            quality_status: components["schemas"]["QualityStatus"] | null;
+        };
+        /**
+         * LineCreate
+         * @description New internet line of a school with its contract values (ТЗ п. 10, п. 14).
+         */
+        LineCreate: {
+            /** Provider Id */
+            provider_id: number;
+            /** Connection Type Id */
+            connection_type_id?: number | null;
+            /**
+             * Line Identifier
+             * @description Идентификатор линии у поставщика
+             */
+            line_identifier?: string | null;
+            status: components["schemas"]["LineStatus"];
+            /**
+             * Contract Down Mbps
+             * @example 50
+             */
+            contract_down_mbps?: number | null;
+            /**
+             * Contract Up Mbps
+             * @example 50
+             */
+            contract_up_mbps?: number | null;
+            /** Contract Number */
+            contract_number?: string | null;
+            /** Contract Date */
+            contract_date?: string | null;
+            /**
+             * Started At
+             * @description Начало эксплуатации
+             */
+            started_at?: string | null;
+            /**
+             * Ip Ranges
+             * @description Внешние IP-диапазоны линии (CIDR) для привязки замеров
+             * @example [
+             *       "203.0.113.0/24"
+             *     ]
+             */
+            ip_ranges?: string[];
+        };
+        /**
+         * LineDetail
+         * @description Line of a school: provider, contract and current quality (ТЗ п. 10, п. 14).
+         */
+        LineDetail: {
+            /** Id */
+            id: number;
+            /** School Id */
+            school_id: number;
+            /** Provider Id */
+            provider_id: number;
+            /** Provider Name */
+            provider_name: string;
+            /** Connection Type Id */
+            connection_type_id: number | null;
+            /** Connection Type Name */
+            connection_type_name: string | null;
+            /**
+             * Line Identifier
+             * @description Идентификатор линии у поставщика
+             */
+            line_identifier: string | null;
+            status: components["schemas"]["LineStatus"];
+            /** Contract Down Mbps */
+            contract_down_mbps: number | null;
+            /** Contract Up Mbps */
+            contract_up_mbps: number | null;
+            /** Contract Number */
+            contract_number: string | null;
+            /** Contract Date */
+            contract_date: string | null;
+            /**
+             * Started At
+             * @description Начало эксплуатации
+             */
+            started_at: string | null;
+            /**
+             * Ip Ranges
+             * @description Внешние IP-диапазоны линии (CIDR)
+             */
+            ip_ranges: string[];
+            /** @description Качество линии по её Ethernet-устройствам; пусто — замеров нет */
+            quality_status: components["schemas"]["QualityStatus"] | null;
+            /** @description Пусто, если договорных скоростей нет */
+            contract_compliance: components["schemas"]["ContractCompliance"] | null;
+        };
+        /**
+         * LineDetailPage
+         * @description Page of the lines of a school.
+         */
+        LineDetailPage: {
+            /** Items */
+            items: components["schemas"]["LineDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /** @enum {string} */
+        LineStatus: "main" | "reserve" | "disabled";
+        /**
+         * LineUpdate
+         * @description Changes of a line; ``status = disabled`` switches it off and keeps its measurements.
+         */
+        LineUpdate: {
+            /** Provider Id */
+            provider_id?: number;
+            /** Connection Type Id */
+            connection_type_id?: number | null;
+            /** Line Identifier */
+            line_identifier?: string | null;
+            /** Status */
+            status?: components["schemas"]["LineStatus"];
+            /** Contract Down Mbps */
+            contract_down_mbps?: number | null;
+            /** Contract Up Mbps */
+            contract_up_mbps?: number | null;
+            /** Contract Number */
+            contract_number?: string | null;
+            /** Contract Date */
+            contract_date?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            /** Ip Ranges */
+            ip_ranges?: string[];
+        };
         /**
          * LoginRequest
          * @description Panel sign-in; the password never shows up in logs or reprs (``SecretStr``).
@@ -642,6 +1210,79 @@ export interface components {
             /** Agent Version */
             agent_version: string;
         };
+        /**
+         * MeasurementListItem
+         * @description Measurement in the history: raw values, the line and the server evaluation (plan.md §5).
+         *
+         *     ``line_id`` is the line the measurement went through, possibly the reserve one (plan.md §4.5).
+         */
+        MeasurementListItem: {
+            /**
+             * Measured At
+             * Format: date-time
+             * @description Момент замера на ПК
+             */
+            measured_at: string;
+            connection_status: components["schemas"]["ConnectionStatus"];
+            /** Download Mbps */
+            download_mbps: number | null;
+            /** Upload Mbps */
+            upload_mbps: number | null;
+            /** Ping Ms */
+            ping_ms: number | null;
+            /** Jitter Ms */
+            jitter_ms: number | null;
+            /** Packet Loss Pct */
+            packet_loss_pct: number | null;
+            iface_type: components["schemas"]["IfaceType"] | null;
+            /** @description Пороги, применённые при оценке этого замера (ТЗ п. 11) */
+            thresholds_snapshot: components["schemas"]["ThresholdValues"] | null;
+            /** @description Пусто, если замер не оценён */
+            quality_status: components["schemas"]["QualityStatus"] | null;
+            /**
+             * Measurement Uuid
+             * Format: uuid
+             */
+            measurement_uuid: string;
+            /**
+             * Received At
+             * Format: date-time
+             * @description Приём сервером; разница с measured_at — время в офлайн-очереди
+             */
+            received_at: string;
+            /** Line Id */
+            line_id: number;
+            /** Duration S */
+            duration_s: number | null;
+            /** External Ip */
+            external_ip: string | null;
+            /**
+             * Server
+             * @description Сервер и метод замера
+             */
+            server: string | null;
+            /** Agent Version */
+            agent_version: string | null;
+            /**
+             * Contract Ok
+             * @description Факт не ниже договорной скорости линии; пусто — договорных значений нет
+             */
+            contract_ok: boolean | null;
+        };
+        /**
+         * MeasurementListItemPage
+         * @description Page of the measurement history of a device, newest first.
+         */
+        MeasurementListItemPage: {
+            /** Items */
+            items: components["schemas"]["MeasurementListItem"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
         /** OutageAccepted */
         OutageAccepted: {
             /** Id */
@@ -699,6 +1340,8 @@ export interface components {
              */
             instance?: string | null;
         };
+        /** @enum {string} */
+        QualityStatus: "normal" | "unstable" | "critical" | "offline";
         /**
          * ScheduleSlot
          * @description Measurement window; the agent picks a random moment inside it (plan.md §4.2).
@@ -716,6 +1359,197 @@ export interface components {
              * @example 09:00:00
              */
             end: string;
+        };
+        /**
+         * SchoolContactCreate
+         * @description Person responsible for the internet connection of a school (ТЗ п. 15).
+         */
+        SchoolContactCreate: {
+            /** Full Name */
+            full_name: string;
+            /** Position */
+            position?: string | null;
+            /**
+             * Phone
+             * @example +7 700 000 00 00
+             */
+            phone?: string | null;
+            /**
+             * Email
+             * @example school@example.kz
+             */
+            email?: string | null;
+            /**
+             * Provider Support Contact
+             * @description Контакт техподдержки поставщика
+             */
+            provider_support_contact?: string | null;
+        };
+        /**
+         * SchoolContactDetail
+         * @description Contact card of a school (ТЗ п. 15).
+         */
+        SchoolContactDetail: {
+            /** Id */
+            id: number;
+            /** School Id */
+            school_id: number;
+            /** Full Name */
+            full_name: string;
+            /** Position */
+            position: string | null;
+            /**
+             * Phone
+             * @description Пусто, если не указан или скрыт по правам роли
+             */
+            phone: string | null;
+            /** Email */
+            email: string | null;
+            /**
+             * Provider Support Contact
+             * @description Контакт техподдержки поставщика
+             */
+            provider_support_contact: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             * @description Дата последнего обновления
+             */
+            updated_at: string;
+        };
+        /**
+         * SchoolContactDetailPage
+         * @description Page of the contacts of a school.
+         */
+        SchoolContactDetailPage: {
+            /** Items */
+            items: components["schemas"]["SchoolContactDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * SchoolContactUpdate
+         * @description Changes of a contact; ``updated_at`` is set by the server.
+         */
+        SchoolContactUpdate: {
+            /** Full Name */
+            full_name?: string;
+            /** Position */
+            position?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Provider Support Contact */
+            provider_support_contact?: string | null;
+        };
+        /**
+         * SchoolCreate
+         * @description New school (ТЗ п. 14, п. 20); working hours start from the admin defaults (ADR-014).
+         */
+        SchoolCreate: {
+            /**
+             * School Code
+             * @description School ID от заказчика; если его нет — VKO-<код района>-<номер>
+             * @example VKO-UKG-017
+             */
+            school_code: string;
+            /** Full Name */
+            full_name: string;
+            /** Region Id */
+            region_id: number;
+            /** Address */
+            address?: string | null;
+            location?: components["schemas"]["GeoPoint"] | null;
+        };
+        /**
+         * SchoolDetail
+         * @description School card (ТЗ п. 13, DESIGN.md §3.15): identity, place, working hours, current state.
+         */
+        SchoolDetail: {
+            /** Id */
+            id: number;
+            /**
+             * School Code
+             * @description School ID
+             */
+            school_code: string;
+            /** Full Name */
+            full_name: string;
+            /** Region Id */
+            region_id: number;
+            /** Region Name */
+            region_name: string;
+            /** Address */
+            address: string | null;
+            location: components["schemas"]["GeoPoint"] | null;
+            /** Is Active */
+            is_active: boolean;
+            working_hours: components["schemas"]["WorkingHours"];
+            /** @description По последним замерам основной линии и heartbeat */
+            status: components["schemas"]["SchoolStatus"];
+            /**
+             * On Reserve Line
+             * @description Замеры идут через резервную линию: основная недоступна (plan.md §4.5)
+             */
+            on_reserve_line: boolean;
+            /** @description Текущие показатели: последний замер основной линии без Wi‑Fi */
+            latest_measurement: components["schemas"]["LatestMeasurement"] | null;
+        };
+        /**
+         * SchoolListItem
+         * @description Row of the school list (ТЗ п. 4); averages come from the main line without Wi-Fi.
+         */
+        SchoolListItem: {
+            /** Id */
+            id: number;
+            /**
+             * School Code
+             * @description School ID
+             */
+            school_code: string;
+            /** Full Name */
+            full_name: string;
+            /** Region Id */
+            region_id: number;
+            /** Region Name */
+            region_name: string;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Devices Count
+             * @description Число подключённых ПК (не заблокированных)
+             */
+            devices_count: number;
+            /** Avg Download Mbps */
+            avg_download_mbps: number | null;
+            /** Avg Upload Mbps */
+            avg_upload_mbps: number | null;
+            /** Avg Ping Ms */
+            avg_ping_ms: number | null;
+            /** @description Действующие пороги основной линии для подсветки средних; пусто — линии нет */
+            thresholds: components["schemas"]["ThresholdValues"] | null;
+            /** Last Measured At */
+            last_measured_at: string | null;
+            status: components["schemas"]["SchoolStatus"];
+        };
+        /**
+         * SchoolListItemPage
+         * @description Page of the school list.
+         */
+        SchoolListItemPage: {
+            /** Items */
+            items: components["schemas"]["SchoolListItem"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
         };
         /**
          * SchoolMapFeature
@@ -812,7 +1646,28 @@ export interface components {
             ping_max_ms: number | null;
         };
         /** @enum {string} */
+        SchoolSort: "full_name" | "-full_name" | "school_code" | "-school_code" | "region_name" | "-region_name" | "devices_count" | "-devices_count" | "avg_download_mbps" | "-avg_download_mbps" | "avg_upload_mbps" | "-avg_upload_mbps" | "avg_ping_ms" | "-avg_ping_ms" | "last_measured_at" | "-last_measured_at" | "status" | "-status";
+        /** @enum {string} */
         SchoolStatus: "normal" | "unstable" | "critical" | "offline" | "no_data";
+        /**
+         * SchoolUpdate
+         * @description Changes of a school; ``is_active = false`` deactivates it and keeps its history.
+         */
+        SchoolUpdate: {
+            /** School Code */
+            school_code?: string;
+            /** Full Name */
+            full_name?: string;
+            /** Region Id */
+            region_id?: number;
+            /** Address */
+            address?: string | null;
+            location?: components["schemas"]["GeoPoint"] | null;
+            /** Is Active */
+            is_active?: boolean;
+            /** Working Hours */
+            working_hours?: components["schemas"]["WorkingHours"];
+        };
         /**
          * SpeedtestServers
          * @description Measurement servers: LibreSpeed is the main one, ndt7 the fallback (ADR-012).
@@ -876,6 +1731,8 @@ export interface components {
             /** School Id */
             school_id: number | null;
         };
+        /** @enum {string} */
+        Weekday: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
         /**
          * WhoAmIResponse
          * @description External IP of the request as seen by the server.
@@ -886,6 +1743,41 @@ export interface components {
              * Format: ipvanyaddress
              */
             external_ip: string;
+        };
+        /**
+         * WorkingHours
+         * @description Working hours of a school: downtime and «no connection» count only inside them.
+         *
+         *     ``start`` and ``end`` are local times of day in Asia/Almaty, without an offset (ADR-014).
+         *     Defaults (08:00–18:00, Mon–Sat) are set in the admin panel, not in code (T-37).
+         */
+        WorkingHours: {
+            /**
+             * Weekdays
+             * @example [
+             *       "mon",
+             *       "tue",
+             *       "wed",
+             *       "thu",
+             *       "fri",
+             *       "sat"
+             *     ]
+             */
+            weekdays: components["schemas"]["Weekday"][];
+            /**
+             * Start
+             * Format: time
+             * @description Местное время Asia/Almaty, без пояса
+             * @example 08:00:00
+             */
+            start: string;
+            /**
+             * End
+             * Format: time
+             * @description Местное время Asia/Almaty, без пояса
+             * @example 18:00:00
+             */
+            end: string;
         };
         /**
          * FieldError
@@ -1564,6 +2456,848 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SchoolMapFeatureCollection"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_schools: {
+        parameters: {
+            query?: {
+                region_id?: number | null;
+                provider_id?: number | null;
+                connection_type_id?: number | null;
+                status?: components["schemas"]["SchoolStatus"][] | null;
+                /** @description true — активные, false — отключённые; не задан — все */
+                is_active?: boolean | null;
+                /** @description Название или School ID */
+                q?: string | null;
+                /** @description Начало окна средних, включительно; по умолчанию — последние 24 ч, как на главной */
+                period_from?: string | null;
+                /** @description Конец окна средних, не включая; по умолчанию — текущий момент */
+                period_to?: string | null;
+                /** @description Поле; «-» — по убыванию. status: normal < unstable < critical < offline, no_data в конце; -status — сначала худшие */
+                sort?: components["schemas"]["SchoolSort"] | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolListItemPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_school: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchoolCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolDetail"];
+                };
+            };
+            /** @description School ID уже занят другой школой (type school_code_taken) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_school: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolDetail"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_school: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchoolUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolDetail"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description School ID уже занят другой школой (type school_code_taken) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_school_devices: {
+        parameters: {
+            query?: {
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceListItemPage"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_school_lines: {
+        parameters: {
+            query?: {
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineDetailPage"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_school_line: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LineCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineDetail"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_school_line: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                school_id: number;
+                line_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LineUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineDetail"];
+                };
+            };
+            /** @description Школа или линия не найдены */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_school_contacts: {
+        parameters: {
+            query?: {
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolContactDetailPage"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_school_contact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchoolContactCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolContactDetail"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_school_contact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                school_id: number;
+                contact_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchoolContactUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolContactDetail"];
+                };
+            };
+            /** @description Школа или контакт не найдены */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_enrollment_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnrollmentCodeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentCodeIssued"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_device: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceDetail"];
+                };
+            };
+            /** @description Устройство не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_device_measurements: {
+        parameters: {
+            query?: {
+                /** @description Начало периода по measured_at, включительно */
+                period_from?: string | null;
+                /** @description Конец периода по measured_at, не включается */
+                period_to?: string | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                device_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeasurementListItemPage"];
+                };
+            };
+            /** @description Устройство не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    block_device: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceDetail"];
+                };
+            };
+            /** @description Устройство не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    unblock_device: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceDetail"];
+                };
+            };
+            /** @description Устройство не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Ошибка валидации запроса */

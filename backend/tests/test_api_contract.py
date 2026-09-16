@@ -287,6 +287,22 @@ PLAN_ENDPOINTS = {
     "GET /api/auth/me",
     "GET /api/dashboard/summary",
     "GET /api/map/schools",
+    "GET /api/schools",
+    "POST /api/schools",
+    "GET /api/schools/{school_id}",
+    "PATCH /api/schools/{school_id}",
+    "GET /api/schools/{school_id}/devices",
+    "GET /api/schools/{school_id}/lines",
+    "POST /api/schools/{school_id}/lines",
+    "PATCH /api/schools/{school_id}/lines/{line_id}",
+    "GET /api/schools/{school_id}/contacts",
+    "POST /api/schools/{school_id}/contacts",
+    "PATCH /api/schools/{school_id}/contacts/{contact_id}",
+    "GET /api/devices/{device_id}",
+    "GET /api/devices/{device_id}/measurements",
+    "POST /api/devices/{device_id}/block",
+    "POST /api/devices/{device_id}/unblock",
+    "POST /api/devices/enrollment-codes",
 }
 
 
@@ -294,6 +310,24 @@ def test_contract_has_every_endpoint_of_the_plan() -> None:
     documented = {name for name, _ in operations(create_app().openapi())}
 
     assert PLAN_ENDPOINTS - documented == set()
+
+
+def test_list_endpoints_return_items_total_page_page_size() -> None:
+    schema = create_app().openapi()
+    components = schema["components"]["schemas"]
+
+    lists = []
+    for name, operation in operations(schema):
+        if {"page", "page_size"} <= {p["name"] for p in operation.get("parameters", [])}:
+            ok = next(
+                response for code, response in operation["responses"].items() if code[0] == "2"
+            )
+            ref = ok["content"]["application/json"]["schema"]["$ref"]
+            page = components[ref.rsplit("/", 1)[1]]
+            assert set(page["required"]) == {"items", "total", "page", "page_size"}, name
+            lists.append(name)
+
+    assert {"GET /api/schools", "GET /api/devices/{device_id}/measurements"} <= set(lists)
 
 
 def test_panel_endpoints_declare_the_bearer_token() -> None:
