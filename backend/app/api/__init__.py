@@ -9,6 +9,7 @@ from app.api import (
     auth,
     dashboard,
     devices,
+    exports,
     incidents,
     schools,
 )
@@ -27,5 +28,6 @@ for domain in (
     analytics,
     incidents,
     appeals,
+    exports,
 ):
     api_router.include_router(domain.router)

@@ -696,6 +696,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Сформировать выгрузку: режим, формат, период, фильтры, колонки
+         * @description Сочетания режима и формата: `raw` — замеры в xlsx, csv или json, фильтры device_ids и statuses, выбор колонок (T-30); `aggregates` — строка на школу в xlsx, csv или json: school_code, school_name, measurements_count, avg_download_mbps, min_download_mbps, avg_upload_mbps, avg_ping_ms, problem_count, problem_pct — по основной линии без Wi‑Fi, как GET /api/analytics (T-31); `school_report` — PDF по одной школе: KPI, графики, число и длительность простоев, таблица замеров (T-32). Другие сочетания — 422. Неизвестные или вне области видимости school_ids и device_ids — 422 (ADR-008). До T-33 файл формируется в запросе и выгрузка приходит ready или failed; с T-33 PDF и выгрузки больше порога строк из settings (по умолчанию 10 000) приходят pending и формируются в фоне.
+         */
+        post: operations["create_export"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/{export_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Файл выгрузки или её состояние
+         * @description Ответ зависит от status выгрузки: ready — 200 с файлом и Content-Disposition; pending — 202 с выгрузкой, запрос повторяется позже; failed — 409. Выгрузки другого пользователя, неизвестные и с истёкшим expires_at — 404. Файл отдаётся только с Authorization: Bearer: панель скачивает его запросом, а не прямой ссылкой.
+         */
+        get: operations["get_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1463,6 +1503,100 @@ export interface components {
              */
             expires_at: string;
         };
+        /** @enum {string} */
+        ExportColumn: "school_name" | "hostname" | "room" | "date" | "time" | "download_mbps" | "upload_mbps" | "ping_ms" | "jitter_ms" | "packet_loss_pct" | "quality_status" | "school_code" | "device_id" | "line_status" | "connection_status" | "iface_type" | "duration_s" | "external_ip" | "server" | "agent_version";
+        /**
+         * ExportCreate
+         * @description Export request: mode, format, period, filters and columns (ТЗ п. 9, DESIGN.md §3.24).
+         */
+        ExportCreate: {
+            mode: components["schemas"]["ExportMode"];
+            /** @description raw и aggregates — xlsx, csv, json; school_report — pdf */
+            format: components["schemas"]["ExportFormat"];
+            /**
+             * Period From
+             * Format: date-time
+             * @description Начало периода по measured_at, включительно
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец периода, не включается
+             */
+            period_to: string;
+            /**
+             * School Ids
+             * @description Пусто — все школы в области видимости; для school_report — ровно одна
+             */
+            school_ids?: number[];
+            /**
+             * Device Ids
+             * @description Только raw: ПК выбранных школ; пусто — все
+             */
+            device_ids?: number[];
+            /**
+             * Statuses
+             * @description Только raw: статусы замера; пусто — все
+             */
+            statuses?: components["schemas"]["QualityStatus"][];
+            /**
+             * Columns
+             * @description Только raw: колонки в порядке файла; минимальный набор ТЗ п. 9 обязателен
+             * @default [
+             *       "school_name",
+             *       "hostname",
+             *       "room",
+             *       "date",
+             *       "time",
+             *       "download_mbps",
+             *       "upload_mbps",
+             *       "ping_ms",
+             *       "jitter_ms",
+             *       "packet_loss_pct",
+             *       "quality_status"
+             *     ]
+             */
+            columns: components["schemas"]["ExportColumn"][];
+        };
+        /** @enum {string} */
+        ExportFormat: "xlsx" | "csv" | "json" | "pdf";
+        /**
+         * ExportJob
+         * @description Export and the state of its file; the file itself is ``GET /api/exports/{id}``.
+         */
+        ExportJob: {
+            /** Id */
+            id: number;
+            status: components["schemas"]["ExportStatus"];
+            mode: components["schemas"]["ExportMode"];
+            format: components["schemas"]["ExportFormat"];
+            /**
+             * Rows Count
+             * @description Строк в файле: замеров (raw, таблица school_report) или школ (aggregates); null — файл ещё не сформирован
+             */
+            rows_count: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * @description Когда файл удаляется и выгрузка отвечает 404; срок — из settings (по умолчанию 7 дней); null — файл ещё не сформирован
+             * @example 2026-09-24T04:00:00Z
+             */
+            expires_at: string | null;
+            /**
+             * Error
+             * @description Причина для человека при status=failed
+             */
+            error: string | null;
+        };
+        /** @enum {string} */
+        ExportMode: "raw" | "aggregates" | "school_report";
+        /** @enum {string} */
+        ExportStatus: "pending" | "ready" | "failed";
         /**
          * GeoJsonPoint
          * @description GeoJSON Point geometry (RFC 7946 §3.1.2) in WGS 84.
@@ -4786,6 +4920,120 @@ export interface operations {
             };
             /** @description Обращение не найдено */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Файл выгрузки */
+            200: {
+                headers: {
+                    /** @description attachment с именем файла */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    "text/csv": string;
+                    "application/json": string;
+                    "application/pdf": string;
+                };
+            };
+            /** @description Файл ещё формируется (status pending) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Выгрузка не найдена или срок хранения истёк */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Файл не сформирован (type export_failed), причина — в detail */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
