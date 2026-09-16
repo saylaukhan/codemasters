@@ -2447,6 +2447,190 @@
           }
         }
       }
+    },
+    "/api/analytics": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Сводная аналитика: показатели за период, графики, часы ухудшения",
+        "description": "`rows` — все сущности уровня `level` по name, без пагинации; рейтинг и сортировка — в панели. `series` и `heatmap` — по всей выборке фильтров: графики одной школы — запрос с `school_id`. Источники: показатели и счётчики замеров — `m_hourly` / `m_daily` (T-19), Wi‑Fi не учитывается (ADR-003); `availability_pct` — простои и heartbeat в рабочие часы (T-16, ADR-014); устойчивое несоответствие — пересчёт T-29. Часы и сутки — по Asia/Almaty.",
+        "operationId": "get_analytics",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "level",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsLevel",
+              "description": "Группировка строк: школа, район/город (regions), поставщик или вся ВКО"
+            },
+            "description": "Группировка строк: школа, район/город (regions), поставщик или вся ВКО"
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsPeriod",
+              "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+            },
+            "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало, включительно; только и обязательно при period=custom",
+              "title": "Period From"
+            },
+            "description": "Начало, включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец, не включительно; только и обязательно при period=custom",
+              "title": "Period To"
+            },
+            "description": "Конец, не включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "school_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Район или город (regions)",
+              "title": "Region Id"
+            },
+            "description": "Район или город (regions)"
+          },
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "connection_type_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Type Id"
+            }
+          },
+          {
+            "name": "line_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/LineStatus",
+              "description": "Статус учитываемых линий; основные и резервные не смешиваются (п. 10)",
+              "default": "main"
+            },
+            "description": "Статус учитываемых линий; основные и резервные не смешиваются (п. 10)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2585,6 +2769,349 @@
         ],
         "title": "AgentReleaseResponse",
         "description": "Latest agent release for self-update (plan.md §4.6)."
+      },
+      "AnalyticsGranularity": {
+        "type": "string",
+        "enum": [
+          "hour",
+          "day"
+        ]
+      },
+      "AnalyticsHeatmapCell": {
+        "properties": {
+          "weekday": {
+            "$ref": "#/components/schemas/Weekday"
+          },
+          "hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Hour",
+            "description": "Час суток по Asia/Almaty"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Measurements Count"
+          },
+          "problem_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Count"
+          },
+          "problem_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Problem Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "weekday",
+          "hour",
+          "measurements_count",
+          "problem_count",
+          "problem_pct"
+        ],
+        "title": "AnalyticsHeatmapCell",
+        "description": "Hour of a weekday over all days of the period, over all rows together (T-28)."
+      },
+      "AnalyticsLevel": {
+        "type": "string",
+        "enum": [
+          "school",
+          "district",
+          "provider",
+          "region"
+        ]
+      },
+      "AnalyticsPeriod": {
+        "type": "string",
+        "enum": [
+          "today",
+          "week",
+          "month",
+          "custom"
+        ]
+      },
+      "AnalyticsReport": {
+        "properties": {
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From",
+            "description": "Начало периода, включительно"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To",
+            "description": "Конец периода, не включительно"
+          },
+          "granularity": {
+            "$ref": "#/components/schemas/AnalyticsGranularity",
+            "description": "Шаг series, выбирает сервер: hour при period=today, иначе day"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/ThresholdValues",
+            "description": "Пороги для отметок на графиках: профиль линии, если в выборке одна линия, районный при region_id, иначе глобальный (ADR-004). Замеры оценены по своему thresholds_snapshot, а не по этим значениям"
+          },
+          "availability_min_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Availability Min Pct",
+            "description": "Порог доступности из settings (п. 11, T-37)"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsRow"
+            },
+            "type": "array",
+            "title": "Rows",
+            "description": "Все сущности уровня в области видимости и фильтрах, в том числе без замеров за период, по name; без пагинации, рейтинг и сортировка — в панели"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsSeriesPoint"
+            },
+            "type": "array",
+            "title": "Series",
+            "description": "По возрастанию bucket_start; часы и сутки без замеров не передаются"
+          },
+          "heatmap": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsHeatmapCell"
+            },
+            "type": "array",
+            "title": "Heatmap",
+            "description": "Ячейки без замеров не передаются"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_from",
+          "period_to",
+          "granularity",
+          "thresholds",
+          "availability_min_pct",
+          "rows",
+          "series",
+          "heatmap"
+        ],
+        "title": "AnalyticsReport",
+        "description": "Analytics of one level for a period: rows, time series and hour × weekday heatmap.\n\nRows are grouped by ``level``; the series and the heatmap cover the whole selection of the\nfilters, so charts of one school are a request with ``school_id``."
+      },
+      "AnalyticsRow": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "id школы, района/города (regions) или поставщика; null при level=region"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Наименование школы, района/города или поставщика; null при level=region"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Measurements Count"
+          },
+          "problem_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Count"
+          },
+          "problem_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem Pct",
+            "description": "Доля проблемных замеров, %; null без замеров"
+          },
+          "download_mbps": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "upload_mbps": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ping_ms": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "availability_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Availability Pct",
+            "description": "Доступность: 1 − простой / время наблюдения в рабочие часы (T-16, ADR-014)"
+          },
+          "below_contract_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Below Contract Pct",
+            "description": "Доля замеров ниже договорной скорости, %; null, если договорных значений нет"
+          },
+          "sustained_mismatch_lines_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sustained Mismatch Lines Count",
+            "description": "Линий с устойчивым несоответствием договору; null — признак ещё не рассчитан (T-29)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "measurements_count",
+          "problem_count",
+          "problem_pct",
+          "download_mbps",
+          "upload_mbps",
+          "ping_ms",
+          "availability_pct",
+          "below_contract_pct",
+          "sustained_mismatch_lines_count"
+        ],
+        "title": "AnalyticsRow",
+        "description": "One entity of the level: aggregates for the period.\n\nA metric is null when no measurement of the period has a value for it (offline only)."
+      },
+      "AnalyticsSeriesPoint": {
+        "properties": {
+          "bucket_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Bucket Start",
+            "description": "Начало часа или суток по Asia/Almaty"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Measurements Count"
+          },
+          "problem_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Count"
+          },
+          "problem_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Problem Pct"
+          },
+          "avg_download_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Download Mbps"
+          },
+          "avg_upload_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Upload Mbps"
+          },
+          "avg_ping_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Ping Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bucket_start",
+          "measurements_count",
+          "problem_count",
+          "problem_pct",
+          "avg_download_mbps",
+          "avg_upload_mbps",
+          "avg_ping_ms"
+        ],
+        "title": "AnalyticsSeriesPoint",
+        "description": "One hour or day of the time series, over all rows of the report together."
       },
       "ConnectionStatus": {
         "type": "string",
@@ -4375,6 +4902,30 @@
         ],
         "title": "MeasurementListItemPage",
         "description": "Page of the measurement history of a device, newest first."
+      },
+      "MetricStats": {
+        "properties": {
+          "avg": {
+            "type": "number",
+            "title": "Avg"
+          },
+          "min": {
+            "type": "number",
+            "title": "Min"
+          },
+          "max": {
+            "type": "number",
+            "title": "Max"
+          }
+        },
+        "type": "object",
+        "required": [
+          "avg",
+          "min",
+          "max"
+        ],
+        "title": "MetricStats",
+        "description": "Average, minimum and maximum of one metric over the period (ТЗ п. 5)."
       },
       "OutageAccepted": {
         "properties": {

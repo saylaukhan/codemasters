@@ -303,6 +303,7 @@ PLAN_ENDPOINTS = {
     "POST /api/devices/{device_id}/block",
     "POST /api/devices/{device_id}/unblock",
     "POST /api/devices/enrollment-codes",
+    "GET /api/analytics",
 }
 
 

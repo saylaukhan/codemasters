@@ -2,11 +2,11 @@
 
 from fastapi import APIRouter
 
-from app.api import agent, auth, dashboard, devices, schools
+from app.api import agent, analytics, auth, dashboard, devices, schools
 from app.api import map as school_map
 
 API_PREFIX = "/api"
 
 api_router = APIRouter(prefix=API_PREFIX)
-for domain in (agent, auth, dashboard, school_map, schools, devices):
+for domain in (agent, auth, dashboard, school_map, schools, devices, analytics):
     api_router.include_router(domain.router)

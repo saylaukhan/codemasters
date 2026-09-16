@@ -497,6 +497,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Сводная аналитика: показатели за период, графики, часы ухудшения
+         * @description `rows` — все сущности уровня `level` по name, без пагинации; рейтинг и сортировка — в панели. `series` и `heatmap` — по всей выборке фильтров: графики одной школы — запрос с `school_id`. Источники: показатели и счётчики замеров — `m_hourly` / `m_daily` (T-19), Wi‑Fi не учитывается (ADR-003); `availability_pct` — простои и heartbeat в рабочие часы (T-16, ADR-014); устойчивое несоответствие — пересчёт T-29. Часы и сутки — по Asia/Almaty.
+         */
+        get: operations["get_analytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -570,6 +590,144 @@ export interface components {
              * Format: date-time
              */
             released_at: string;
+        };
+        /** @enum {string} */
+        AnalyticsGranularity: "hour" | "day";
+        /**
+         * AnalyticsHeatmapCell
+         * @description Hour of a weekday over all days of the period, over all rows together (T-28).
+         */
+        AnalyticsHeatmapCell: {
+            weekday: components["schemas"]["Weekday"];
+            /**
+             * Hour
+             * @description Час суток по Asia/Almaty
+             */
+            hour: number;
+            /** Measurements Count */
+            measurements_count: number;
+            /** Problem Count */
+            problem_count: number;
+            /** Problem Pct */
+            problem_pct: number;
+        };
+        /** @enum {string} */
+        AnalyticsLevel: "school" | "district" | "provider" | "region";
+        /** @enum {string} */
+        AnalyticsPeriod: "today" | "week" | "month" | "custom";
+        /**
+         * AnalyticsReport
+         * @description Analytics of one level for a period: rows, time series and hour × weekday heatmap.
+         *
+         *     Rows are grouped by ``level``; the series and the heatmap cover the whole selection of the
+         *     filters, so charts of one school are a request with ``school_id``.
+         */
+        AnalyticsReport: {
+            /**
+             * Period From
+             * Format: date-time
+             * @description Начало периода, включительно
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец периода, не включительно
+             */
+            period_to: string;
+            /** @description Шаг series, выбирает сервер: hour при period=today, иначе day */
+            granularity: components["schemas"]["AnalyticsGranularity"];
+            /** @description Пороги для отметок на графиках: профиль линии, если в выборке одна линия, районный при region_id, иначе глобальный (ADR-004). Замеры оценены по своему thresholds_snapshot, а не по этим значениям */
+            thresholds: components["schemas"]["ThresholdValues"];
+            /**
+             * Availability Min Pct
+             * @description Порог доступности из settings (п. 11, T-37)
+             */
+            availability_min_pct: number;
+            /**
+             * Rows
+             * @description Все сущности уровня в области видимости и фильтрах, в том числе без замеров за период, по name; без пагинации, рейтинг и сортировка — в панели
+             */
+            rows: components["schemas"]["AnalyticsRow"][];
+            /**
+             * Series
+             * @description По возрастанию bucket_start; часы и сутки без замеров не передаются
+             */
+            series: components["schemas"]["AnalyticsSeriesPoint"][];
+            /**
+             * Heatmap
+             * @description Ячейки без замеров не передаются
+             */
+            heatmap: components["schemas"]["AnalyticsHeatmapCell"][];
+        };
+        /**
+         * AnalyticsRow
+         * @description One entity of the level: aggregates for the period.
+         *
+         *     A metric is null when no measurement of the period has a value for it (offline only).
+         */
+        AnalyticsRow: {
+            /**
+             * Id
+             * @description id школы, района/города (regions) или поставщика; null при level=region
+             */
+            id: number | null;
+            /**
+             * Name
+             * @description Наименование школы, района/города или поставщика; null при level=region
+             */
+            name: string | null;
+            /** Measurements Count */
+            measurements_count: number;
+            /** Problem Count */
+            problem_count: number;
+            /**
+             * Problem Pct
+             * @description Доля проблемных замеров, %; null без замеров
+             */
+            problem_pct: number | null;
+            download_mbps: components["schemas"]["MetricStats"] | null;
+            upload_mbps: components["schemas"]["MetricStats"] | null;
+            ping_ms: components["schemas"]["MetricStats"] | null;
+            /**
+             * Availability Pct
+             * @description Доступность: 1 − простой / время наблюдения в рабочие часы (T-16, ADR-014)
+             */
+            availability_pct: number | null;
+            /**
+             * Below Contract Pct
+             * @description Доля замеров ниже договорной скорости, %; null, если договорных значений нет
+             */
+            below_contract_pct: number | null;
+            /**
+             * Sustained Mismatch Lines Count
+             * @description Линий с устойчивым несоответствием договору; null — признак ещё не рассчитан (T-29)
+             */
+            sustained_mismatch_lines_count: number | null;
+        };
+        /**
+         * AnalyticsSeriesPoint
+         * @description One hour or day of the time series, over all rows of the report together.
+         */
+        AnalyticsSeriesPoint: {
+            /**
+             * Bucket Start
+             * Format: date-time
+             * @description Начало часа или суток по Asia/Almaty
+             */
+            bucket_start: string;
+            /** Measurements Count */
+            measurements_count: number;
+            /** Problem Count */
+            problem_count: number;
+            /** Problem Pct */
+            problem_pct: number;
+            /** Avg Download Mbps */
+            avg_download_mbps: number | null;
+            /** Avg Upload Mbps */
+            avg_upload_mbps: number | null;
+            /** Avg Ping Ms */
+            avg_ping_ms: number | null;
         };
         /** @enum {string} */
         ConnectionStatus: "online" | "offline";
@@ -1282,6 +1440,18 @@ export interface components {
             page: number;
             /** Page Size */
             page_size: number;
+        };
+        /**
+         * MetricStats
+         * @description Average, minimum and maximum of one metric over the period (ТЗ п. 5).
+         */
+        MetricStats: {
+            /** Avg */
+            avg: number;
+            /** Min */
+            min: number;
+            /** Max */
+            max: number;
         };
         /** OutageAccepted */
         OutageAccepted: {
@@ -3298,6 +3468,60 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_analytics: {
+        parameters: {
+            query: {
+                /** @description Группировка строк: школа, район/город (regions), поставщик или вся ВКО */
+                level: components["schemas"]["AnalyticsLevel"];
+                /** @description today, 7 или 30 суток с текущими, custom — period_from и period_to */
+                period: components["schemas"]["AnalyticsPeriod"];
+                /** @description Начало, включительно; только и обязательно при period=custom */
+                period_from?: string | null;
+                /** @description Конец, не включительно; только и обязательно при period=custom */
+                period_to?: string | null;
+                school_id?: number | null;
+                /** @description Район или город (regions) */
+                region_id?: number | null;
+                provider_id?: number | null;
+                connection_type_id?: number | null;
+                /** @description Статус учитываемых линий; основные и резервные не смешиваются (п. 10) */
+                line_status?: components["schemas"]["LineStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsReport"];
                 };
             };
             /** @description Ошибка валидации запроса */
