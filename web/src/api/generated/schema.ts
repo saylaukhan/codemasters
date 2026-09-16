@@ -619,6 +619,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/appeals/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * AI-черновик обращения поставщику
+         * @description Ничего не сохраняет и номер не присваивает. Контекст собирает сервер, в модель не уходят ФИО, телефоны и e-mail (ADR-011). Модель недоступна или не настроена — не ошибка: ai_generated=false, текст — пустой шаблон (T-47). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.
+         */
+        post: operations["generate_appeal_draft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/appeals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отправить обращение: номер, письмо поставщику, PDF
+         * @description Номер присваивается здесь. Контекст сервер пересобирает за тот же период; статус после отправки — sent_to_provider. SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.
+         */
+        post: operations["create_appeal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/appeals/{appeal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Сменить статус обращения или добавить комментарий
+         * @description Переходы — как у инцидентов (T-41); каждое изменение — в appeal_events.
+         */
+        patch: operations["update_appeal"];
+        trace?: never;
+    };
+    "/api/appeals/{appeal_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** PDF отправленного обращения */
+        get: operations["get_appeal_pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -830,6 +907,265 @@ export interface components {
             avg_upload_mbps: number | null;
             /** Avg Ping Ms */
             avg_ping_ms: number | null;
+        };
+        /**
+         * AppealContext
+         * @description Facts of an appeal built by the server (ТЗ п. 17, plan.md §8); no personal data.
+         *
+         *     Metrics cover Ethernet measurements of the line in the period, without Wi-Fi (ADR-012).
+         */
+        AppealContext: {
+            /** Incident Id */
+            incident_id: number | null;
+            /**
+             * Incident Number
+             * @example INC-2026-000123
+             */
+            incident_number: string | null;
+            /** School Id */
+            school_id: number;
+            /**
+             * School Code
+             * @description School ID
+             */
+            school_code: string;
+            /** School Name */
+            school_name: string;
+            /** Line Id */
+            line_id: number;
+            /**
+             * Line Identifier
+             * @description Идентификатор линии у поставщика
+             */
+            line_identifier: string | null;
+            /** Provider Id */
+            provider_id: number;
+            /** Provider Name */
+            provider_name: string;
+            /** Contract Number */
+            contract_number: string | null;
+            /** Contract Date */
+            contract_date: string | null;
+            /** Contract Down Mbps */
+            contract_down_mbps: number | null;
+            /** Contract Up Mbps */
+            contract_up_mbps: number | null;
+            /**
+             * Period From
+             * Format: date-time
+             * @description Начало периода, включительно
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец периода, не включительно
+             */
+            period_to: string;
+            /** Measurements Count */
+            measurements_count: number;
+            /**
+             * Problem Count
+             * @description Замеры unstable, critical или offline
+             */
+            problem_count: number;
+            /** @description null — замеров со значением нет */
+            download_mbps: components["schemas"]["MetricStats"] | null;
+            upload_mbps: components["schemas"]["MetricStats"] | null;
+            ping_ms: components["schemas"]["MetricStats"] | null;
+            jitter_ms: components["schemas"]["MetricStats"] | null;
+            packet_loss_pct: components["schemas"]["MetricStats"] | null;
+            /** @description Пороги оценки: thresholds_snapshot последнего замера периода; без замеров — действующий профиль линии (ADR-004) */
+            thresholds: components["schemas"]["ThresholdValues"];
+            /** Outages Count */
+            outages_count: number;
+            /**
+             * Outages Duration S
+             * @description Простои линии за период: outages и пропуски heartbeat (ADR-014)
+             */
+            outages_duration_s: number;
+        };
+        /**
+         * AppealCreate
+         * @description «Отправить»: references and period of the draft with the text edited by the user.
+         */
+        AppealCreate: {
+            /**
+             * Incident Id
+             * @description Из карточки инцидента: школа и линия — из инцидента
+             */
+            incident_id?: number | null;
+            /**
+             * School Id
+             * @description Из карточки школы, вместе с line_id
+             */
+            school_id?: number | null;
+            /**
+             * Line Id
+             * @description Линия школы: обращение уходит её поставщику
+             */
+            line_id?: number | null;
+            /**
+             * Period From
+             * Format: date-time
+             * @description Начало периода, включительно; для инцидента — его started_at
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец периода, не включая; для инцидента — restored_at или текущий момент
+             */
+            period_to: string;
+            /** Subject */
+            subject: string;
+            /**
+             * Text
+             * @description Текст письма в Markdown
+             */
+            text: string;
+            /**
+             * User Comment
+             * @description Комментарий пользователя: в обращении — отдельно от текста (ТЗ п. 17)
+             */
+            user_comment?: string | null;
+        };
+        /** @enum {string} */
+        AppealDeliveryStatus: "sent" | "not_sent";
+        /**
+         * AppealDetail
+         * @description Sent appeal: number, text, context at sending, e-mail delivery and history.
+         */
+        AppealDetail: {
+            /** Id */
+            id: number;
+            /**
+             * Number
+             * @description Присвоен при отправке
+             * @example ОБР-2026-000045
+             */
+            number: string;
+            status: components["schemas"]["IncidentStatus"];
+            /** Subject */
+            subject: string;
+            /**
+             * Text
+             * @description Текст письма в Markdown
+             */
+            text: string;
+            /** User Comment */
+            user_comment: string | null;
+            context: components["schemas"]["AppealContext"];
+            /**
+             * Sent At
+             * Format: date-time
+             */
+            sent_at: string;
+            /**
+             * Recipient Email
+             * @description appeals_email поставщика при отправке
+             */
+            recipient_email: string | null;
+            /** @description not_sent — письмо не ушло (SMTP не настроен, нет адреса, ошибка); PDF сохранён */
+            delivery_status: components["schemas"]["AppealDeliveryStatus"];
+            /**
+             * Events
+             * @description История, по возрастанию created_at; первая запись — отправка
+             */
+            events: components["schemas"]["AppealEventDetail"][];
+        };
+        /**
+         * AppealDraft
+         * @description Editable draft of an appeal; nothing is stored (ТЗ п. 17, T-47).
+         */
+        AppealDraft: {
+            /** Subject */
+            subject: string;
+            /**
+             * Text
+             * @description Текст письма в Markdown (абзацы, жирный, списки); контакты ответственного подставлены после генерации (ADR-011)
+             */
+            text: string;
+            /**
+             * Ai Generated
+             * @description false — модель недоступна или не настроена: subject и text — пустой шаблон
+             */
+            ai_generated: boolean;
+            /**
+             * Recipient Email
+             * @description appeals_email поставщика; пусто — адрес не задан, письмо не уйдёт
+             */
+            recipient_email: string | null;
+            context: components["schemas"]["AppealContext"];
+        };
+        /**
+         * AppealDraftRequest
+         * @description What the appeal is about and the problem period.
+         *
+         *     Exactly one target: ``incident_id``, or ``school_id`` together with ``line_id``.
+         */
+        AppealDraftRequest: {
+            /**
+             * Incident Id
+             * @description Из карточки инцидента: школа и линия — из инцидента
+             */
+            incident_id?: number | null;
+            /**
+             * School Id
+             * @description Из карточки школы, вместе с line_id
+             */
+            school_id?: number | null;
+            /**
+             * Line Id
+             * @description Линия школы: обращение уходит её поставщику
+             */
+            line_id?: number | null;
+            /**
+             * Period From
+             * Format: date-time
+             * @description Начало периода, включительно; для инцидента — его started_at
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец периода, не включая; для инцидента — restored_at или текущий момент
+             */
+            period_to: string;
+        };
+        /**
+         * AppealEventDetail
+         * @description Entry of the appeal history: sending, status change or comment (ТЗ п. 17).
+         */
+        AppealEventDetail: {
+            /** Id */
+            id: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Author User Id */
+            author_user_id: number;
+            /** Author User Name */
+            author_user_name: string;
+            /** @description Новый статус; null — только комментарий */
+            status: components["schemas"]["IncidentStatus"] | null;
+            /** Comment */
+            comment: string | null;
+        };
+        /**
+         * AppealUpdate
+         * @description Status change or comment by the provider or a user; at least one of them.
+         */
+        AppealUpdate: {
+            /** Status */
+            status?: components["schemas"]["IncidentStatus"];
+            /**
+             * Comment
+             * @description Комментарий в историю
+             */
+            comment?: string | null;
         };
         /** @enum {string} */
         ConnectionStatus: "online" | "offline";
@@ -4254,6 +4590,201 @@ export interface operations {
                 };
             };
             /** @description Инцидент не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    generate_appeal_draft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppealDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealDraft"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_appeal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppealCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealDetail"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_appeal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                appeal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppealUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealDetail"];
+                };
+            };
+            /** @description Обращение не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Переход в этот статус недопустим (type invalid_status_transition) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_appeal_pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                appeal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PDF-файл обращения */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Обращение не найдено */
             404: {
                 headers: {
                     [name: string]: unknown;

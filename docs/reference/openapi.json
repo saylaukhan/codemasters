@@ -3310,6 +3310,276 @@
           }
         }
       }
+    },
+    "/api/appeals/draft": {
+      "post": {
+        "tags": [
+          "appeals"
+        ],
+        "summary": "AI-черновик обращения поставщику",
+        "description": "Ничего не сохраняет и номер не присваивает. Контекст собирает сервер, в модель не уходят ФИО, телефоны и e-mail (ADR-011). Модель недоступна или не настроена — не ошибка: ai_generated=false, текст — пустой шаблон (T-47). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.",
+        "operationId": "generate_appeal_draft",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealDraft"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/appeals": {
+      "post": {
+        "tags": [
+          "appeals"
+        ],
+        "summary": "Отправить обращение: номер, письмо поставщику, PDF",
+        "description": "Номер присваивается здесь. Контекст сервер пересобирает за тот же период; статус после отправки — sent_to_provider. SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.",
+        "operationId": "create_appeal",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/appeals/{appeal_id}": {
+      "patch": {
+        "tags": [
+          "appeals"
+        ],
+        "summary": "Сменить статус обращения или добавить комментарий",
+        "description": "Переходы — как у инцидентов (T-41); каждое изменение — в appeal_events.",
+        "operationId": "update_appeal",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "appeal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Appeal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Обращение не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Переход в этот статус недопустим (type invalid_status_transition)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/appeals/{appeal_id}/pdf": {
+      "get": {
+        "tags": [
+          "appeals"
+        ],
+        "summary": "PDF отправленного обращения",
+        "operationId": "get_appeal_pdf",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "appeal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Appeal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF-файл обращения",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Обращение не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3791,6 +4061,598 @@
         ],
         "title": "AnalyticsSeriesPoint",
         "description": "One hour or day of the time series, over all rows of the report together."
+      },
+      "AppealContext": {
+        "properties": {
+          "incident_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Id"
+          },
+          "incident_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Number",
+            "examples": [
+              "INC-2026-000123"
+            ]
+          },
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "school_code": {
+            "type": "string",
+            "title": "School Code",
+            "description": "School ID"
+          },
+          "school_name": {
+            "type": "string",
+            "title": "School Name"
+          },
+          "line_id": {
+            "type": "integer",
+            "title": "Line Id"
+          },
+          "line_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Identifier",
+            "description": "Идентификатор линии у поставщика"
+          },
+          "provider_id": {
+            "type": "integer",
+            "title": "Provider Id"
+          },
+          "provider_name": {
+            "type": "string",
+            "title": "Provider Name"
+          },
+          "contract_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Number"
+          },
+          "contract_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Date"
+          },
+          "contract_down_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Down Mbps"
+          },
+          "contract_up_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Up Mbps"
+          },
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From",
+            "description": "Начало периода, включительно"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To",
+            "description": "Конец периода, не включительно"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Measurements Count"
+          },
+          "problem_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Count",
+            "description": "Замеры unstable, critical или offline"
+          },
+          "download_mbps": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricStats"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null — замеров со значением нет"
+          },
+          "upload_mbps": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ping_ms": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "jitter_ms": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "packet_loss_pct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/ThresholdValues",
+            "description": "Пороги оценки: thresholds_snapshot последнего замера периода; без замеров — действующий профиль линии (ADR-004)"
+          },
+          "outages_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Outages Count"
+          },
+          "outages_duration_s": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Outages Duration S",
+            "description": "Простои линии за период: outages и пропуски heartbeat (ADR-014)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "incident_id",
+          "incident_number",
+          "school_id",
+          "school_code",
+          "school_name",
+          "line_id",
+          "line_identifier",
+          "provider_id",
+          "provider_name",
+          "contract_number",
+          "contract_date",
+          "contract_down_mbps",
+          "contract_up_mbps",
+          "period_from",
+          "period_to",
+          "measurements_count",
+          "problem_count",
+          "download_mbps",
+          "upload_mbps",
+          "ping_ms",
+          "jitter_ms",
+          "packet_loss_pct",
+          "thresholds",
+          "outages_count",
+          "outages_duration_s"
+        ],
+        "title": "AppealContext",
+        "description": "Facts of an appeal built by the server (ТЗ п. 17, plan.md §8); no personal data.\n\nMetrics cover Ethernet measurements of the line in the period, without Wi-Fi (ADR-012)."
+      },
+      "AppealCreate": {
+        "properties": {
+          "incident_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Id",
+            "description": "Из карточки инцидента: школа и линия — из инцидента"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Из карточки школы, вместе с line_id"
+          },
+          "line_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Id",
+            "description": "Линия школы: обращение уходит её поставщику"
+          },
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From",
+            "description": "Начало периода, включительно; для инцидента — его started_at"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To",
+            "description": "Конец периода, не включая; для инцидента — restored_at или текущий момент"
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Subject"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Текст письма в Markdown"
+          },
+          "user_comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Comment",
+            "description": "Комментарий пользователя: в обращении — отдельно от текста (ТЗ п. 17)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_from",
+          "period_to",
+          "subject",
+          "text"
+        ],
+        "title": "AppealCreate",
+        "description": "«Отправить»: references and period of the draft with the text edited by the user."
+      },
+      "AppealDeliveryStatus": {
+        "type": "string",
+        "enum": [
+          "sent",
+          "not_sent"
+        ]
+      },
+      "AppealDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number",
+            "description": "Присвоен при отправке",
+            "examples": [
+              "ОБР-2026-000045"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/IncidentStatus"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Текст письма в Markdown"
+          },
+          "user_comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Comment"
+          },
+          "context": {
+            "$ref": "#/components/schemas/AppealContext"
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sent At"
+          },
+          "recipient_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Email",
+            "description": "appeals_email поставщика при отправке"
+          },
+          "delivery_status": {
+            "$ref": "#/components/schemas/AppealDeliveryStatus",
+            "description": "not_sent — письмо не ушло (SMTP не настроен, нет адреса, ошибка); PDF сохранён"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AppealEventDetail"
+            },
+            "type": "array",
+            "title": "Events",
+            "description": "История, по возрастанию created_at; первая запись — отправка"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "status",
+          "subject",
+          "text",
+          "user_comment",
+          "context",
+          "sent_at",
+          "recipient_email",
+          "delivery_status",
+          "events"
+        ],
+        "title": "AppealDetail",
+        "description": "Sent appeal: number, text, context at sending, e-mail delivery and history."
+      },
+      "AppealDraft": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Текст письма в Markdown (абзацы, жирный, списки); контакты ответственного подставлены после генерации (ADR-011)"
+          },
+          "ai_generated": {
+            "type": "boolean",
+            "title": "Ai Generated",
+            "description": "false — модель недоступна или не настроена: subject и text — пустой шаблон"
+          },
+          "recipient_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Email",
+            "description": "appeals_email поставщика; пусто — адрес не задан, письмо не уйдёт"
+          },
+          "context": {
+            "$ref": "#/components/schemas/AppealContext"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "text",
+          "ai_generated",
+          "recipient_email",
+          "context"
+        ],
+        "title": "AppealDraft",
+        "description": "Editable draft of an appeal; nothing is stored (ТЗ п. 17, T-47)."
+      },
+      "AppealDraftRequest": {
+        "properties": {
+          "incident_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Id",
+            "description": "Из карточки инцидента: школа и линия — из инцидента"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Из карточки школы, вместе с line_id"
+          },
+          "line_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Id",
+            "description": "Линия школы: обращение уходит её поставщику"
+          },
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From",
+            "description": "Начало периода, включительно; для инцидента — его started_at"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To",
+            "description": "Конец периода, не включая; для инцидента — restored_at или текущий момент"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_from",
+          "period_to"
+        ],
+        "title": "AppealDraftRequest",
+        "description": "What the appeal is about and the problem period.\n\nExactly one target: ``incident_id``, or ``school_id`` together with ``line_id``."
+      },
+      "AppealEventDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "author_user_id": {
+            "type": "integer",
+            "title": "Author User Id"
+          },
+          "author_user_name": {
+            "type": "string",
+            "title": "Author User Name"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IncidentStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Новый статус; null — только комментарий"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "author_user_id",
+          "author_user_name",
+          "status",
+          "comment"
+        ],
+        "title": "AppealEventDetail",
+        "description": "Entry of the appeal history: sending, status change or comment (ТЗ п. 17)."
+      },
+      "AppealUpdate": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/IncidentStatus",
+            "title": "Status"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment",
+            "description": "Комментарий в историю"
+          }
+        },
+        "type": "object",
+        "title": "AppealUpdate",
+        "description": "Status change or comment by the provider or a user; at least one of them."
       },
       "ConnectionStatus": {
         "type": "string",

@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.api import (
     agent,
     analytics,
+    appeals,
     auth,
     dashboard,
     devices,
@@ -25,5 +26,6 @@ for domain in (
     devices,
     analytics,
     incidents,
+    appeals,
 ):
     api_router.include_router(domain.router)
