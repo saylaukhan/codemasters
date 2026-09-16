@@ -1,0 +1,1307 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Мониторинг интернета ВКО",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "description": "Liveness probe: server is up; the time is UTC (ADR-014).",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/register": {
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Регистрация устройства по коду установки",
+        "operationId": "register_device",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRegisterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Код просрочен, использован или не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/heartbeat": {
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Сигнал «агент жив»",
+        "operationId": "send_heartbeat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartbeatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ]
+      }
+    },
+    "/api/agent/config": {
+      "get": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Конфигурация агента: расписание, пороги, сервер замеров, версия",
+        "operationId": "get_agent_config",
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "if-none-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentConfigResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "Версия конфигурации",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Конфигурация не изменилась: If-None-Match совпал с ETag"
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agent/whoami": {
+      "get": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Внешний IP запроса",
+        "operationId": "whoami",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhoAmIResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ]
+      }
+    },
+    "/api/measurements": {
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Один замер",
+        "operationId": "create_measurement",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasurementCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementAccepted"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Замер с этим measurement_uuid уже принят (type duplicate_measurement)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ]
+      }
+    },
+    "/api/measurements/batch": {
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Досылка очереди: до 100 замеров, результат по каждому",
+        "description": "Результат по каждой записи в порядке запроса: 201 — принята, 409 — уже была; оба означают «удалить из очереди». Невалидная запись отклоняет весь запрос с 422, её индекс — в errors[].field (`items[3].ping_ms`).",
+        "operationId": "create_measurement_batch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasurementBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementBatchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ]
+      }
+    },
+    "/api/outages": {
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Простой, зафиксированный агентом",
+        "operationId": "create_outage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutageCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutageAccepted"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Простой с этим started_at уже принят (type duplicate_outage)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ]
+      }
+    },
+    "/api/agent/releases/latest": {
+      "get": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Последний релиз агента для обновления",
+        "operationId": "get_latest_agent_release",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentReleaseResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Релизов нет",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AgentConfigResponse": {
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "description": "Пояс слотов расписания",
+            "examples": [
+              "Asia/Almaty"
+            ]
+          },
+          "schedule_slots": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleSlot"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 3,
+            "title": "Schedule Slots"
+          },
+          "heartbeat_interval_s": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Heartbeat Interval S",
+            "examples": [
+              300
+            ]
+          },
+          "config_refresh_interval_s": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Config Refresh Interval S",
+            "examples": [
+              900
+            ]
+          },
+          "speedtest": {
+            "$ref": "#/components/schemas/SpeedtestServers"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/ThresholdValues"
+          },
+          "latest_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version",
+            "examples": [
+              "0.2.0"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "timezone",
+          "schedule_slots",
+          "heartbeat_interval_s",
+          "config_refresh_interval_s",
+          "speedtest",
+          "thresholds"
+        ],
+        "title": "AgentConfigResponse",
+        "description": "Agent configuration; nothing of it is hard-coded in the agent (ТЗ п. 11, п. 20)."
+      },
+      "AgentReleaseResponse": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "examples": [
+              "0.2.0"
+            ]
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "pilot",
+              "stable"
+            ],
+            "title": "Channel"
+          },
+          "download_url": {
+            "type": "string",
+            "title": "Download Url"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256"
+          },
+          "released_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Released At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "channel",
+          "download_url",
+          "sha256",
+          "released_at"
+        ],
+        "title": "AgentReleaseResponse",
+        "description": "Latest agent release for self-update (plan.md §4.6)."
+      },
+      "DeviceRegisterRequest": {
+        "properties": {
+          "enrollment_code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Enrollment Code",
+            "examples": [
+              "VKO-7F3K-92QD"
+            ]
+          },
+          "device_uid": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Device Uid",
+            "description": "Постоянный идентификатор ПК от агента"
+          },
+          "hostname": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hostname"
+          },
+          "os": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Os"
+          },
+          "agent_version": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Agent Version",
+            "examples": [
+              "0.1.0"
+            ]
+          },
+          "room": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room",
+            "description": "Кабинет из параметра установки ROOM"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enrollment_code",
+          "device_uid",
+          "agent_version"
+        ],
+        "title": "DeviceRegisterRequest",
+        "description": "First start of an agent: one-time installation code issued for a school."
+      },
+      "DeviceRegisterResponse": {
+        "properties": {
+          "device_id": {
+            "type": "integer",
+            "title": "Device Id"
+          },
+          "device_token": {
+            "type": "string",
+            "title": "Device Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "device_token"
+        ],
+        "title": "DeviceRegisterResponse",
+        "description": "Credentials of a registered device; the token is shown once (argon2 hash on server)."
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "time"
+        ],
+        "title": "HealthResponse",
+        "description": "Liveness answer of the API server."
+      },
+      "HeartbeatRequest": {
+        "properties": {
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sent At"
+          },
+          "agent_version": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Agent Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sent_at",
+          "agent_version"
+        ],
+        "title": "HeartbeatRequest",
+        "description": "Liveness signal of the agent, every 5 minutes by default (plan.md §4.2)."
+      },
+      "MeasurementAccepted": {
+        "properties": {
+          "measurement_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Measurement Uuid"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Received At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "measurement_uuid",
+          "received_at"
+        ],
+        "title": "MeasurementAccepted",
+        "description": "Measurement stored (201); the agent deletes it from the queue."
+      },
+      "MeasurementBatchRequest": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MeasurementCreate"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "MeasurementBatchRequest",
+        "description": "Queue resend: up to 100 measurements per request (ADR-006).\n\nAn invalid item rejects the whole request with 422; ``errors[].field`` starts with\n``items[<index>]``, so the agent knows which records the server will never accept."
+      },
+      "MeasurementBatchResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/MeasurementBatchResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "title": "MeasurementBatchResponse"
+      },
+      "MeasurementBatchResult": {
+        "properties": {
+          "measurement_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Measurement Uuid"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [
+              201,
+              409
+            ],
+            "title": "Status"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type",
+            "examples": [
+              "duplicate_measurement"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "measurement_uuid",
+          "status"
+        ],
+        "title": "MeasurementBatchResult",
+        "description": "Result for one item, in request order: 201 — stored, 409 — already stored.\n\nBoth mean \"delete from the queue\" (ADR-006); ``type`` is the problem code for 409."
+      },
+      "MeasurementCreate": {
+        "properties": {
+          "measurement_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Measurement Uuid",
+            "description": "Генерирует агент; ключ идемпотентности"
+          },
+          "measured_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Measured At",
+            "description": "Момент замера на ПК"
+          },
+          "connection_status": {
+            "type": "string",
+            "enum": [
+              "online",
+              "offline"
+            ],
+            "title": "Connection Status"
+          },
+          "download_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Mbps"
+          },
+          "upload_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upload Mbps"
+          },
+          "ping_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ping Ms"
+          },
+          "jitter_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jitter Ms"
+          },
+          "packet_loss_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packet Loss Pct"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "external_ip": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "ipvanyaddress"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Ip"
+          },
+          "server": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Server",
+            "description": "Сервер и метод замера"
+          },
+          "iface_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ethernet",
+                  "wifi",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iface Type"
+          },
+          "agent_version": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Agent Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "measurement_uuid",
+          "measured_at",
+          "connection_status",
+          "agent_version"
+        ],
+        "title": "MeasurementCreate",
+        "description": "One measurement: raw values only; fields of ``measurements`` from plan.md §5."
+      },
+      "OutageAccepted": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "OutageAccepted"
+      },
+      "OutageCreate": {
+        "properties": {
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "ended_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ended At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "started_at",
+          "ended_at"
+        ],
+        "title": "OutageCreate",
+        "description": "Period without connection recorded by the agent (T-12).\n\nIdempotency key is the device (from the token) plus ``started_at``: a resent outage gets\n409 ``duplicate_outage``, which, like 201, means \"delete from the queue\" (ADR-006)."
+      },
+      "Problem": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Стабильный машинный код ошибки",
+            "examples": [
+              "not_found"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Название ошибки для алерта",
+            "examples": [
+              "Не найдено"
+            ]
+          },
+          "status": {
+            "type": "integer",
+            "title": "Status",
+            "examples": [
+              404
+            ]
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail",
+            "description": "Текст для человека"
+          },
+          "instance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instance",
+            "description": "Путь запроса"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "title": "Problem",
+        "description": "Error of any endpoint; clients branch on ``type``, ``detail`` is for a human."
+      },
+      "ScheduleSlot": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "time",
+            "title": "Start",
+            "examples": [
+              "08:30:00"
+            ]
+          },
+          "end": {
+            "type": "string",
+            "format": "time",
+            "title": "End",
+            "examples": [
+              "09:00:00"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "ScheduleSlot",
+        "description": "Measurement window; the agent picks a random moment inside it (plan.md §4.2)."
+      },
+      "SpeedtestServers": {
+        "properties": {
+          "librespeed_url": {
+            "type": "string",
+            "title": "Librespeed Url",
+            "examples": [
+              "https://speedtest.example.kz"
+            ]
+          },
+          "ndt7_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ndt7 Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "librespeed_url"
+        ],
+        "title": "SpeedtestServers",
+        "description": "Measurement servers: LibreSpeed is the main one, ndt7 the fallback (ADR-012)."
+      },
+      "ThresholdValues": {
+        "properties": {
+          "download_min_mbps": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Download Min Mbps",
+            "examples": [
+              20
+            ]
+          },
+          "upload_min_mbps": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Upload Min Mbps",
+            "examples": [
+              20
+            ]
+          },
+          "ping_max_ms": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Ping Max Ms",
+            "examples": [
+              100
+            ]
+          },
+          "jitter_max_ms": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Jitter Max Ms",
+            "examples": [
+              30
+            ]
+          },
+          "packet_loss_max_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Packet Loss Max Pct",
+            "examples": [
+              2
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "download_min_mbps",
+          "upload_min_mbps",
+          "ping_max_ms",
+          "jitter_max_ms",
+          "packet_loss_max_pct"
+        ],
+        "title": "ThresholdValues",
+        "description": "Limits of the «Норма» status; base values of ТЗ п. 11 are the examples."
+      },
+      "WhoAmIResponse": {
+        "properties": {
+          "external_ip": {
+            "type": "string",
+            "format": "ipvanyaddress",
+            "title": "External Ip"
+          }
+        },
+        "type": "object",
+        "required": [
+          "external_ip"
+        ],
+        "title": "WhoAmIResponse",
+        "description": "External IP of the request as seen by the server."
+      },
+      "FieldError": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field",
+            "examples": [
+              "items[3].ping_ms"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "examples": [
+              "Ожидается число"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "field",
+          "message"
+        ],
+        "title": "FieldError",
+        "description": "One invalid field: dotted path from the request root, e.g. ``items[3].ping_ms``."
+      },
+      "ValidationProblem": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Стабильный машинный код ошибки",
+            "examples": [
+              "validation_error"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Название ошибки для алерта",
+            "examples": [
+              "Ошибка валидации"
+            ]
+          },
+          "status": {
+            "type": "integer",
+            "title": "Status",
+            "examples": [
+              422
+            ]
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail",
+            "description": "Текст для человека"
+          },
+          "instance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instance",
+            "description": "Путь запроса"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "errors"
+        ],
+        "title": "ValidationProblem",
+        "description": "Request validation error (HTTP 422, ``type = validation_error``)."
+      }
+    },
+    "securitySchemes": {
+      "DeviceToken": {
+        "type": "apiKey",
+        "description": "Токен устройства: `Authorization: Device <token>` (ADR-005)",
+        "in": "header",
+        "name": "Authorization"
+      }
+    }
+  }
+}

@@ -74,7 +74,8 @@ check-backend: ## Backend: ruff check, ruff format --check, mypy app, pytest
 	cd backend && .venv/bin/mypy app
 	cd backend && .venv/bin/pytest
 
-check-web: ## Панель: eslint, tsc --noEmit, vitest run, vite build
+check-web: ## Панель: свежесть src/api/generated, eslint, tsc --noEmit, vitest run, vite build
+	cd web && npm run api:check
 	cd web && npm run lint
 	cd web && npm run typecheck
 	cd web && npm run test
@@ -101,9 +102,9 @@ seed: ## Справочники, GeoJSON районов ВКО, тестовые
 simulate: ## Симулятор агентов: make simulate n=1000 days=90
 	cd backend && .venv/bin/python ../simulator/simulate.py --devices $(n) --days $(days)
 
-openapi: ## Экспорт схемы в docs/reference/openapi.json + генерация web/src/api/generated (T-03)
+openapi: ## Экспорт схемы в docs/reference/openapi.json + генерация web/src/api/generated
 	cd backend && .venv/bin/python -m app.openapi_export ../docs/reference/openapi.json
-	@echo "генерация web/src/api/generated — T-03"
+	cd web && npm run api:generate
 
 # --- Dependencies -------------------------------------------------------------------------
 
