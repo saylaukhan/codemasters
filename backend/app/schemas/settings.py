@@ -1,0 +1,107 @@
+"""System settings of the admin panel: the single row of ``settings`` (ТЗ п. 11, п. 20; T-37).
+
+Nothing here has a default in code: ``make seed`` stores the values of «Решения по умолчанию»,
+which are only the examples below, and the admin panel changes them. Agents get their part from
+``GET /api/agent/config`` (T-17). In a PATCH body an absent field stays unchanged, ``null`` is
+a 422, and an object (``speedtest``, ``default_working_hours``) is replaced as a whole.
+"""
+
+from typing import Annotated
+
+from pydantic import BaseModel, Field, field_validator
+from pydantic.json_schema import SkipJsonSchema
+
+from app.schemas.agent import SpeedtestServers
+from app.schemas.schools import WorkingHours
+
+
+class SettingsDetail(BaseModel):
+    """System-wide values used by the agent configuration, statuses, reports and exports."""
+
+    speedtest: SpeedtestServers = Field(
+        description="Сервер замеров: LibreSpeed и резервный ndt7 (ADR-012)"
+    )
+    heartbeat_interval_s: int = Field(ge=1, examples=[300])
+    config_refresh_interval_s: int = Field(ge=1, examples=[900])
+    offline_after_s: int = Field(
+        ge=1,
+        examples=[900],
+        description="Нет heartbeat дольше — offline в рабочие часы, no_data вне их (ADR-014)",
+    )
+    school_status_measurements_count: int = Field(
+        ge=1,
+        examples=[3],
+        description="Сколько последних замеров основной линии дают статус школы (ADR-004)",
+    )
+    default_working_hours: WorkingHours = Field(
+        description="С ними создаётся школа; рабочие часы существующих школ не меняются (ADR-014)"
+    )
+    availability_min_pct: float = Field(
+        ge=0, le=100, examples=[99], description="Порог доступности за период (п. 11)"
+    )
+    contract_mismatch_threshold_pct: float = Field(
+        ge=0,
+        le=100,
+        examples=[50],
+        description="Устойчивое несоответствие: доля замеров основной линии ниже договора за "
+        "окно больше этой (п. 14, T-29)",
+    )
+    contract_mismatch_window_days: int = Field(ge=1, examples=[7])
+    enrollment_code_ttl_days: int = Field(
+        ge=1, examples=[7], description="Срок действия кода установки агента (ADR-005)"
+    )
+    export_sync_max_rows: int = Field(
+        ge=1,
+        examples=[10000],
+        description="Выгрузка больше стольких строк и любой PDF формируются в фоне (T-33)",
+    )
+    export_retention_days: int = Field(
+        ge=1, examples=[7], description="Срок хранения файла выгрузки (T-33)"
+    )
+    incident_auto_close_hours: int = Field(
+        ge=1,
+        examples=[24],
+        description="Инцидент в resolved переходит в closed через столько часов (ADR-007)",
+    )
+
+
+class SettingsUpdate(BaseModel):
+    """Changes of the settings; every column is NOT NULL."""
+
+    speedtest: SpeedtestServers | SkipJsonSchema[None] = None
+    heartbeat_interval_s: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    config_refresh_interval_s: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    offline_after_s: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    school_status_measurements_count: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    default_working_hours: WorkingHours | SkipJsonSchema[None] = None
+    availability_min_pct: Annotated[float, Field(ge=0, le=100)] | SkipJsonSchema[None] = None
+    contract_mismatch_threshold_pct: (
+        Annotated[float, Field(ge=0, le=100)] | SkipJsonSchema[None]
+    ) = None
+    contract_mismatch_window_days: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    enrollment_code_ttl_days: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    export_sync_max_rows: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    export_retention_days: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    incident_auto_close_hours: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+
+    @field_validator(
+        "speedtest",
+        "heartbeat_interval_s",
+        "config_refresh_interval_s",
+        "offline_after_s",
+        "school_status_measurements_count",
+        "default_working_hours",
+        "availability_min_pct",
+        "contract_mismatch_threshold_pct",
+        "contract_mismatch_window_days",
+        "enrollment_code_ttl_days",
+        "export_sync_max_rows",
+        "export_retention_days",
+        "incident_auto_close_hours",
+        mode="before",
+    )
+    @classmethod
+    def reject_null(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("поле не может быть null")
+        return value

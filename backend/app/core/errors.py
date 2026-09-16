@@ -9,7 +9,7 @@ its status and headers, but Starlette logs it as an unhandled error).
 """
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from http import HTTPStatus
 from typing import Any
 
@@ -70,6 +70,7 @@ VALIDATION_MESSAGES: dict[str, str] = {
     "too_short": "Минимальная длина — {min_length}",
     "too_long": "Максимальная длина — {max_length}",
     "model_type": "Ожидается объект",
+    "model_attributes_type": "Ожидается объект",
     "dict_type": "Ожидается объект",
     "uuid_type": "Ожидается UUID",
     "uuid_parsing": "Ожидается UUID",
@@ -144,6 +145,31 @@ def problem_response(
     )
 
 
+def without_null_branches(errors: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+    """Drop the noise of ``X | SkipJsonSchema[None]`` PATCH fields.
+
+    For such a union pydantic reports one error per branch: ``("full_name", "none")`` of type
+    ``none_required`` and ``("full_name", "constrained-str")`` with the real problem. The null
+    branch is removed and its position tells where the branch tag sits in the other errors.
+    """
+    branches = {
+        tuple(error["loc"][:-1])
+        for error in errors
+        if error["type"] == "none_required" and error["loc"][-1] == "none"
+    }
+    cleaned: list[Mapping[str, Any]] = []
+    for error in errors:
+        location = tuple(error["loc"])
+        if location[:-1] in branches and error["type"] == "none_required":
+            continue
+        for prefix in branches:
+            if len(location) > len(prefix) and location[: len(prefix)] == prefix:
+                location = location[: len(prefix)] + location[len(prefix) + 1 :]
+                break
+        cleaned.append({**error, "loc": location})
+    return cleaned
+
+
 def field_path(error: Mapping[str, Any]) -> str:
     """Error location as a field path: ``("body", "items", 3, "ping_ms")`` → ``items[3].ping_ms``.
 
@@ -192,7 +218,7 @@ async def handle_http_exception(request: Request, exc: Exception) -> Response:
 async def handle_validation_error(request: Request, exc: Exception) -> Response:
     assert isinstance(exc, RequestValidationError)
     errors: list[FieldError] = []
-    for error in exc.errors():
+    for error in without_null_branches(exc.errors()):
         field_error = FieldError(field=field_path(error), message=field_message(error))
         if field_error not in errors:
             errors.append(field_error)
