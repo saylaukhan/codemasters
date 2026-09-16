@@ -1,0 +1,48 @@
+# personal AI-assistant files — never shared (see AGENTS.md §1)
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/worktrees/
+
+# env — only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Go (agent/)
+agent/bin/
+agent/dist/
+agent/*.exe
+agent/*.msi
+agent/installer/wix/obj/
+agent/installer/wix/bin/
+*.test
+coverage.out
+
+# Python (backend/, simulator/)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+backend/exports/
+htmlcov/
+
+# Node (web/)
+node_modules/
+web/dist/
+web/.vite/
+*.tsbuildinfo
+
+# Docker / local data
+data/
+pgdata/
+*.log
