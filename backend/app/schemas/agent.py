@@ -11,6 +11,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, Field, IPvAnyAddress, model_validator
 
+from app.schemas.statuses import ConnectionStatus, IfaceType
 from app.schemas.thresholds import ThresholdValues
 
 MAX_BATCH_SIZE = 100
@@ -82,7 +83,7 @@ class MeasurementCreate(BaseModel):
 
     measurement_uuid: UUID = Field(description="Генерирует агент; ключ идемпотентности")
     measured_at: AwareDatetime = Field(description="Момент замера на ПК")
-    connection_status: Literal["online", "offline"]
+    connection_status: ConnectionStatus
     download_mbps: float | None = None
     upload_mbps: float | None = None
     ping_ms: float | None = None
@@ -91,7 +92,7 @@ class MeasurementCreate(BaseModel):
     duration_s: float | None = None
     external_ip: IPvAnyAddress | None = None
     server: str | None = Field(default=None, description="Сервер и метод замера")
-    iface_type: Literal["ethernet", "wifi", "other"] | None = None
+    iface_type: IfaceType | None = None
     agent_version: str = Field(max_length=32)
 
 

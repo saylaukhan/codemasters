@@ -492,10 +492,2173 @@
           }
         ]
       }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Вход в панель по e-mail и паролю",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessTokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неверный e-mail или пароль (type invalid_credentials)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Учётная запись заблокирована (type account_blocked)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Новый access-токен по refresh-cookie",
+        "operationId": "refresh_access_token",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessTokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Refresh-токен недействителен (type invalid_refresh_token)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Учётная запись заблокирована (type account_blocked)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "RefreshCookie": []
+          }
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Выход из панели",
+        "operationId": "logout",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "RefreshCookie": []
+          }
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Текущий пользователь: роль, область видимости, права",
+        "operationId": "get_current_user",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUser"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/dashboard/summary": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Сводка главного экрана: KPI",
+        "description": "Восемь KPI из ТЗ п. 4 по школам в области видимости, отобранным фильтрами; status — статус школы на момент period_to (ADR-004), как на карте. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Замеры, средние и проблемные устройства — за период, по основным линиям, без Wi-Fi (ADR-012).",
+        "operationId": "get_dashboard_summary",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region Id"
+            }
+          },
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "connection_type_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Type Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SchoolStatus"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Статусы школы; несколько — повтором параметра",
+              "title": "Status"
+            },
+            "description": "Статусы школы; несколько — повтором параметра"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало периода, включительно; по умолчанию — period_to минус 24 ч",
+              "title": "Period From"
+            },
+            "description": "Начало периода, включительно; по умолчанию — period_to минус 24 ч"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец периода, не включая; по умолчанию — текущий момент",
+              "title": "Period To"
+            },
+            "description": "Конец периода, не включая; по умолчанию — текущий момент"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/map/schools": {
+      "get": {
+        "tags": [
+          "map"
+        ],
+        "summary": "Школы на карте ВКО: GeoJSON с фильтрами",
+        "description": "GeoJSON FeatureCollection (RFC 7946) активных школ в области видимости, без пагинации. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Статус — на момент period_to (ADR-004), как в сводке; показатели — последний замер основной линии в периоде, без Wi-Fi (ADR-012). Школа без координат приходит с geometry = null.",
+        "operationId": "get_school_map",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region Id"
+            }
+          },
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "connection_type_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Type Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SchoolStatus"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Статусы школы; несколько — повтором параметра",
+              "title": "Status"
+            },
+            "description": "Статусы школы; несколько — повтором параметра"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало периода, включительно; по умолчанию — без нижней границы",
+              "title": "Period From"
+            },
+            "description": "Начало периода, включительно; по умолчанию — без нижней границы"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец периода, не включая; по умолчанию — текущий момент",
+              "title": "Period To"
+            },
+            "description": "Конец периода, не включая; по умолчанию — текущий момент"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolMapFeatureCollection"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schools": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Список школ со средними показателями и статусом",
+        "description": "Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Сортировка серверная; без sort — по названию.",
+        "operationId": "list_schools",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region Id"
+            }
+          },
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "connection_type_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Type Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SchoolStatus"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true — активные, false — отключённые; не задан — все",
+              "title": "Is Active"
+            },
+            "description": "true — активные, false — отключённые; не задан — все"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Название или School ID",
+              "title": "Q"
+            },
+            "description": "Название или School ID"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало окна средних, включительно; по умолчанию — последние 24 ч, как на главной",
+              "title": "Period From"
+            },
+            "description": "Начало окна средних, включительно; по умолчанию — последние 24 ч, как на главной"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец окна средних, не включая; по умолчанию — текущий момент",
+              "title": "Period To"
+            },
+            "description": "Конец окна средних, не включая; по умолчанию — текущий момент"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SchoolSort"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Поле; «-» — по убыванию. status: normal < unstable < critical < offline, no_data в конце; -status — сначала худшие",
+              "title": "Sort"
+            },
+            "description": "Поле; «-» — по убыванию. status: normal < unstable < critical < offline, no_data в конце; -status — сначала худшие"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolListItemPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Создать школу",
+        "description": "Неизвестный region_id — 422.",
+        "operationId": "create_school",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "School ID уже занят другой школой (type school_code_taken)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schools/{school_id}": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Карточка школы: статус и текущие показатели",
+        "operationId": "get_school",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "School Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Школа не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Изменить или деактивировать школу",
+        "description": "Рабочие часы (working_hours) настраиваются в T-37. Неизвестный region_id — 422.",
+        "operationId": "update_school",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "School Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Школа не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "School ID уже занят другой школой (type school_code_taken)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schools/{school_id}/devices": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Компьютеры школы с последними замерами",
+        "operationId": "list_school_devices",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceListItemPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Школа не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schools/{school_id}/lines": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Линии школы с договорными значениями",
+        "operationId": "list_school_lines",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineDetailPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Школа не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Добавить линию школы",
+        "description": "Неизвестный provider_id или connection_type_id — 422.",
+        "operationId": "create_school_line",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "School Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LineCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Школа не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schools/{school_id}/lines/{line_id}": {
+      "patch": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Изменить линию школы",
+        "description": "Неизвестный provider_id или connection_type_id — 422.",
+        "operationId": "update_school_line",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Line Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LineUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Школа или линия не найдены",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schools/{school_id}/contacts": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Ответственные лица школы",
+        "operationId": "list_school_contacts",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolContactDetailPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Школа не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Добавить ответственное лицо школы",
+        "operationId": "create_school_contact",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "School Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolContactCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolContactDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Школа не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schools/{school_id}/contacts/{contact_id}": {
+      "patch": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Изменить ответственное лицо школы",
+        "operationId": "update_school_contact",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Contact Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolContactUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolContactDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Школа или контакт не найдены",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/enrollment-codes": {
+      "post": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Выдать одноразовый код установки агента для школы",
+        "description": "Неизвестный school_id — 422.",
+        "operationId": "create_enrollment_code",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentCodeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentCodeIssued"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/devices/{device_id}": {
+      "get": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Карточка устройства",
+        "operationId": "get_device",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{device_id}/measurements": {
+      "get": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "История замеров устройства, новые сверху",
+        "operationId": "list_device_measurements",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало периода по measured_at, включительно",
+              "title": "Period From"
+            },
+            "description": "Начало периода по measured_at, включительно"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец периода по measured_at, не включается",
+              "title": "Period To"
+            },
+            "description": "Конец периода по measured_at, не включается"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementListItemPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{device_id}/block": {
+      "post": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Заблокировать устройство: запросы агента отклоняются, история остаётся",
+        "operationId": "block_device",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{device_id}/unblock": {
+      "post": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Разблокировать устройство",
+        "operationId": "unblock_device",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/analytics": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Сводная аналитика: показатели за период, графики, часы ухудшения",
+        "description": "`rows` — все сущности уровня `level` по name, без пагинации; рейтинг и сортировка — в панели. `series` и `heatmap` — по всей выборке фильтров: графики одной школы — запрос с `school_id`. Источники: показатели и счётчики замеров — `m_hourly` / `m_daily` (T-19), Wi‑Fi не учитывается (ADR-003); `availability_pct` — простои и heartbeat в рабочие часы (T-16, ADR-014); устойчивое несоответствие — пересчёт T-29. Часы и сутки — по Asia/Almaty.",
+        "operationId": "get_analytics",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "level",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsLevel",
+              "description": "Группировка строк: школа, район/город (regions), поставщик или вся ВКО"
+            },
+            "description": "Группировка строк: школа, район/город (regions), поставщик или вся ВКО"
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsPeriod",
+              "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+            },
+            "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало, включительно; только и обязательно при period=custom",
+              "title": "Period From"
+            },
+            "description": "Начало, включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец, не включительно; только и обязательно при period=custom",
+              "title": "Period To"
+            },
+            "description": "Конец, не включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "school_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Район или город (regions)",
+              "title": "Region Id"
+            },
+            "description": "Район или город (regions)"
+          },
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "connection_type_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Type Id"
+            }
+          },
+          {
+            "name": "line_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/LineStatus",
+              "description": "Статус учитываемых линий; основные и резервные не смешиваются (п. 10)",
+              "default": "main"
+            },
+            "description": "Статус учитываемых линий; основные и резервные не смешиваются (п. 10)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AccessTokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "expires_in_s": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expires In S",
+            "description": "Срок жизни access-токена",
+            "examples": [
+              900
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in_s"
+        ],
+        "title": "AccessTokenResponse",
+        "description": "Access JWT for ``Authorization: Bearer``."
+      },
       "AgentConfigResponse": {
         "properties": {
           "timezone": {
@@ -607,6 +2770,828 @@
         "title": "AgentReleaseResponse",
         "description": "Latest agent release for self-update (plan.md §4.6)."
       },
+      "AnalyticsGranularity": {
+        "type": "string",
+        "enum": [
+          "hour",
+          "day"
+        ]
+      },
+      "AnalyticsHeatmapCell": {
+        "properties": {
+          "weekday": {
+            "$ref": "#/components/schemas/Weekday"
+          },
+          "hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Hour",
+            "description": "Час суток по Asia/Almaty"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Measurements Count"
+          },
+          "problem_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Count"
+          },
+          "problem_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Problem Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "weekday",
+          "hour",
+          "measurements_count",
+          "problem_count",
+          "problem_pct"
+        ],
+        "title": "AnalyticsHeatmapCell",
+        "description": "Hour of a weekday over all days of the period, over all rows together (T-28)."
+      },
+      "AnalyticsLevel": {
+        "type": "string",
+        "enum": [
+          "school",
+          "district",
+          "provider",
+          "region"
+        ]
+      },
+      "AnalyticsPeriod": {
+        "type": "string",
+        "enum": [
+          "today",
+          "week",
+          "month",
+          "custom"
+        ]
+      },
+      "AnalyticsReport": {
+        "properties": {
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From",
+            "description": "Начало периода, включительно"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To",
+            "description": "Конец периода, не включительно"
+          },
+          "granularity": {
+            "$ref": "#/components/schemas/AnalyticsGranularity",
+            "description": "Шаг series, выбирает сервер: hour при period=today, иначе day"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/ThresholdValues",
+            "description": "Пороги для отметок на графиках: профиль линии, если в выборке одна линия, районный при region_id, иначе глобальный (ADR-004). Замеры оценены по своему thresholds_snapshot, а не по этим значениям"
+          },
+          "availability_min_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Availability Min Pct",
+            "description": "Порог доступности из settings (п. 11, T-37)"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsRow"
+            },
+            "type": "array",
+            "title": "Rows",
+            "description": "Все сущности уровня в области видимости и фильтрах, в том числе без замеров за период, по name; без пагинации, рейтинг и сортировка — в панели"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsSeriesPoint"
+            },
+            "type": "array",
+            "title": "Series",
+            "description": "По возрастанию bucket_start; часы и сутки без замеров не передаются"
+          },
+          "heatmap": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsHeatmapCell"
+            },
+            "type": "array",
+            "title": "Heatmap",
+            "description": "Ячейки без замеров не передаются"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_from",
+          "period_to",
+          "granularity",
+          "thresholds",
+          "availability_min_pct",
+          "rows",
+          "series",
+          "heatmap"
+        ],
+        "title": "AnalyticsReport",
+        "description": "Analytics of one level for a period: rows, time series and hour × weekday heatmap.\n\nRows are grouped by ``level``; the series and the heatmap cover the whole selection of the\nfilters, so charts of one school are a request with ``school_id``."
+      },
+      "AnalyticsRow": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "id школы, района/города (regions) или поставщика; null при level=region"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Наименование школы, района/города или поставщика; null при level=region"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Measurements Count"
+          },
+          "problem_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Count"
+          },
+          "problem_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem Pct",
+            "description": "Доля проблемных замеров, %; null без замеров"
+          },
+          "download_mbps": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "upload_mbps": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ping_ms": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "availability_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Availability Pct",
+            "description": "Доступность: 1 − простой / время наблюдения в рабочие часы (T-16, ADR-014)"
+          },
+          "below_contract_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Below Contract Pct",
+            "description": "Доля замеров ниже договорной скорости, %; null, если договорных значений нет"
+          },
+          "sustained_mismatch_lines_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sustained Mismatch Lines Count",
+            "description": "Линий с устойчивым несоответствием договору; null — признак ещё не рассчитан (T-29)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "measurements_count",
+          "problem_count",
+          "problem_pct",
+          "download_mbps",
+          "upload_mbps",
+          "ping_ms",
+          "availability_pct",
+          "below_contract_pct",
+          "sustained_mismatch_lines_count"
+        ],
+        "title": "AnalyticsRow",
+        "description": "One entity of the level: aggregates for the period.\n\nA metric is null when no measurement of the period has a value for it (offline only)."
+      },
+      "AnalyticsSeriesPoint": {
+        "properties": {
+          "bucket_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Bucket Start",
+            "description": "Начало часа или суток по Asia/Almaty"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Measurements Count"
+          },
+          "problem_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Count"
+          },
+          "problem_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Problem Pct"
+          },
+          "avg_download_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Download Mbps"
+          },
+          "avg_upload_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Upload Mbps"
+          },
+          "avg_ping_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Ping Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bucket_start",
+          "measurements_count",
+          "problem_count",
+          "problem_pct",
+          "avg_download_mbps",
+          "avg_upload_mbps",
+          "avg_ping_ms"
+        ],
+        "title": "AnalyticsSeriesPoint",
+        "description": "One hour or day of the time series, over all rows of the report together."
+      },
+      "ConnectionStatus": {
+        "type": "string",
+        "enum": [
+          "online",
+          "offline"
+        ]
+      },
+      "ContractCompliance": {
+        "properties": {
+          "sustained_mismatch": {
+            "type": "boolean",
+            "title": "Sustained Mismatch",
+            "description": "Доля замеров ниже договора выше порога"
+          },
+          "below_contract_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Below Contract Pct",
+            "description": "Доля замеров ниже договора за окно, %",
+            "examples": [
+              62
+            ]
+          },
+          "window_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Window Days",
+            "examples": [
+              7
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "sustained_mismatch",
+          "below_contract_pct",
+          "window_days"
+        ],
+        "title": "ContractCompliance",
+        "description": "Sustained mismatch of a line with its contract speed (ТЗ п. 14, T-29).\n\nThe window and the share threshold come from the settings, not from code."
+      },
+      "CurrentUser": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "examples": [
+              "rayon@example.kz"
+            ]
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/UserScope"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions",
+            "description": "Коды прав роли для require(permission); матрица — T-20",
+            "examples": [
+              [
+                "schools:read",
+                "incidents:read",
+                "appeals:create"
+              ]
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "role",
+          "scope",
+          "permissions"
+        ],
+        "title": "CurrentUser",
+        "description": "User of the access token: role, scope and permissions to shape the panel.\n\nPermissions only hide what the panel cannot use: the API checks them again (ТЗ п. 16)."
+      },
+      "DashboardSummary": {
+        "properties": {
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To"
+          },
+          "schools_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Count",
+            "description": "Подключённые школы: активные школы по фильтрам"
+          },
+          "devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Count",
+            "description": "Зарегистрированные компьютеры, кроме заблокированных"
+          },
+          "active_devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Active Devices Count",
+            "description": "Устройства, выходившие на связь за период: heartbeat или замер"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Measurements Count",
+            "description": "Замеры за период"
+          },
+          "avg_download_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Download Mbps",
+            "description": "null — замеров за период нет"
+          },
+          "avg_upload_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Upload Mbps",
+            "description": "null — замеров за период нет"
+          },
+          "avg_ping_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Ping Ms",
+            "description": "null — замеров за период нет"
+          },
+          "problem_devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Devices Count",
+            "description": "Устройства, чей последний замер за период — unstable, critical или offline"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_from",
+          "period_to",
+          "schools_count",
+          "devices_count",
+          "active_devices_count",
+          "measurements_count",
+          "avg_download_mbps",
+          "avg_upload_mbps",
+          "avg_ping_ms",
+          "problem_devices_count"
+        ],
+        "title": "DashboardSummary",
+        "description": "KPIs in the order of ТЗ п. 4 for the applied period.\n\nMeasurement values cover main lines only, without Wi-Fi (ADR-012)."
+      },
+      "DeviceDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Device ID"
+          },
+          "device_uid": {
+            "type": "string",
+            "title": "Device Uid",
+            "description": "Постоянный идентификатор ПК от агента"
+          },
+          "hostname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hostname"
+          },
+          "monitoring_point_id": {
+            "type": "integer",
+            "title": "Monitoring Point Id"
+          },
+          "monitoring_point_name": {
+            "type": "string",
+            "title": "Monitoring Point Name"
+          },
+          "room": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room",
+            "description": "Кабинет точки мониторинга"
+          },
+          "line_id": {
+            "type": "integer",
+            "title": "Line Id"
+          },
+          "line_status": {
+            "$ref": "#/components/schemas/LineStatus"
+          },
+          "agent_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At",
+            "description": "Последняя связь с агентом"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeviceStatus"
+          },
+          "current_status": {
+            "$ref": "#/components/schemas/SchoolStatus",
+            "description": "По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data"
+          },
+          "latest_measurement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LatestMeasurement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "os": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Os"
+          },
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "school_code": {
+            "type": "string",
+            "title": "School Code",
+            "description": "School ID"
+          },
+          "school_name": {
+            "type": "string",
+            "title": "School Name"
+          },
+          "registered_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Registered At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "device_uid",
+          "hostname",
+          "monitoring_point_id",
+          "monitoring_point_name",
+          "room",
+          "line_id",
+          "line_status",
+          "agent_version",
+          "last_seen_at",
+          "status",
+          "current_status",
+          "latest_measurement",
+          "os",
+          "school_id",
+          "school_code",
+          "school_name",
+          "registered_at"
+        ],
+        "title": "DeviceDetail",
+        "description": "Device card (ТЗ п. 4): the list row plus the school, the OS and the registration time."
+      },
+      "DeviceListItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Device ID"
+          },
+          "device_uid": {
+            "type": "string",
+            "title": "Device Uid",
+            "description": "Постоянный идентификатор ПК от агента"
+          },
+          "hostname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hostname"
+          },
+          "monitoring_point_id": {
+            "type": "integer",
+            "title": "Monitoring Point Id"
+          },
+          "monitoring_point_name": {
+            "type": "string",
+            "title": "Monitoring Point Name"
+          },
+          "room": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room",
+            "description": "Кабинет точки мониторинга"
+          },
+          "line_id": {
+            "type": "integer",
+            "title": "Line Id"
+          },
+          "line_status": {
+            "$ref": "#/components/schemas/LineStatus"
+          },
+          "agent_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At",
+            "description": "Последняя связь с агентом"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeviceStatus"
+          },
+          "current_status": {
+            "$ref": "#/components/schemas/SchoolStatus",
+            "description": "По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data"
+          },
+          "latest_measurement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LatestMeasurement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "device_uid",
+          "hostname",
+          "monitoring_point_id",
+          "monitoring_point_name",
+          "room",
+          "line_id",
+          "line_status",
+          "agent_version",
+          "last_seen_at",
+          "status",
+          "current_status",
+          "latest_measurement"
+        ],
+        "title": "DeviceListItem",
+        "description": "Computer of a school in the school card (ТЗ п. 4)."
+      },
+      "DeviceListItemPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "DeviceListItemPage",
+        "description": "Page of the devices of a school."
+      },
       "DeviceRegisterRequest": {
         "properties": {
           "enrollment_code": {
@@ -699,6 +3684,130 @@
         "title": "DeviceRegisterResponse",
         "description": "Credentials of a registered device; the token is shown once (argon2 hash on server)."
       },
+      "DeviceStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "blocked"
+        ]
+      },
+      "EnrollmentCodeCreate": {
+        "properties": {
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "school_id"
+        ],
+        "title": "EnrollmentCodeCreate",
+        "description": "Request for a one-time agent installation code for a school (plan.md §4.1)."
+      },
+      "EnrollmentCodeIssued": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Код для параметра установки ENROLL_CODE; повторно не показывается",
+            "examples": [
+              "VKO-7F3K-92QD"
+            ]
+          },
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At",
+            "description": "Окончание срока действия; по умолчанию 7 дней с выдачи (ADR-005)",
+            "examples": [
+              "2026-09-24T04:00:00Z"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "school_id",
+          "expires_at"
+        ],
+        "title": "EnrollmentCodeIssued",
+        "description": "Issued installation code: shown once, the server keeps only its hash (ADR-005)."
+      },
+      "GeoJsonPoint": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Point",
+            "title": "Type"
+          },
+          "coordinates": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Coordinates",
+            "description": "[долгота, широта], WGS 84",
+            "examples": [
+              [
+                82.6286,
+                49.9483
+              ]
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "title": "GeoJsonPoint",
+        "description": "GeoJSON Point geometry (RFC 7946 §3.1.2) in WGS 84."
+      },
+      "GeoPoint": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "examples": [
+              49.9483
+            ]
+          },
+          "lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "examples": [
+              82.6286
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "title": "GeoPoint",
+        "description": "Map point in WGS 84 (ТЗ п. 13)."
+      },
       "HealthResponse": {
         "properties": {
           "status": {
@@ -745,6 +3854,596 @@
         ],
         "title": "HeartbeatRequest",
         "description": "Liveness signal of the agent, every 5 minutes by default (plan.md §4.2)."
+      },
+      "IfaceType": {
+        "type": "string",
+        "enum": [
+          "ethernet",
+          "wifi",
+          "other"
+        ]
+      },
+      "LatestMeasurement": {
+        "properties": {
+          "measured_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Measured At",
+            "description": "Момент замера на ПК"
+          },
+          "connection_status": {
+            "$ref": "#/components/schemas/ConnectionStatus"
+          },
+          "download_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Mbps"
+          },
+          "upload_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upload Mbps"
+          },
+          "ping_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ping Ms"
+          },
+          "jitter_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jitter Ms"
+          },
+          "packet_loss_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packet Loss Pct"
+          },
+          "iface_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IfaceType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "thresholds_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThresholdValues"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пороги, применённые при оценке этого замера (ТЗ п. 11)"
+          },
+          "quality_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QualityStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пусто, если замер не оценён"
+          }
+        },
+        "type": "object",
+        "required": [
+          "measured_at",
+          "connection_status",
+          "download_mbps",
+          "upload_mbps",
+          "ping_ms",
+          "jitter_ms",
+          "packet_loss_pct",
+          "iface_type",
+          "thresholds_snapshot",
+          "quality_status"
+        ],
+        "title": "LatestMeasurement",
+        "description": "Values of the latest measurement shown in cards and lists (ТЗ п. 4, п. 13)."
+      },
+      "LineCreate": {
+        "properties": {
+          "provider_id": {
+            "type": "integer",
+            "title": "Provider Id"
+          },
+          "connection_type_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Type Id"
+          },
+          "line_identifier": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Identifier",
+            "description": "Идентификатор линии у поставщика"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LineStatus"
+          },
+          "contract_down_mbps": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Down Mbps",
+            "examples": [
+              50
+            ]
+          },
+          "contract_up_mbps": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Up Mbps",
+            "examples": [
+              50
+            ]
+          },
+          "contract_number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Number"
+          },
+          "contract_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Date"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At",
+            "description": "Начало эксплуатации"
+          },
+          "ip_ranges": {
+            "items": {
+              "type": "string",
+              "format": "ipvanynetwork"
+            },
+            "type": "array",
+            "title": "Ip Ranges",
+            "description": "Внешние IP-диапазоны линии (CIDR) для привязки замеров",
+            "examples": [
+              [
+                "203.0.113.0/24"
+              ]
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider_id",
+          "status"
+        ],
+        "title": "LineCreate",
+        "description": "New internet line of a school with its contract values (ТЗ п. 10, п. 14)."
+      },
+      "LineDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "provider_id": {
+            "type": "integer",
+            "title": "Provider Id"
+          },
+          "provider_name": {
+            "type": "string",
+            "title": "Provider Name"
+          },
+          "connection_type_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Type Id"
+          },
+          "connection_type_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Type Name"
+          },
+          "line_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Identifier",
+            "description": "Идентификатор линии у поставщика"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LineStatus"
+          },
+          "contract_down_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Down Mbps"
+          },
+          "contract_up_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Up Mbps"
+          },
+          "contract_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Number"
+          },
+          "contract_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Date"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At",
+            "description": "Начало эксплуатации"
+          },
+          "ip_ranges": {
+            "items": {
+              "type": "string",
+              "format": "ipvanynetwork"
+            },
+            "type": "array",
+            "title": "Ip Ranges",
+            "description": "Внешние IP-диапазоны линии (CIDR)"
+          },
+          "quality_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QualityStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Качество линии по её Ethernet-устройствам; пусто — замеров нет"
+          },
+          "contract_compliance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContractCompliance"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пусто, если договорных скоростей нет"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "school_id",
+          "provider_id",
+          "provider_name",
+          "connection_type_id",
+          "connection_type_name",
+          "line_identifier",
+          "status",
+          "contract_down_mbps",
+          "contract_up_mbps",
+          "contract_number",
+          "contract_date",
+          "started_at",
+          "ip_ranges",
+          "quality_status",
+          "contract_compliance"
+        ],
+        "title": "LineDetail",
+        "description": "Line of a school: provider, contract and current quality (ТЗ п. 10, п. 14)."
+      },
+      "LineDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LineDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "LineDetailPage",
+        "description": "Page of the lines of a school."
+      },
+      "LineStatus": {
+        "type": "string",
+        "enum": [
+          "main",
+          "reserve",
+          "disabled"
+        ]
+      },
+      "LineUpdate": {
+        "properties": {
+          "provider_id": {
+            "type": "integer",
+            "title": "Provider Id"
+          },
+          "connection_type_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Type Id"
+          },
+          "line_identifier": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Identifier"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LineStatus",
+            "title": "Status"
+          },
+          "contract_down_mbps": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Down Mbps"
+          },
+          "contract_up_mbps": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Up Mbps"
+          },
+          "contract_number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Number"
+          },
+          "contract_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Date"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "ip_ranges": {
+            "items": {
+              "type": "string",
+              "format": "ipvanynetwork"
+            },
+            "type": "array",
+            "title": "Ip Ranges"
+          }
+        },
+        "type": "object",
+        "title": "LineUpdate",
+        "description": "Changes of a line; ``status = disabled`` switches it off and keeps its measurements."
+      },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 1,
+            "title": "Email",
+            "examples": [
+              "admin@example.kz"
+            ]
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "format": "password",
+            "title": "Password",
+            "writeOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "description": "Panel sign-in; the password never shows up in logs or reprs (``SecretStr``)."
       },
       "MeasurementAccepted": {
         "properties": {
@@ -855,12 +4554,7 @@
             "description": "Момент замера на ПК"
           },
           "connection_status": {
-            "type": "string",
-            "enum": [
-              "online",
-              "offline"
-            ],
-            "title": "Connection Status"
+            "$ref": "#/components/schemas/ConnectionStatus"
           },
           "download_mbps": {
             "anyOf": [
@@ -955,18 +4649,12 @@
           "iface_type": {
             "anyOf": [
               {
-                "type": "string",
-                "enum": [
-                  "ethernet",
-                  "wifi",
-                  "other"
-                ]
+                "$ref": "#/components/schemas/IfaceType"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Iface Type"
+            ]
           },
           "agent_version": {
             "type": "string",
@@ -983,6 +4671,261 @@
         ],
         "title": "MeasurementCreate",
         "description": "One measurement: raw values only; fields of ``measurements`` from plan.md §5."
+      },
+      "MeasurementListItem": {
+        "properties": {
+          "measured_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Measured At",
+            "description": "Момент замера на ПК"
+          },
+          "connection_status": {
+            "$ref": "#/components/schemas/ConnectionStatus"
+          },
+          "download_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Mbps"
+          },
+          "upload_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upload Mbps"
+          },
+          "ping_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ping Ms"
+          },
+          "jitter_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jitter Ms"
+          },
+          "packet_loss_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packet Loss Pct"
+          },
+          "iface_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IfaceType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "thresholds_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThresholdValues"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пороги, применённые при оценке этого замера (ТЗ п. 11)"
+          },
+          "quality_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QualityStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пусто, если замер не оценён"
+          },
+          "measurement_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Measurement Uuid"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Received At",
+            "description": "Приём сервером; разница с measured_at — время в офлайн-очереди"
+          },
+          "line_id": {
+            "type": "integer",
+            "title": "Line Id"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "external_ip": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "ipvanyaddress"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Ip"
+          },
+          "server": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Server",
+            "description": "Сервер и метод замера"
+          },
+          "agent_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version"
+          },
+          "contract_ok": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Ok",
+            "description": "Факт не ниже договорной скорости линии; пусто — договорных значений нет"
+          }
+        },
+        "type": "object",
+        "required": [
+          "measured_at",
+          "connection_status",
+          "download_mbps",
+          "upload_mbps",
+          "ping_ms",
+          "jitter_ms",
+          "packet_loss_pct",
+          "iface_type",
+          "thresholds_snapshot",
+          "quality_status",
+          "measurement_uuid",
+          "received_at",
+          "line_id",
+          "duration_s",
+          "external_ip",
+          "server",
+          "agent_version",
+          "contract_ok"
+        ],
+        "title": "MeasurementListItem",
+        "description": "Measurement in the history: raw values, the line and the server evaluation (plan.md §5).\n\n``line_id`` is the line the measurement went through, possibly the reserve one (plan.md §4.5)."
+      },
+      "MeasurementListItemPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MeasurementListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "MeasurementListItemPage",
+        "description": "Page of the measurement history of a device, newest first."
+      },
+      "MetricStats": {
+        "properties": {
+          "avg": {
+            "type": "number",
+            "title": "Avg"
+          },
+          "min": {
+            "type": "number",
+            "title": "Min"
+          },
+          "max": {
+            "type": "number",
+            "title": "Max"
+          }
+        },
+        "type": "object",
+        "required": [
+          "avg",
+          "min",
+          "max"
+        ],
+        "title": "MetricStats",
+        "description": "Average, minimum and maximum of one metric over the period (ТЗ п. 5)."
       },
       "OutageAccepted": {
         "properties": {
@@ -1077,6 +5020,15 @@
         "title": "Problem",
         "description": "Error of any endpoint; clients branch on ``type``, ``detail`` is for a human."
       },
+      "QualityStatus": {
+        "type": "string",
+        "enum": [
+          "normal",
+          "unstable",
+          "critical",
+          "offline"
+        ]
+      },
       "ScheduleSlot": {
         "properties": {
           "start": {
@@ -1103,6 +5055,860 @@
         ],
         "title": "ScheduleSlot",
         "description": "Measurement window; the agent picks a random moment inside it (plan.md §4.2)."
+      },
+      "SchoolContactCreate": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone",
+            "examples": [
+              "+7 700 000 00 00"
+            ]
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 254
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email",
+            "examples": [
+              "school@example.kz"
+            ]
+          },
+          "provider_support_contact": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Support Contact",
+            "description": "Контакт техподдержки поставщика"
+          }
+        },
+        "type": "object",
+        "required": [
+          "full_name"
+        ],
+        "title": "SchoolContactCreate",
+        "description": "Person responsible for the internet connection of a school (ТЗ п. 15)."
+      },
+      "SchoolContactDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone",
+            "description": "Пусто, если не указан или скрыт по правам роли"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "provider_support_contact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Support Contact",
+            "description": "Контакт техподдержки поставщика"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "Дата последнего обновления"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "school_id",
+          "full_name",
+          "position",
+          "phone",
+          "email",
+          "provider_support_contact",
+          "updated_at"
+        ],
+        "title": "SchoolContactDetail",
+        "description": "Contact card of a school (ТЗ п. 15)."
+      },
+      "SchoolContactDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SchoolContactDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "SchoolContactDetailPage",
+        "description": "Page of the contacts of a school."
+      },
+      "SchoolContactUpdate": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 254
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "provider_support_contact": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Support Contact"
+          }
+        },
+        "type": "object",
+        "title": "SchoolContactUpdate",
+        "description": "Changes of a contact; ``updated_at`` is set by the server."
+      },
+      "SchoolCreate": {
+        "properties": {
+          "school_code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "School Code",
+            "description": "School ID от заказчика; если его нет — VKO-<код района>-<номер>",
+            "examples": [
+              "VKO-UKG-017"
+            ]
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "region_id": {
+            "type": "integer",
+            "title": "Region Id"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeoPoint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "school_code",
+          "full_name",
+          "region_id"
+        ],
+        "title": "SchoolCreate",
+        "description": "New school (ТЗ п. 14, п. 20); working hours start from the admin defaults (ADR-014)."
+      },
+      "SchoolDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "school_code": {
+            "type": "string",
+            "title": "School Code",
+            "description": "School ID"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "region_id": {
+            "type": "integer",
+            "title": "Region Id"
+          },
+          "region_name": {
+            "type": "string",
+            "title": "Region Name"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeoPoint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "working_hours": {
+            "$ref": "#/components/schemas/WorkingHours"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SchoolStatus",
+            "description": "По последним замерам основной линии и heartbeat"
+          },
+          "on_reserve_line": {
+            "type": "boolean",
+            "title": "On Reserve Line",
+            "description": "Замеры идут через резервную линию: основная недоступна (plan.md §4.5)"
+          },
+          "latest_measurement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LatestMeasurement"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Текущие показатели: последний замер основной линии без Wi‑Fi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "school_code",
+          "full_name",
+          "region_id",
+          "region_name",
+          "address",
+          "location",
+          "is_active",
+          "working_hours",
+          "status",
+          "on_reserve_line",
+          "latest_measurement"
+        ],
+        "title": "SchoolDetail",
+        "description": "School card (ТЗ п. 13, DESIGN.md §3.15): identity, place, working hours, current state."
+      },
+      "SchoolListItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "school_code": {
+            "type": "string",
+            "title": "School Code",
+            "description": "School ID"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "region_id": {
+            "type": "integer",
+            "title": "Region Id"
+          },
+          "region_name": {
+            "type": "string",
+            "title": "Region Name"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Count",
+            "description": "Число подключённых ПК (не заблокированных)"
+          },
+          "avg_download_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Download Mbps"
+          },
+          "avg_upload_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Upload Mbps"
+          },
+          "avg_ping_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Ping Ms"
+          },
+          "thresholds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThresholdValues"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Действующие пороги основной линии для подсветки средних; пусто — линии нет"
+          },
+          "last_measured_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Measured At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SchoolStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "school_code",
+          "full_name",
+          "region_id",
+          "region_name",
+          "is_active",
+          "devices_count",
+          "avg_download_mbps",
+          "avg_upload_mbps",
+          "avg_ping_ms",
+          "thresholds",
+          "last_measured_at",
+          "status"
+        ],
+        "title": "SchoolListItem",
+        "description": "Row of the school list (ТЗ п. 4); averages come from the main line without Wi-Fi."
+      },
+      "SchoolListItemPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SchoolListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "SchoolListItemPage",
+        "description": "Page of the school list."
+      },
+      "SchoolMapFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "geometry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeoJsonPoint"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null — у школы нет координат"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/SchoolMapProperties"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "geometry",
+          "properties"
+        ],
+        "title": "SchoolMapFeature",
+        "description": "One school; ``id`` is ``schools.id``, the target of the school card."
+      },
+      "SchoolMapFeatureCollection": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/SchoolMapFeature"
+            },
+            "type": "array",
+            "title": "Features"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "features"
+        ],
+        "title": "SchoolMapFeatureCollection",
+        "description": "Every active school matching the filters: the map is a whole set, not a paginated list."
+      },
+      "SchoolMapProperties": {
+        "properties": {
+          "school_code": {
+            "type": "string",
+            "title": "School Code",
+            "description": "School ID"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name",
+            "description": "Полное наименование школы"
+          },
+          "region_name": {
+            "type": "string",
+            "title": "Region Name",
+            "description": "Район/город"
+          },
+          "provider_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Name"
+          },
+          "connection_type_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Type Name"
+          },
+          "contract_down_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Down Mbps",
+            "description": "Договорная скорость Download"
+          },
+          "contract_up_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Up Mbps",
+            "description": "Договорная скорость Upload"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SchoolStatus"
+          },
+          "download_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Mbps"
+          },
+          "upload_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upload Mbps"
+          },
+          "ping_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ping Ms"
+          },
+          "last_measured_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Measured At",
+            "description": "Время последнего замера в периоде"
+          },
+          "download_min_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Min Mbps",
+            "description": "Порог Download из снимка этого замера"
+          },
+          "upload_min_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upload Min Mbps",
+            "description": "Порог Upload из снимка этого замера"
+          },
+          "ping_max_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ping Max Ms",
+            "description": "Порог Ping из снимка этого замера"
+          }
+        },
+        "type": "object",
+        "required": [
+          "school_code",
+          "full_name",
+          "region_name",
+          "provider_name",
+          "connection_type_name",
+          "contract_down_mbps",
+          "contract_up_mbps",
+          "status",
+          "download_mbps",
+          "upload_mbps",
+          "ping_ms",
+          "last_measured_at",
+          "download_min_mbps",
+          "upload_min_mbps",
+          "ping_max_ms"
+        ],
+        "title": "SchoolMapProperties",
+        "description": "Popover of a school (T-23); values below a threshold are highlighted by the panel.\n\nLine fields and metrics refer to the main line (``lines.status = main``); metrics exclude\nWi-Fi (ADR-012)."
+      },
+      "SchoolSort": {
+        "type": "string",
+        "enum": [
+          "full_name",
+          "-full_name",
+          "school_code",
+          "-school_code",
+          "region_name",
+          "-region_name",
+          "devices_count",
+          "-devices_count",
+          "avg_download_mbps",
+          "-avg_download_mbps",
+          "avg_upload_mbps",
+          "-avg_upload_mbps",
+          "avg_ping_ms",
+          "-avg_ping_ms",
+          "last_measured_at",
+          "-last_measured_at",
+          "status",
+          "-status"
+        ]
+      },
+      "SchoolStatus": {
+        "type": "string",
+        "enum": [
+          "normal",
+          "unstable",
+          "critical",
+          "offline",
+          "no_data"
+        ]
+      },
+      "SchoolUpdate": {
+        "properties": {
+          "school_code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "School Code"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "region_id": {
+            "type": "integer",
+            "title": "Region Id"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeoPoint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "working_hours": {
+            "$ref": "#/components/schemas/WorkingHours",
+            "title": "Working Hours"
+          }
+        },
+        "type": "object",
+        "title": "SchoolUpdate",
+        "description": "Changes of a school; ``is_active = false`` deactivates it and keeps its history."
       },
       "SpeedtestServers": {
         "properties": {
@@ -1187,6 +5993,85 @@
         "title": "ThresholdValues",
         "description": "Limits of the «Норма» status; base values of ТЗ п. 11 are the examples."
       },
+      "UserRole": {
+        "type": "string",
+        "enum": [
+          "school",
+          "district",
+          "oblast",
+          "provider",
+          "admin"
+        ]
+      },
+      "UserScope": {
+        "properties": {
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "region_id",
+          "region_name",
+          "provider_id",
+          "school_id"
+        ],
+        "title": "UserScope",
+        "description": "Visibility scope of a user (ADR-008); the profile menu shows the district (DESIGN.md §3.5).\n\nШкола — ``school_id``, Район/город — ``region_id``, Провайдер — ``provider_id``;\nОбласть and Администратор see the whole oblast, so every field is null."
+      },
+      "Weekday": {
+        "type": "string",
+        "enum": [
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat",
+          "sun"
+        ]
+      },
       "WhoAmIResponse": {
         "properties": {
           "external_ip": {
@@ -1201,6 +6086,55 @@
         ],
         "title": "WhoAmIResponse",
         "description": "External IP of the request as seen by the server."
+      },
+      "WorkingHours": {
+        "properties": {
+          "weekdays": {
+            "items": {
+              "$ref": "#/components/schemas/Weekday"
+            },
+            "type": "array",
+            "maxItems": 7,
+            "minItems": 1,
+            "title": "Weekdays",
+            "examples": [
+              [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat"
+              ]
+            ]
+          },
+          "start": {
+            "type": "string",
+            "format": "time",
+            "title": "Start",
+            "description": "Местное время Asia/Almaty, без пояса",
+            "examples": [
+              "08:00:00"
+            ]
+          },
+          "end": {
+            "type": "string",
+            "format": "time",
+            "title": "End",
+            "description": "Местное время Asia/Almaty, без пояса",
+            "examples": [
+              "18:00:00"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "weekdays",
+          "start",
+          "end"
+        ],
+        "title": "WorkingHours",
+        "description": "Working hours of a school: downtime and «no connection» count only inside them.\n\n``start`` and ``end`` are local times of day in Asia/Almaty, without an offset (ADR-014).\nDefaults (08:00–18:00, Mon–Sat) are set in the admin panel, not in code (T-37)."
       },
       "FieldError": {
         "properties": {
@@ -1301,6 +6235,18 @@
         "description": "Токен устройства: `Authorization: Device <token>` (ADR-005)",
         "in": "header",
         "name": "Authorization"
+      },
+      "RefreshCookie": {
+        "type": "apiKey",
+        "description": "Refresh-токен панели в httpOnly cookie",
+        "in": "cookie",
+        "name": "refresh_token"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "description": "Access-токен панели: `Authorization: Bearer <jwt>`, живёт 15 минут",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   }

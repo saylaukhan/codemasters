@@ -1,20 +1,36 @@
 """Shared FastAPI dependencies: security schemes and list pagination.
 
 Security schemes only declare authentication in OpenAPI (``auto_error=False``): the device
-token is checked from T-14. The panel JWT scheme arrives with the panel routers (T-03, part 2).
+token is checked from T-14, the panel JWT and ``require(permission)`` from T-20.
 """
 
 from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Query
-from fastapi.security import APIKeyHeader
+from fastapi.security import APIKeyCookie, APIKeyHeader, HTTPBearer
 
 # Agent requests: ``Authorization: Device <token>`` (ADR-005).
 device_token = APIKeyHeader(
     name="Authorization",
     scheme_name="DeviceToken",
     description="Токен устройства: `Authorization: Device <token>` (ADR-005)",
+    auto_error=False,
+)
+
+# Panel requests: access JWT from ``POST /api/auth/login``, kept in memory (ADR-009).
+user_token = HTTPBearer(
+    scheme_name="BearerAuth",
+    bearerFormat="JWT",
+    description="Access-токен панели: `Authorization: Bearer <jwt>`, живёт 15 минут",
+    auto_error=False,
+)
+
+# Refresh token of the panel: httpOnly cookie set by login and refresh (ADR-009).
+refresh_cookie = APIKeyCookie(
+    name="refresh_token",
+    scheme_name="RefreshCookie",
+    description="Refresh-токен панели в httpOnly cookie",
     auto_error=False,
 )
 
