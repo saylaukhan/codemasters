@@ -15,7 +15,8 @@ import pytest
 from fastapi import Depends, HTTPException, Request, Response
 from fastapi.testclient import TestClient
 from httpx import Response as HttpxResponse
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
+from pydantic.json_schema import SkipJsonSchema
 
 from app.core.deps import PageParams, page_params
 from app.core.errors import PROBLEM_MEDIA_TYPE, ApiError
@@ -35,6 +36,13 @@ class ItemPage(Page[Item]):
     pass
 
 
+class ItemUpdate(BaseModel):
+    """PATCH body with a non-nullable optional field, as in ``SchoolUpdate``."""
+
+    name: Annotated[str, Field(min_length=1)] | SkipJsonSchema[None] = None
+    size: int | SkipJsonSchema[None] = None
+
+
 @pytest.fixture
 def client() -> Iterator[TestClient]:
     """Application with test-only routes: a list, a request body and failing endpoints."""
@@ -52,6 +60,10 @@ def client() -> Iterator[TestClient]:
 
     @application.post("/api/test/batch", status_code=204)
     async def accept_test_batch(body: MeasurementBatchRequest) -> None:
+        return None
+
+    @application.patch("/api/test/items/{item_id}", status_code=204)
+    async def update_test_item(item_id: int, body: ItemUpdate) -> None:
         return None
 
     @application.get("/api/test/not-modified")
@@ -136,6 +148,15 @@ def test_query_and_json_syntax_errors_name_the_field(client: TestClient) -> None
     ]
     assert assert_problem(syntax, 422, "validation_error")["errors"] == [
         {"field": "body", "message": "Некорректный JSON"}
+    ]
+
+
+def test_optional_non_nullable_fields_report_the_field_only(client: TestClient) -> None:
+    response = client.patch("/api/test/items/1", json={"name": "", "size": "big"})
+
+    assert assert_problem(response, 422, "validation_error")["errors"] == [
+        {"field": "name", "message": "Минимальная длина — 1"},
+        {"field": "size", "message": "Ожидается целое число"},
     ]
 
 
@@ -271,7 +292,7 @@ def test_agent_endpoints_declare_the_device_token() -> None:
             assert operation.get("security") == [{"DeviceToken": []}], name
 
 
-# Endpoints of plan.md §10 already in the contract; T-03 parts 2 and 3 extend the set.
+# Endpoints of plan.md §10 already in the contract; T-03 part 3 extends the set.
 PLAN_ENDPOINTS = {
     "POST /api/devices/register",
     "POST /api/devices/heartbeat",
