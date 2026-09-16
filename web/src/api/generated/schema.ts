@@ -163,10 +163,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Вход в панель по e-mail и паролю */
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Новый access-токен по refresh-cookie */
+        post: operations["refresh_access_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Выход из панели */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Текущий пользователь: роль, область видимости, права */
+        get: operations["get_current_user"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AccessTokenResponse
+         * @description Access JWT for ``Authorization: Bearer``.
+         */
+        AccessTokenResponse: {
+            /** Access Token */
+            access_token: string;
+            /**
+             * Expires In S
+             * @description Срок жизни access-токена
+             * @example 900
+             */
+            expires_in_s: number;
+        };
         /**
          * AgentConfigResponse
          * @description Agent configuration; nothing of it is hard-coded in the agent (ТЗ п. 11, п. 20).
@@ -222,6 +304,37 @@ export interface components {
              * Format: date-time
              */
             released_at: string;
+        };
+        /** @enum {string} */
+        ConnectionStatus: "online" | "offline";
+        /**
+         * CurrentUser
+         * @description User of the access token: role, scope and permissions to shape the panel.
+         *
+         *     Permissions only hide what the panel cannot use: the API checks them again (ТЗ п. 16).
+         */
+        CurrentUser: {
+            /** Id */
+            id: number;
+            /**
+             * Email
+             * @example rayon@example.kz
+             */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            role: components["schemas"]["UserRole"];
+            scope: components["schemas"]["UserScope"];
+            /**
+             * Permissions
+             * @description Коды прав роли для require(permission); матрица — T-20
+             * @example [
+             *       "schools:read",
+             *       "incidents:read",
+             *       "appeals:create"
+             *     ]
+             */
+            permissions: string[];
         };
         /**
          * DeviceRegisterRequest
@@ -293,6 +406,24 @@ export interface components {
             sent_at: string;
             /** Agent Version */
             agent_version: string;
+        };
+        /** @enum {string} */
+        IfaceType: "ethernet" | "wifi" | "other";
+        /**
+         * LoginRequest
+         * @description Panel sign-in; the password never shows up in logs or reprs (``SecretStr``).
+         */
+        LoginRequest: {
+            /**
+             * Email
+             * @example admin@example.kz
+             */
+            email: string;
+            /**
+             * Password
+             * Format: password
+             */
+            password: string;
         };
         /**
          * MeasurementAccepted
@@ -366,11 +497,7 @@ export interface components {
              * @description Момент замера на ПК
              */
             measured_at: string;
-            /**
-             * Connection Status
-             * @enum {string}
-             */
-            connection_status: "online" | "offline";
+            connection_status: components["schemas"]["ConnectionStatus"];
             /** Download Mbps */
             download_mbps?: number | null;
             /** Upload Mbps */
@@ -390,8 +517,7 @@ export interface components {
              * @description Сервер и метод замера
              */
             server?: string | null;
-            /** Iface Type */
-            iface_type?: ("ethernet" | "wifi" | "other") | null;
+            iface_type?: components["schemas"]["IfaceType"] | null;
             /** Agent Version */
             agent_version: string;
         };
@@ -513,6 +639,25 @@ export interface components {
              * @example 2
              */
             packet_loss_max_pct: number;
+        };
+        /** @enum {string} */
+        UserRole: "school" | "district" | "oblast" | "provider" | "admin";
+        /**
+         * UserScope
+         * @description Visibility scope of a user (ADR-008); the profile menu shows the district (DESIGN.md §3.5).
+         *
+         *     Школа — ``school_id``, Район/город — ``region_id``, Провайдер — ``provider_id``;
+         *     Область and Администратор see the whole oblast, so every field is null.
+         */
+        UserScope: {
+            /** Region Id */
+            region_id: number | null;
+            /** Region Name */
+            region_name: string | null;
+            /** Provider Id */
+            provider_id: number | null;
+            /** School Id */
+            school_id: number | null;
         };
         /**
          * WhoAmIResponse
@@ -952,6 +1097,169 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessTokenResponse"];
+                };
+            };
+            /** @description Неверный e-mail или пароль (type invalid_credentials) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Учётная запись заблокирована (type account_blocked) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    refresh_access_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessTokenResponse"];
+                };
+            };
+            /** @description Refresh-токен недействителен (type invalid_refresh_token) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Учётная запись заблокирована (type account_blocked) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_current_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentUser"];
                 };
             };
             /** @description Ошибка (RFC 9457) */

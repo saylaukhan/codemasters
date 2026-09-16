@@ -2,9 +2,10 @@
 
 from fastapi import APIRouter
 
-from app.api import agent
+from app.api import agent, auth
 
 API_PREFIX = "/api"
 
 api_router = APIRouter(prefix=API_PREFIX)
-api_router.include_router(agent.router)
+for domain in (agent, auth):
+    api_router.include_router(domain.router)

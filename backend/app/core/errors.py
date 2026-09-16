@@ -67,8 +67,8 @@ VALIDATION_MESSAGES: dict[str, str] = {
     "less_than": "Значение должно быть меньше {lt}",
     "less_than_equal": "Значение должно быть не больше {le}",
     "list_type": "Ожидается список",
-    "too_short": "Минимальное число элементов — {min_length}",
-    "too_long": "Максимальное число элементов — {max_length}",
+    "too_short": "Минимальная длина — {min_length}",
+    "too_long": "Максимальная длина — {max_length}",
     "model_type": "Ожидается объект",
     "dict_type": "Ожидается объект",
     "uuid_type": "Ожидается UUID",
@@ -83,6 +83,7 @@ VALIDATION_MESSAGES: dict[str, str] = {
     "time_type": "Ожидается время ЧЧ:ММ",
     "time_parsing": "Ожидается время ЧЧ:ММ",
     "ip_any_address": "Ожидается IPv4- или IPv6-адрес",
+    "ip_any_network": "Ожидается сеть в формате CIDR, например 203.0.113.0/24",
 }
 
 logger = logging.getLogger(__name__)
