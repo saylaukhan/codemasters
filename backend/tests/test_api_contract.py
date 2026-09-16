@@ -325,6 +325,13 @@ PLAN_ENDPOINTS = {
     "POST /api/devices/{device_id}/unblock",
     "POST /api/devices/enrollment-codes",
     "GET /api/analytics",
+    "GET /api/incidents",
+    "GET /api/incidents/{incident_id}",
+    "GET /api/schools/{school_id}/incidents",
+    "PATCH /api/incidents/{incident_id}",
+    "POST /api/incidents",
+    "POST /api/incidents/{incident_id}/comments",
+    "POST /api/incidents/{incident_id}/status",
 }
 
 

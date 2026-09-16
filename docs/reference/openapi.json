@@ -2058,6 +2058,100 @@
         }
       }
     },
+    "/api/schools/{school_id}/incidents": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Инциденты школы, новые сверху",
+        "operationId": "list_school_incidents",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentListItemPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Школа не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/devices/enrollment-codes": {
       "post": {
         "tags": [
@@ -2605,6 +2699,591 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AnalyticsReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/incidents": {
+      "get": {
+        "tags": [
+          "incidents"
+        ],
+        "summary": "Список инцидентов, новые сверху",
+        "description": "Порядок — по started_at, новые сверху; канбан (T-43) читает этот же список. Фильтры region_id и provider_id — по школе и линии инцидента.",
+        "operationId": "list_incidents",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IncidentStatus"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Статусы инцидента; несколько — повтором параметра",
+              "title": "Status"
+            },
+            "description": "Статусы инцидента; несколько — повтором параметра"
+          },
+          {
+            "name": "school_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Район или город (regions)",
+              "title": "Region Id"
+            },
+            "description": "Район или город (regions)"
+          },
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "line_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Line Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Номер инцидента или его часть",
+              "title": "Q"
+            },
+            "description": "Номер инцидента или его часть"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало периода по started_at, включительно",
+              "title": "Period From"
+            },
+            "description": "Начало периода по started_at, включительно"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец периода по started_at, не включается",
+              "title": "Period To"
+            },
+            "description": "Конец периода по started_at, не включается"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentListItemPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "incidents"
+        ],
+        "summary": "Создать инцидент вручную",
+        "description": "Из карточки школы (ТЗ п. 19): статус new, rule_id = null, событие created в истории; школа и поставщик — по линии. Неизвестный line_id или responsible_user_id — 422.",
+        "operationId": "create_incident",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/incidents/{incident_id}": {
+      "get": {
+        "tags": [
+          "incidents"
+        ],
+        "summary": "Карточка инцидента с историей событий",
+        "operationId": "get_incident",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "incident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Incident Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Инцидент не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "incidents"
+        ],
+        "summary": "Изменить ответственного или описание инцидента",
+        "description": "Статус меняется только через POST /api/incidents/{incident_id}/status. Неизвестный responsible_user_id — 422.",
+        "operationId": "update_incident",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "incident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Incident Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Инцидент не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/incidents/{incident_id}/status": {
+      "post": {
+        "tags": [
+          "incidents"
+        ],
+        "summary": "Сменить статус инцидента",
+        "description": "Переходы (T-41): вперёд по порядку ТЗ п. 19, sent_to_provider, in_progress и awaiting_info можно пропускать; в closed — только из resolved; назад — только awaiting_info → in_progress и resolved → in_progress (restored_at сбрасывается); из closed — никуда. Переход в sent_to_provider ставит sent_to_provider_at, в resolved — restored_at, если детекция его ещё не поставила, в closed — closed_at. closed ставит пользователь области или района (ADR-007); resolved → closed через 24 ч — задача beat. Каждый переход — событие status_change с комментарием.",
+        "operationId": "change_incident_status",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "incident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Incident Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentStatusChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Инцидент не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Переход не допускается, в том числе в текущий статус (type invalid_status_transition)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/incidents/{incident_id}/comments": {
+      "post": {
+        "tags": [
+          "incidents"
+        ],
+        "summary": "Добавить комментарий к инциденту",
+        "description": "Комментарий — событие comment в истории; статус не меняется.",
+        "operationId": "create_incident_comment",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "incident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Incident Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentCommentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentEventDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Инцидент не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }
@@ -3862,6 +4541,682 @@
           "wifi",
           "other"
         ]
+      },
+      "IncidentBasisMetric": {
+        "properties": {
+          "metric": {
+            "$ref": "#/components/schemas/IncidentMetric"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value",
+            "description": "Фактическое значение",
+            "examples": [
+              8.4
+            ]
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold",
+            "description": "Порог: минимум для download_mbps и upload_mbps, иначе максимум",
+            "examples": [
+              20
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "metric",
+          "value",
+          "threshold"
+        ],
+        "title": "IncidentBasisMetric",
+        "description": "Metric an incident is based on: the violating value next to its threshold (ТЗ п. 19).\n\nUnits follow the metric name. Both values come from the measurement that triggered the rule\nand its ``thresholds_snapshot`` (ADR-004); a manual incident and ``no_connection`` have none."
+      },
+      "IncidentCommentCreate": {
+        "properties": {
+          "comment": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "comment"
+        ],
+        "title": "IncidentCommentCreate",
+        "description": "Comment of a person in the incident history (ТЗ п. 19)."
+      },
+      "IncidentCreate": {
+        "properties": {
+          "line_id": {
+            "type": "integer",
+            "title": "Line Id"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/IncidentMetric"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Metrics",
+            "description": "Показатели-основания; значений и порогов у ручного инцидента нет",
+            "examples": [
+              [
+                "download_mbps",
+                "upload_mbps"
+              ]
+            ]
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At",
+            "description": "Начало проблемы, не в будущем; по умолчанию — момент создания"
+          },
+          "responsible_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsible User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_id",
+          "metrics",
+          "description"
+        ],
+        "title": "IncidentCreate",
+        "description": "Manual incident from the school card: the fields of an automatic one without a rule.\n\nIt starts as ``new``; the school and the provider come from the line (ADR-007)."
+      },
+      "IncidentDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number",
+            "description": "Уникальный номер инцидента",
+            "examples": [
+              "INC-2026-000123"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/IncidentStatus"
+          },
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "school_code": {
+            "type": "string",
+            "title": "School Code",
+            "description": "School ID"
+          },
+          "school_name": {
+            "type": "string",
+            "title": "School Name"
+          },
+          "line_id": {
+            "type": "integer",
+            "title": "Line Id"
+          },
+          "line_status": {
+            "$ref": "#/components/schemas/LineStatus"
+          },
+          "provider_id": {
+            "type": "integer",
+            "title": "Provider Id"
+          },
+          "provider_name": {
+            "type": "string",
+            "title": "Provider Name"
+          },
+          "basis_metrics": {
+            "items": {
+              "$ref": "#/components/schemas/IncidentBasisMetric"
+            },
+            "type": "array",
+            "title": "Basis Metrics"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At",
+            "description": "Первое нарушение; у ручного инцидента — начало, указанное при создании"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S",
+            "description": "restored_at − started_at; null, пока показатели не восстановлены"
+          },
+          "responsible_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsible User Id"
+          },
+          "responsible_user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsible User Name"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Id",
+            "description": "Правило детекции; null — инцидент создан вручную"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Описание проблемы"
+          },
+          "last_violation_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Violation At",
+            "description": "Последнее нарушение по правилу; null у ручного инцидента"
+          },
+          "sent_to_provider_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent To Provider At",
+            "description": "Перевод в sent_to_provider"
+          },
+          "restored_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restored At",
+            "description": "Восстановление нормативных показателей; сброс при resolved → in_progress"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "provider_reaction_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Reaction S",
+            "description": "restored_at − sent_to_provider_at; null без одной из отметок или если показатели восстановились до передачи поставщику"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/IncidentEventDetail"
+            },
+            "type": "array",
+            "title": "Events",
+            "description": "Вся история, по возрастанию created_at"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "status",
+          "school_id",
+          "school_code",
+          "school_name",
+          "line_id",
+          "line_status",
+          "provider_id",
+          "provider_name",
+          "basis_metrics",
+          "started_at",
+          "duration_s",
+          "responsible_user_id",
+          "responsible_user_name",
+          "rule_id",
+          "description",
+          "last_violation_at",
+          "sent_to_provider_at",
+          "restored_at",
+          "closed_at",
+          "provider_reaction_s",
+          "created_at",
+          "updated_at",
+          "events"
+        ],
+        "title": "IncidentDetail",
+        "description": "Incident card (ТЗ п. 19, DESIGN.md §3.17): the list row plus timestamps and history."
+      },
+      "IncidentEventDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/IncidentEventKind"
+          },
+          "from_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IncidentStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только у status_change"
+          },
+          "to_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IncidentStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "У status_change; у created — new"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "author_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author User Id",
+            "description": "null — действие системы: детекция T-40 или автозакрытие через 24 ч"
+          },
+          "author_user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author User Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "from_status",
+          "to_status",
+          "comment",
+          "author_user_id",
+          "author_user_name",
+          "created_at"
+        ],
+        "title": "IncidentEventDetail",
+        "description": "Entry of the incident history (``incident_events``): who, when and what (ADR-007)."
+      },
+      "IncidentEventKind": {
+        "type": "string",
+        "enum": [
+          "created",
+          "status_change",
+          "comment",
+          "restored"
+        ]
+      },
+      "IncidentListItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number",
+            "description": "Уникальный номер инцидента",
+            "examples": [
+              "INC-2026-000123"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/IncidentStatus"
+          },
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "school_code": {
+            "type": "string",
+            "title": "School Code",
+            "description": "School ID"
+          },
+          "school_name": {
+            "type": "string",
+            "title": "School Name"
+          },
+          "line_id": {
+            "type": "integer",
+            "title": "Line Id"
+          },
+          "line_status": {
+            "$ref": "#/components/schemas/LineStatus"
+          },
+          "provider_id": {
+            "type": "integer",
+            "title": "Provider Id"
+          },
+          "provider_name": {
+            "type": "string",
+            "title": "Provider Name"
+          },
+          "basis_metrics": {
+            "items": {
+              "$ref": "#/components/schemas/IncidentBasisMetric"
+            },
+            "type": "array",
+            "title": "Basis Metrics"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At",
+            "description": "Первое нарушение; у ручного инцидента — начало, указанное при создании"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S",
+            "description": "restored_at − started_at; null, пока показатели не восстановлены"
+          },
+          "responsible_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsible User Id"
+          },
+          "responsible_user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsible User Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "status",
+          "school_id",
+          "school_code",
+          "school_name",
+          "line_id",
+          "line_status",
+          "provider_id",
+          "provider_name",
+          "basis_metrics",
+          "started_at",
+          "duration_s",
+          "responsible_user_id",
+          "responsible_user_name"
+        ],
+        "title": "IncidentListItem",
+        "description": "Row of the incident list and card of the kanban (DESIGN.md §3.18)."
+      },
+      "IncidentListItemPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IncidentListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "IncidentListItemPage",
+        "description": "Page of incidents, newest ``started_at`` first."
+      },
+      "IncidentMetric": {
+        "type": "string",
+        "enum": [
+          "download_mbps",
+          "upload_mbps",
+          "ping_ms",
+          "jitter_ms",
+          "packet_loss_pct",
+          "no_connection"
+        ]
+      },
+      "IncidentStatus": {
+        "type": "string",
+        "enum": [
+          "new",
+          "sent_to_provider",
+          "in_progress",
+          "awaiting_info",
+          "resolved",
+          "closed"
+        ]
+      },
+      "IncidentStatusChange": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/IncidentStatus"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "IncidentStatusChange",
+        "description": "Target status of an incident; a comment is required to close it (DESIGN.md §3.17)."
+      },
+      "IncidentUpdate": {
+        "properties": {
+          "responsible_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsible User Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "title": "IncidentUpdate",
+        "description": "Changes of an incident by a person; the status changes only with its own endpoint."
       },
       "LatestMeasurement": {
         "properties": {

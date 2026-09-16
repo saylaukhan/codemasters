@@ -8,6 +8,7 @@ from app.api import (
     auth,
     dashboard,
     devices,
+    incidents,
     schools,
 )
 from app.api import map as school_map
@@ -23,5 +24,6 @@ for domain in (
     schools,
     devices,
     analytics,
+    incidents,
 ):
     api_router.include_router(domain.router)

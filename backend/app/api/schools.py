@@ -14,6 +14,7 @@ from app.core.deps import PageParams, page_params, user_token
 from app.core.errors import not_implemented
 from app.schemas.devices import DeviceListItemPage
 from app.schemas.errors import Problem
+from app.schemas.incidents import IncidentListItemPage
 from app.schemas.schools import (
     LineCreate,
     LineDetail,
@@ -186,3 +187,14 @@ async def update_school_contact(
     school_id: int, contact_id: int, body: SchoolContactUpdate
 ) -> SchoolContactDetail:
     raise not_implemented("T-35")
+
+
+@router.get(
+    "/{school_id}/incidents",
+    summary="Инциденты школы, новые сверху",
+    responses={404: SCHOOL_NOT_FOUND},
+)
+async def list_school_incidents(
+    school_id: int, params: Annotated[PageParams, Depends(page_params)]
+) -> IncidentListItemPage:
+    raise not_implemented("T-41")

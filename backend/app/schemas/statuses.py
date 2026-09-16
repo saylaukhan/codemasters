@@ -23,6 +23,16 @@ type LineStatus = Literal["main", "reserve", "disabled"]
 # Device blocking keeps its history (ADR-005).
 type DeviceStatus = Literal["active", "blocked"]
 
+# Status of an incident and of an appeal, in the order of ТЗ п. 19 (ADR-007, ADR-011).
+type IncidentStatus = Literal[
+    "new", "sent_to_provider", "in_progress", "awaiting_info", "resolved", "closed"
+]
+
+# What an incident rule watches: a measurement metric or the heartbeat (ТЗ п. 18, ADR-007).
+type IncidentMetric = Literal[
+    "download_mbps", "upload_mbps", "ping_ms", "jitter_ms", "packet_loss_pct", "no_connection"
+]
+
 # Day of the week in Asia/Almaty: working hours of a school, analytics heatmap (ADR-014).
 type Weekday = Literal["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 

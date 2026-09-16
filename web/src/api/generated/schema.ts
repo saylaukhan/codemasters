@@ -409,6 +409,23 @@ export interface paths {
         patch: operations["update_school_contact"];
         trace?: never;
     };
+    "/api/schools/{school_id}/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Инциденты школы, новые сверху */
+        get: operations["list_school_incidents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/devices/enrollment-codes": {
         parameters: {
             query?: never;
@@ -511,6 +528,91 @@ export interface paths {
         get: operations["get_analytics"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Список инцидентов, новые сверху
+         * @description Порядок — по started_at, новые сверху; канбан (T-43) читает этот же список. Фильтры region_id и provider_id — по школе и линии инцидента.
+         */
+        get: operations["list_incidents"];
+        put?: never;
+        /**
+         * Создать инцидент вручную
+         * @description Из карточки школы (ТЗ п. 19): статус new, rule_id = null, событие created в истории; школа и поставщик — по линии. Неизвестный line_id или responsible_user_id — 422.
+         */
+        post: operations["create_incident"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incidents/{incident_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Карточка инцидента с историей событий */
+        get: operations["get_incident"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить ответственного или описание инцидента
+         * @description Статус меняется только через POST /api/incidents/{incident_id}/status. Неизвестный responsible_user_id — 422.
+         */
+        patch: operations["update_incident"];
+        trace?: never;
+    };
+    "/api/incidents/{incident_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Сменить статус инцидента
+         * @description Переходы (T-41): вперёд по порядку ТЗ п. 19, sent_to_provider, in_progress и awaiting_info можно пропускать; в closed — только из resolved; назад — только awaiting_info → in_progress и resolved → in_progress (restored_at сбрасывается); из closed — никуда. Переход в sent_to_provider ставит sent_to_provider_at, в resolved — restored_at, если детекция его ещё не поставила, в closed — closed_at. closed ставит пользователь области или района (ADR-007); resolved → closed через 24 ч — задача beat. Каждый переход — событие status_change с комментарием.
+         */
+        post: operations["change_incident_status"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incidents/{incident_id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Добавить комментарий к инциденту
+         * @description Комментарий — событие comment в истории; статус не меняется.
+         */
+        post: operations["create_incident_comment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1097,6 +1199,273 @@ export interface components {
         };
         /** @enum {string} */
         IfaceType: "ethernet" | "wifi" | "other";
+        /**
+         * IncidentBasisMetric
+         * @description Metric an incident is based on: the violating value next to its threshold (ТЗ п. 19).
+         *
+         *     Units follow the metric name. Both values come from the measurement that triggered the rule
+         *     and its ``thresholds_snapshot`` (ADR-004); a manual incident and ``no_connection`` have none.
+         */
+        IncidentBasisMetric: {
+            metric: components["schemas"]["IncidentMetric"];
+            /**
+             * Value
+             * @description Фактическое значение
+             * @example 8.4
+             */
+            value: number | null;
+            /**
+             * Threshold
+             * @description Порог: минимум для download_mbps и upload_mbps, иначе максимум
+             * @example 20
+             */
+            threshold: number | null;
+        };
+        /**
+         * IncidentCommentCreate
+         * @description Comment of a person in the incident history (ТЗ п. 19).
+         */
+        IncidentCommentCreate: {
+            /** Comment */
+            comment: string;
+        };
+        /**
+         * IncidentCreate
+         * @description Manual incident from the school card: the fields of an automatic one without a rule.
+         *
+         *     It starts as ``new``; the school and the provider come from the line (ADR-007).
+         */
+        IncidentCreate: {
+            /** Line Id */
+            line_id: number;
+            /**
+             * Metrics
+             * @description Показатели-основания; значений и порогов у ручного инцидента нет
+             * @example [
+             *       "download_mbps",
+             *       "upload_mbps"
+             *     ]
+             */
+            metrics: components["schemas"]["IncidentMetric"][];
+            /** Description */
+            description: string;
+            /**
+             * Started At
+             * @description Начало проблемы, не в будущем; по умолчанию — момент создания
+             */
+            started_at?: string | null;
+            /** Responsible User Id */
+            responsible_user_id?: number | null;
+        };
+        /**
+         * IncidentDetail
+         * @description Incident card (ТЗ п. 19, DESIGN.md §3.17): the list row plus timestamps and history.
+         */
+        IncidentDetail: {
+            /** Id */
+            id: number;
+            /**
+             * Number
+             * @description Уникальный номер инцидента
+             * @example INC-2026-000123
+             */
+            number: string;
+            status: components["schemas"]["IncidentStatus"];
+            /** School Id */
+            school_id: number;
+            /**
+             * School Code
+             * @description School ID
+             */
+            school_code: string;
+            /** School Name */
+            school_name: string;
+            /** Line Id */
+            line_id: number;
+            line_status: components["schemas"]["LineStatus"];
+            /** Provider Id */
+            provider_id: number;
+            /** Provider Name */
+            provider_name: string;
+            /** Basis Metrics */
+            basis_metrics: components["schemas"]["IncidentBasisMetric"][];
+            /**
+             * Started At
+             * Format: date-time
+             * @description Первое нарушение; у ручного инцидента — начало, указанное при создании
+             */
+            started_at: string;
+            /**
+             * Duration S
+             * @description restored_at − started_at; null, пока показатели не восстановлены
+             */
+            duration_s: number | null;
+            /** Responsible User Id */
+            responsible_user_id: number | null;
+            /** Responsible User Name */
+            responsible_user_name: string | null;
+            /**
+             * Rule Id
+             * @description Правило детекции; null — инцидент создан вручную
+             */
+            rule_id: number | null;
+            /**
+             * Description
+             * @description Описание проблемы
+             */
+            description: string | null;
+            /**
+             * Last Violation At
+             * @description Последнее нарушение по правилу; null у ручного инцидента
+             */
+            last_violation_at: string | null;
+            /**
+             * Sent To Provider At
+             * @description Перевод в sent_to_provider
+             */
+            sent_to_provider_at: string | null;
+            /**
+             * Restored At
+             * @description Восстановление нормативных показателей; сброс при resolved → in_progress
+             */
+            restored_at: string | null;
+            /** Closed At */
+            closed_at: string | null;
+            /**
+             * Provider Reaction S
+             * @description restored_at − sent_to_provider_at; null без одной из отметок или если показатели восстановились до передачи поставщику
+             */
+            provider_reaction_s: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Events
+             * @description Вся история, по возрастанию created_at
+             */
+            events: components["schemas"]["IncidentEventDetail"][];
+        };
+        /**
+         * IncidentEventDetail
+         * @description Entry of the incident history (``incident_events``): who, when and what (ADR-007).
+         */
+        IncidentEventDetail: {
+            /** Id */
+            id: number;
+            kind: components["schemas"]["IncidentEventKind"];
+            /** @description Только у status_change */
+            from_status: components["schemas"]["IncidentStatus"] | null;
+            /** @description У status_change; у created — new */
+            to_status: components["schemas"]["IncidentStatus"] | null;
+            /** Comment */
+            comment: string | null;
+            /**
+             * Author User Id
+             * @description null — действие системы: детекция T-40 или автозакрытие через 24 ч
+             */
+            author_user_id: number | null;
+            /** Author User Name */
+            author_user_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** @enum {string} */
+        IncidentEventKind: "created" | "status_change" | "comment" | "restored";
+        /**
+         * IncidentListItem
+         * @description Row of the incident list and card of the kanban (DESIGN.md §3.18).
+         */
+        IncidentListItem: {
+            /** Id */
+            id: number;
+            /**
+             * Number
+             * @description Уникальный номер инцидента
+             * @example INC-2026-000123
+             */
+            number: string;
+            status: components["schemas"]["IncidentStatus"];
+            /** School Id */
+            school_id: number;
+            /**
+             * School Code
+             * @description School ID
+             */
+            school_code: string;
+            /** School Name */
+            school_name: string;
+            /** Line Id */
+            line_id: number;
+            line_status: components["schemas"]["LineStatus"];
+            /** Provider Id */
+            provider_id: number;
+            /** Provider Name */
+            provider_name: string;
+            /** Basis Metrics */
+            basis_metrics: components["schemas"]["IncidentBasisMetric"][];
+            /**
+             * Started At
+             * Format: date-time
+             * @description Первое нарушение; у ручного инцидента — начало, указанное при создании
+             */
+            started_at: string;
+            /**
+             * Duration S
+             * @description restored_at − started_at; null, пока показатели не восстановлены
+             */
+            duration_s: number | null;
+            /** Responsible User Id */
+            responsible_user_id: number | null;
+            /** Responsible User Name */
+            responsible_user_name: string | null;
+        };
+        /**
+         * IncidentListItemPage
+         * @description Page of incidents, newest ``started_at`` first.
+         */
+        IncidentListItemPage: {
+            /** Items */
+            items: components["schemas"]["IncidentListItem"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /** @enum {string} */
+        IncidentMetric: "download_mbps" | "upload_mbps" | "ping_ms" | "jitter_ms" | "packet_loss_pct" | "no_connection";
+        /** @enum {string} */
+        IncidentStatus: "new" | "sent_to_provider" | "in_progress" | "awaiting_info" | "resolved" | "closed";
+        /**
+         * IncidentStatusChange
+         * @description Target status of an incident; a comment is required to close it (DESIGN.md §3.17).
+         */
+        IncidentStatusChange: {
+            status: components["schemas"]["IncidentStatus"];
+            /** Comment */
+            comment?: string | null;
+        };
+        /**
+         * IncidentUpdate
+         * @description Changes of an incident by a person; the status changes only with its own endpoint.
+         */
+        IncidentUpdate: {
+            /** Responsible User Id */
+            responsible_user_id?: number | null;
+            /** Description */
+            description?: string | null;
+        };
         /**
          * LatestMeasurement
          * @description Values of the latest measurement shown in cards and lists (ТЗ п. 4, п. 13).
@@ -3243,6 +3612,60 @@ export interface operations {
             };
         };
     };
+    list_school_incidents: {
+        parameters: {
+            query?: {
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentListItemPage"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     create_enrollment_code: {
         parameters: {
             query?: never;
@@ -3522,6 +3945,321 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnalyticsReport"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_incidents: {
+        parameters: {
+            query?: {
+                /** @description Статусы инцидента; несколько — повтором параметра */
+                status?: components["schemas"]["IncidentStatus"][] | null;
+                school_id?: number | null;
+                /** @description Район или город (regions) */
+                region_id?: number | null;
+                provider_id?: number | null;
+                line_id?: number | null;
+                /** @description Номер инцидента или его часть */
+                q?: string | null;
+                /** @description Начало периода по started_at, включительно */
+                period_from?: string | null;
+                /** @description Конец периода по started_at, не включается */
+                period_to?: string | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentListItemPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_incident: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentDetail"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_incident: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentDetail"];
+                };
+            };
+            /** @description Инцидент не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_incident: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentDetail"];
+                };
+            };
+            /** @description Инцидент не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    change_incident_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentStatusChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentDetail"];
+                };
+            };
+            /** @description Инцидент не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Переход не допускается, в том числе в текущий статус (type invalid_status_transition) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_incident_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentCommentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentEventDetail"];
+                };
+            };
+            /** @description Инцидент не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Ошибка валидации запроса */
