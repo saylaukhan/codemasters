@@ -736,6 +736,389 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Пользователи панели с ролью и областью видимости
+         * @description По full_name. region_id, provider_id и school_id отбирают по области видимости.
+         */
+        get: operations["list_users"];
+        put?: never;
+        /**
+         * Создать пользователя с ролью и областью видимости
+         * @description Неизвестный region_id, provider_id или school_id — 422.
+         */
+        post: operations["create_user"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить пользователя, заблокировать или сбросить пароль
+         * @description role передаётся вместе с областью видимости и заменяет её целиком. Неизвестный region_id, provider_id или school_id — 422.
+         */
+        patch: operations["update_user"];
+        trace?: never;
+    };
+    "/api/admin/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Роли и их права
+         * @description Пять ролей ТЗ п. 16 в порядке school, district, oblast, provider, admin.
+         */
+        get: operations["list_roles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Справочник поставщиков интернета
+         * @description Сортировка по названию.
+         */
+        get: operations["list_providers"];
+        put?: never;
+        /** Добавить поставщика */
+        post: operations["create_provider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/providers/{provider_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Изменить поставщика */
+        patch: operations["update_provider"];
+        trace?: never;
+    };
+    "/api/admin/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Справочник районов и городов ВКО
+         * @description Сортировка по названию. Границы в списке нет — только признак has_boundary.
+         */
+        get: operations["list_regions"];
+        put?: never;
+        /** Добавить район или город */
+        post: operations["create_region"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/regions/{region_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить район или город
+         * @description Смена code не меняет School ID уже созданных школ.
+         */
+        patch: operations["update_region"];
+        trace?: never;
+    };
+    "/api/admin/connection-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Справочник типов подключения
+         * @description Сортировка по названию.
+         */
+        get: operations["list_connection_types"];
+        put?: never;
+        /** Добавить тип подключения */
+        post: operations["create_connection_type"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/connection-types/{connection_type_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Изменить тип подключения */
+        patch: operations["update_connection_type"];
+        trace?: never;
+    };
+    "/api/admin/thresholds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Профили порогов: глобальный, районов, линий
+         * @description Порядок: глобальный, районы по region_name, линии по school_name. Замер оценивает самый конкретный активный профиль: линия → район → глобальный (ADR-004).
+         */
+        get: operations["list_threshold_profiles"];
+        put?: never;
+        /**
+         * Создать профиль порогов района или линии
+         * @description Действует со следующего замера. Неизвестный region_id или line_id — 422.
+         */
+        post: operations["create_threshold_profile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/thresholds/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить или отключить профиль порогов
+         * @description Уже сохранённые замеры не пересчитываются: у каждого свой снимок порогов.
+         */
+        patch: operations["update_threshold_profile"];
+        trace?: never;
+    };
+    "/api/admin/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Расписания замеров: глобальное, районов, школ
+         * @description Порядок: глобальное, районы по region_name, школы по school_name. Агент получает самое конкретное активное расписание: школа → район → глобальное.
+         */
+        get: operations["list_schedules"];
+        put?: never;
+        /**
+         * Создать расписание района или школы
+         * @description Пересекающиеся слоты — 422. Неизвестный region_id или school_id — 422.
+         */
+        post: operations["create_schedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/schedules/{schedule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить слоты или отключить расписание
+         * @description Пересекающиеся слоты — 422.
+         */
+        patch: operations["update_schedule"];
+        trace?: never;
+    };
+    "/api/admin/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Системные настройки: сервер замеров, интервалы агента, правила расчётов */
+        get: operations["get_system_settings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить системные настройки
+         * @description Объекты speedtest и default_working_hours заменяются целиком: speedtest без ndt7_url отключает резервный сервер. Агенты получают новые значения со следующей конфигурацией: новый ETag в GET /api/agent/config (T-17). offline_after_s не больше heartbeat_interval_s с учётом сохранённых значений — 422.
+         */
+        patch: operations["update_system_settings"];
+        trace?: never;
+    };
+    "/api/admin/incident-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Правила формирования инцидентов */
+        get: operations["list_incident_rules"];
+        put?: never;
+        /**
+         * Создать правило инцидентов
+         * @description Без consecutive_violations и duration_min — 422.
+         */
+        post: operations["create_incident_rule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/incident-rules/{rule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить или отключить правило инцидентов
+         * @description Следующая детекция применяет новые значения (T-40). Если после изменения consecutive_violations и duration_min оба пусты — 422.
+         */
+        patch: operations["update_incident_rule"];
+        trace?: never;
+    };
+    "/api/admin/agent-releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Релизы агента, новые сверху */
+        get: operations["list_agent_releases"];
+        put?: never;
+        /** Опубликовать релиз агента */
+        post: operations["create_agent_release"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/agent-releases/{release_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Перевести релиз в другой канал или отозвать */
+        patch: operations["update_agent_release"];
+        trace?: never;
+    };
+    "/api/admin/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Журнал аудита, новые сверху */
+        get: operations["list_audit_log"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -754,6 +1137,8 @@ export interface components {
              */
             expires_in_s: number;
         };
+        /** @enum {string} */
+        AgentChannel: "pilot" | "stable";
         /**
          * AgentConfigResponse
          * @description Agent configuration; nothing of it is hard-coded in the agent (ТЗ п. 11, п. 20).
@@ -786,6 +1171,81 @@ export interface components {
             latest_version?: string | null;
         };
         /**
+         * AgentReleaseCreate
+         * @description New agent release; ``released_at`` is set by the server.
+         */
+        AgentReleaseCreate: {
+            /**
+             * Version
+             * @description Версия MSI: major.minor.patch
+             * @example 0.2.0
+             */
+            version: string;
+            channel: components["schemas"]["AgentChannel"];
+            /**
+             * Download Url
+             * @example https://monitor.example.kz/downloads/VKO-Agent-0.2.0.msi
+             */
+            download_url: string;
+            /**
+             * Sha256
+             * @description SHA-256 файла MSI, hex в нижнем регистре
+             */
+            sha256: string;
+            /**
+             * Notes
+             * @description Что изменилось
+             */
+            notes?: string | null;
+        };
+        /**
+         * AgentReleaseDetail
+         * @description Published agent release.
+         */
+        AgentReleaseDetail: {
+            /** Id */
+            id: number;
+            /**
+             * Version
+             * @example 0.2.0
+             */
+            version: string;
+            channel: components["schemas"]["AgentChannel"];
+            /** Download Url */
+            download_url: string;
+            /** Sha256 */
+            sha256: string;
+            /**
+             * Notes
+             * @description Что изменилось
+             */
+            notes: string | null;
+            /**
+             * Is Active
+             * @description false — релиз отозван и агентам не выдаётся
+             */
+            is_active: boolean;
+            /**
+             * Released At
+             * Format: date-time
+             */
+            released_at: string;
+        };
+        /**
+         * AgentReleaseDetailPage
+         * @description Page of the agent releases, newest first.
+         */
+        AgentReleaseDetailPage: {
+            /** Items */
+            items: components["schemas"]["AgentReleaseDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
          * AgentReleaseResponse
          * @description Latest agent release for self-update (plan.md §4.6).
          */
@@ -809,6 +1269,16 @@ export interface components {
              * Format: date-time
              */
             released_at: string;
+        };
+        /**
+         * AgentReleaseUpdate
+         * @description Promotion to another channel or withdrawal of a release.
+         */
+        AgentReleaseUpdate: {
+            /** Channel */
+            channel?: components["schemas"]["AgentChannel"];
+            /** Is Active */
+            is_active?: boolean;
         };
         /** @enum {string} */
         AnalyticsGranularity: "hour" | "day";
@@ -1208,7 +1678,134 @@ export interface components {
             comment?: string | null;
         };
         /** @enum {string} */
+        AuditAction: "login_success" | "login_failure" | "create" | "update" | "block" | "unblock" | "password_reset" | "status_change" | "export" | "transfer_error";
+        /** @enum {string} */
+        AuditEntityType: "user" | "school" | "line" | "school_contact" | "device" | "enrollment_code" | "region" | "provider" | "connection_type" | "threshold_profile" | "schedule" | "setting" | "incident_rule" | "agent_release" | "incident" | "appeal" | "export";
+        /**
+         * AuditLogListItem
+         * @description One audit record: who, when, what (T-39).
+         */
+        AuditLogListItem: {
+            /** Id */
+            id: number;
+            /**
+             * Created At
+             * Format: date-time
+             * @description Момент действия
+             */
+            created_at: string;
+            /**
+             * User Id
+             * @description Пусто — запрос агента или вход с неизвестным e-mail
+             */
+            user_id: number | null;
+            /**
+             * User Email
+             * @description E-mail пользователя на момент действия; при login_failure — введённый
+             */
+            user_email: string | null;
+            action: components["schemas"]["AuditAction"];
+            /** @description login_* — user, transfer_error — device, export — export */
+            entity_type: components["schemas"]["AuditEntityType"];
+            /**
+             * Entity Id
+             * @description Пусто, если запись не определена: неизвестный e-mail или токен устройства
+             */
+            entity_id: number | null;
+            /**
+             * Changes
+             * @description Изменённые поля {поле: {old, new}}; пароли, токены и коды не пишутся
+             * @example {
+             *       "is_active": {
+             *         "new": false,
+             *         "old": true
+             *       }
+             *     }
+             */
+            changes: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Error Type
+             * @description type ошибки problem+json для login_failure и transfer_error
+             * @example invalid_credentials
+             */
+            error_type: string | null;
+            /**
+             * Ip
+             * @description IP-адрес клиента
+             */
+            ip: string | null;
+        };
+        /**
+         * AuditLogListItemPage
+         * @description Page of the audit log, newest first.
+         */
+        AuditLogListItemPage: {
+            /** Items */
+            items: components["schemas"]["AuditLogListItem"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /** @enum {string} */
         ConnectionStatus: "online" | "offline";
+        /**
+         * ConnectionTypeCreate
+         * @description New line technology (ТЗ п. 14, п. 20).
+         */
+        ConnectionTypeCreate: {
+            /**
+             * Code
+             * @description Постоянный код: строчная латиница, цифры, «_»
+             * @example fiber
+             */
+            code: string;
+            /**
+             * Name
+             * @example Оптоволокно
+             */
+            name: string;
+        };
+        /**
+         * ConnectionTypeDetail
+         * @description Line technology: fiber, ADSL, radio and so on.
+         */
+        ConnectionTypeDetail: {
+            /** Id */
+            id: number;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+        };
+        /**
+         * ConnectionTypeDetailPage
+         * @description Page of the connection types, by name.
+         */
+        ConnectionTypeDetailPage: {
+            /** Items */
+            items: components["schemas"]["ConnectionTypeDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * ConnectionTypeUpdate
+         * @description Changes of a connection type.
+         */
+        ConnectionTypeUpdate: {
+            /** Code */
+            code?: string;
+            /** Name */
+            name?: string;
+        };
         /**
          * ContractCompliance
          * @description Sustained mismatch of a line with its contract speed (ТЗ п. 14, T-29).
@@ -1598,6 +2195,47 @@ export interface components {
         /** @enum {string} */
         ExportStatus: "pending" | "ready" | "failed";
         /**
+         * GeoJsonMultiPolygon
+         * @description GeoJSON MultiPolygon geometry (RFC 7946 §3.1.7) in WGS 84: the boundary of a region.
+         */
+        GeoJsonMultiPolygon: {
+            /**
+             * Type
+             * @constant
+             */
+            type: "MultiPolygon";
+            /**
+             * Coordinates
+             * @description Полигоны → кольца (первое — внешняя граница, остальные — вырезы) → точки [долгота, широта]; кольцо замкнуто: первая точка равна последней
+             * @example [
+             *       [
+             *         [
+             *           [
+             *             82.5,
+             *             49.9
+             *           ],
+             *           [
+             *             82.7,
+             *             49.9
+             *           ],
+             *           [
+             *             82.7,
+             *             50
+             *           ],
+             *           [
+             *             82.5,
+             *             49.9
+             *           ]
+             *         ]
+             *       ]
+             *     ]
+             */
+            coordinates: [
+                number,
+                number
+            ][][][];
+        };
+        /**
          * GeoJsonPoint
          * @description GeoJSON Point geometry (RFC 7946 §3.1.2) in WGS 84.
          */
@@ -1915,6 +2553,97 @@ export interface components {
         };
         /** @enum {string} */
         IncidentMetric: "download_mbps" | "upload_mbps" | "ping_ms" | "jitter_ms" | "packet_loss_pct" | "no_connection";
+        /**
+         * IncidentRuleCreate
+         * @description New rule: at least one opening condition, N in a row or T minutes.
+         */
+        IncidentRuleCreate: {
+            /**
+             * Name
+             * @example Download ниже порога
+             */
+            name: string;
+            metric: components["schemas"]["IncidentMetric"];
+            /**
+             * Consecutive Violations
+             * @description N нарушений подряд для инцидента
+             * @example 3
+             */
+            consecutive_violations?: number | null;
+            /**
+             * Duration Min
+             * @description Длительность нарушения для инцидента, мин
+             * @example 30
+             */
+            duration_min?: number | null;
+            /**
+             * Recovery Normal Count
+             * @description M нормальных подряд для восстановления (restored_at)
+             * @example 2
+             */
+            recovery_normal_count: number;
+        };
+        /**
+         * IncidentRuleDetail
+         * @description Incident rule as the detection of T-40 applies it.
+         */
+        IncidentRuleDetail: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            metric: components["schemas"]["IncidentMetric"];
+            /**
+             * Consecutive Violations
+             * @description N нарушений подряд для инцидента
+             */
+            consecutive_violations: number | null;
+            /**
+             * Duration Min
+             * @description Длительность нарушения для инцидента, мин
+             */
+            duration_min: number | null;
+            /**
+             * Recovery Normal Count
+             * @description M нормальных подряд для восстановления (restored_at)
+             */
+            recovery_normal_count: number;
+            /**
+             * Is Active
+             * @description false — правило не применяется, его инциденты остаются
+             */
+            is_active: boolean;
+        };
+        /**
+         * IncidentRuleDetailPage
+         * @description Page of the incident rules.
+         */
+        IncidentRuleDetailPage: {
+            /** Items */
+            items: components["schemas"]["IncidentRuleDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * IncidentRuleUpdate
+         * @description Changes of a rule; ``metric`` is fixed: another metric is a new rule.
+         */
+        IncidentRuleUpdate: {
+            /** Name */
+            name?: string;
+            /** Consecutive Violations */
+            consecutive_violations?: number | null;
+            /** Duration Min */
+            duration_min?: number | null;
+            /** Recovery Normal Count */
+            recovery_normal_count?: number;
+            /** Is Active */
+            is_active?: boolean;
+        };
         /** @enum {string} */
         IncidentStatus: "new" | "sent_to_provider" | "in_progress" | "awaiting_info" | "resolved" | "closed";
         /**
@@ -2349,8 +3078,279 @@ export interface components {
              */
             instance?: string | null;
         };
+        /**
+         * ProviderCreate
+         * @description New internet service provider (ТЗ п. 14, п. 20).
+         */
+        ProviderCreate: {
+            /**
+             * Name
+             * @example ТОО «Провайдер ВКО»
+             */
+            name: string;
+            /**
+             * Appeals Email
+             * @description Служебный адрес поставщика для обращений (T-48); не личный e-mail
+             * @example support@example.kz
+             */
+            appeals_email?: string | null;
+        };
+        /**
+         * ProviderDetail
+         * @description Internet service provider; the scope of the Provider role (ADR-008).
+         */
+        ProviderDetail: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Appeals Email
+             * @description Служебный адрес поставщика для обращений
+             */
+            appeals_email: string | null;
+        };
+        /**
+         * ProviderDetailPage
+         * @description Page of the providers, by name.
+         */
+        ProviderDetailPage: {
+            /** Items */
+            items: components["schemas"]["ProviderDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * ProviderUpdate
+         * @description Changes of a provider.
+         */
+        ProviderUpdate: {
+            /** Name */
+            name?: string;
+            /** Appeals Email */
+            appeals_email?: string | null;
+        };
         /** @enum {string} */
         QualityStatus: "normal" | "unstable" | "critical" | "offline";
+        /**
+         * RegionCreate
+         * @description New district or city of VKO (ТЗ п. 20); the boundary is usually loaded by T-04.
+         */
+        RegionCreate: {
+            /**
+             * Code
+             * @description Латинские заглавные и цифры; часть School ID VKO-<код>-<номер>
+             * @example UKG
+             */
+            code: string;
+            /**
+             * Name
+             * @example Усть-Каменогорск
+             */
+            name: string;
+            boundary?: components["schemas"]["GeoJsonMultiPolygon"] | null;
+        };
+        /**
+         * RegionDetail
+         * @description District or city of VKO with its boundary.
+         */
+        RegionDetail: {
+            /** Id */
+            id: number;
+            /**
+             * Code
+             * @description Часть School ID VKO-<код>-<номер>
+             */
+            code: string;
+            /** Name */
+            name: string;
+            /** @description null — граница не загружена */
+            boundary: components["schemas"]["GeoJsonMultiPolygon"] | null;
+        };
+        /**
+         * RegionListItem
+         * @description Row of the region reference; the boundary itself is not listed.
+         */
+        RegionListItem: {
+            /** Id */
+            id: number;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Has Boundary
+             * @description Граница района или города загружена
+             */
+            has_boundary: boolean;
+        };
+        /**
+         * RegionListItemPage
+         * @description Page of the regions, by name.
+         */
+        RegionListItemPage: {
+            /** Items */
+            items: components["schemas"]["RegionListItem"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * RegionUpdate
+         * @description Changes of a region; ``boundary = null`` removes the boundary.
+         */
+        RegionUpdate: {
+            /** Code */
+            code?: string;
+            /** Name */
+            name?: string;
+            boundary?: components["schemas"]["GeoJsonMultiPolygon"] | null;
+        };
+        /**
+         * RoleListItem
+         * @description One of the five roles of ТЗ п. 16 with its permission codes (ADR-008).
+         */
+        RoleListItem: {
+            code: components["schemas"]["UserRole"];
+            /**
+             * Permissions
+             * @description Коды прав роли для require(permission); матрица — T-20
+             * @example [
+             *       "schools:read",
+             *       "incidents:read",
+             *       "appeals:create"
+             *     ]
+             */
+            permissions: string[];
+        };
+        /**
+         * RoleListItemPage
+         * @description Page of the roles.
+         */
+        RoleListItemPage: {
+            /** Items */
+            items: components["schemas"]["RoleListItem"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * ScheduleCreate
+         * @description New schedule of a district or a school; agents get it with the next configuration.
+         */
+        ScheduleCreate: {
+            scope: components["schemas"]["ScheduleScope"];
+            /**
+             * Region Id
+             * @description Только и обязательно при scope=district
+             */
+            region_id?: number | null;
+            /**
+             * School Id
+             * @description Только и обязательно при scope=school
+             */
+            school_id?: number | null;
+            /**
+             * Slots
+             * @description 3–5 непересекающихся слотов, местное время Asia/Almaty; хранятся по start
+             * @example [
+             *       {
+             *         "end": "09:00:00",
+             *         "start": "08:30:00"
+             *       },
+             *       {
+             *         "end": "11:30:00",
+             *         "start": "11:00:00"
+             *       },
+             *       {
+             *         "end": "14:00:00",
+             *         "start": "13:30:00"
+             *       },
+             *       {
+             *         "end": "16:30:00",
+             *         "start": "16:00:00"
+             *       }
+             *     ]
+             */
+            slots: components["schemas"]["ScheduleSlot"][];
+        };
+        /**
+         * ScheduleDetail
+         * @description Measurement schedule with the names of its target.
+         */
+        ScheduleDetail: {
+            /** Id */
+            id: number;
+            scope: components["schemas"]["ScheduleScope"];
+            /**
+             * Region Id
+             * @description Только при scope=district
+             */
+            region_id: number | null;
+            /** Region Name */
+            region_name: string | null;
+            /**
+             * School Id
+             * @description Только при scope=school
+             */
+            school_id: number | null;
+            /** School Name */
+            school_name: string | null;
+            /**
+             * Slots
+             * @description 3–5 непересекающихся слотов, местное время Asia/Almaty; хранятся по start
+             * @example [
+             *       {
+             *         "end": "09:00:00",
+             *         "start": "08:30:00"
+             *       },
+             *       {
+             *         "end": "11:30:00",
+             *         "start": "11:00:00"
+             *       },
+             *       {
+             *         "end": "14:00:00",
+             *         "start": "13:30:00"
+             *       },
+             *       {
+             *         "end": "16:30:00",
+             *         "start": "16:00:00"
+             *       }
+             *     ]
+             */
+            slots: components["schemas"]["ScheduleSlot"][];
+            /**
+             * Is Active
+             * @description Отключённое расписание не применяется: действует следующее по цепочке
+             */
+            is_active: boolean;
+        };
+        /**
+         * ScheduleDetailPage
+         * @description Page of measurement schedules.
+         */
+        ScheduleDetailPage: {
+            /** Items */
+            items: components["schemas"]["ScheduleDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /** @enum {string} */
+        ScheduleScope: "global" | "district" | "school";
         /**
          * ScheduleSlot
          * @description Measurement window; the agent picks a random moment inside it (plan.md §4.2).
@@ -2368,6 +3368,37 @@ export interface components {
              * @example 09:00:00
              */
             end: string;
+        };
+        /**
+         * ScheduleUpdate
+         * @description Changes of a schedule; its scope and target never change, slots are replaced as a whole.
+         */
+        ScheduleUpdate: {
+            /**
+             * Slots
+             * @description 3–5 непересекающихся слотов, местное время Asia/Almaty; хранятся по start
+             * @example [
+             *       {
+             *         "end": "09:00:00",
+             *         "start": "08:30:00"
+             *       },
+             *       {
+             *         "end": "11:30:00",
+             *         "start": "11:00:00"
+             *       },
+             *       {
+             *         "end": "14:00:00",
+             *         "start": "13:30:00"
+             *       },
+             *       {
+             *         "end": "16:30:00",
+             *         "start": "16:00:00"
+             *       }
+             *     ]
+             */
+            slots?: components["schemas"]["ScheduleSlot"][];
+            /** Is Active */
+            is_active?: boolean;
         };
         /**
          * SchoolContactCreate
@@ -2678,6 +3709,111 @@ export interface components {
             working_hours?: components["schemas"]["WorkingHours"];
         };
         /**
+         * SettingsDetail
+         * @description System-wide values used by the agent configuration, statuses, reports and exports.
+         */
+        SettingsDetail: {
+            /** @description Сервер замеров: LibreSpeed и резервный ndt7 (ADR-012) */
+            speedtest: components["schemas"]["SpeedtestServers"];
+            /**
+             * Heartbeat Interval S
+             * @example 300
+             */
+            heartbeat_interval_s: number;
+            /**
+             * Config Refresh Interval S
+             * @example 900
+             */
+            config_refresh_interval_s: number;
+            /**
+             * Offline After S
+             * @description Нет heartbeat дольше — offline в рабочие часы, no_data вне их (ADR-014)
+             * @example 900
+             */
+            offline_after_s: number;
+            /**
+             * School Status Measurements Count
+             * @description Сколько последних замеров основной линии дают статус школы (ADR-004)
+             * @example 3
+             */
+            school_status_measurements_count: number;
+            /** @description С ними создаётся школа; рабочие часы существующих школ не меняются (ADR-014) */
+            default_working_hours: components["schemas"]["WorkingHours"];
+            /**
+             * Availability Min Pct
+             * @description Порог доступности за период (п. 11)
+             * @example 99
+             */
+            availability_min_pct: number;
+            /**
+             * Contract Mismatch Threshold Pct
+             * @description Устойчивое несоответствие: доля замеров основной линии ниже договора за окно больше этой (п. 14, T-29)
+             * @example 50
+             */
+            contract_mismatch_threshold_pct: number;
+            /**
+             * Contract Mismatch Window Days
+             * @example 7
+             */
+            contract_mismatch_window_days: number;
+            /**
+             * Enrollment Code Ttl Days
+             * @description Срок действия кода установки агента (ADR-005)
+             * @example 7
+             */
+            enrollment_code_ttl_days: number;
+            /**
+             * Export Sync Max Rows
+             * @description Выгрузка больше стольких строк и любой PDF формируются в фоне (T-33)
+             * @example 10000
+             */
+            export_sync_max_rows: number;
+            /**
+             * Export Retention Days
+             * @description Срок хранения файла выгрузки (T-33)
+             * @example 7
+             */
+            export_retention_days: number;
+            /**
+             * Incident Auto Close Hours
+             * @description Инцидент в resolved переходит в closed через столько часов (ADR-007)
+             * @example 24
+             */
+            incident_auto_close_hours: number;
+        };
+        /**
+         * SettingsUpdate
+         * @description Changes of the settings; every column is NOT NULL.
+         */
+        SettingsUpdate: {
+            /** Speedtest */
+            speedtest?: components["schemas"]["SpeedtestServers"];
+            /** Heartbeat Interval S */
+            heartbeat_interval_s?: number;
+            /** Config Refresh Interval S */
+            config_refresh_interval_s?: number;
+            /** Offline After S */
+            offline_after_s?: number;
+            /** School Status Measurements Count */
+            school_status_measurements_count?: number;
+            /** Default Working Hours */
+            default_working_hours?: components["schemas"]["WorkingHours"];
+            /** Availability Min Pct */
+            availability_min_pct?: number;
+            /** Contract Mismatch Threshold Pct */
+            contract_mismatch_threshold_pct?: number;
+            /** Contract Mismatch Window Days */
+            contract_mismatch_window_days?: number;
+            /** Enrollment Code Ttl Days */
+            enrollment_code_ttl_days?: number;
+            /** Export Sync Max Rows */
+            export_sync_max_rows?: number;
+            /** Export Retention Days */
+            export_retention_days?: number;
+            /** Incident Auto Close Hours */
+            incident_auto_close_hours?: number;
+        };
+        /**
          * SpeedtestServers
          * @description Measurement servers: LibreSpeed is the main one, ndt7 the fallback (ADR-012).
          */
@@ -2689,6 +3825,105 @@ export interface components {
             librespeed_url: string;
             /** Ndt7 Url */
             ndt7_url?: string | null;
+        };
+        /**
+         * ThresholdProfileCreate
+         * @description New profile of a district or a line; it is active from the next measurement.
+         */
+        ThresholdProfileCreate: {
+            scope: components["schemas"]["ThresholdProfileScope"];
+            /**
+             * Region Id
+             * @description Только и обязательно при scope=district
+             */
+            region_id?: number | null;
+            /**
+             * Line Id
+             * @description Только и обязательно при scope=line
+             */
+            line_id?: number | null;
+            thresholds: components["schemas"]["ThresholdValues"];
+            /**
+             * Unstable Deviation Pct
+             * @description Наибольшее отклонение одного показателя от порога, % от порога, при котором замер — unstable; больше или нарушено несколько показателей — critical (ADR-004)
+             * @example 30
+             */
+            unstable_deviation_pct: number;
+        };
+        /**
+         * ThresholdProfileDetail
+         * @description Threshold profile with the names of its target.
+         */
+        ThresholdProfileDetail: {
+            /** Id */
+            id: number;
+            scope: components["schemas"]["ThresholdProfileScope"];
+            /**
+             * Region Id
+             * @description Только при scope=district
+             */
+            region_id: number | null;
+            /** Region Name */
+            region_name: string | null;
+            /**
+             * Line Id
+             * @description Только при scope=line
+             */
+            line_id: number | null;
+            /**
+             * School Id
+             * @description Школа линии; только при scope=line
+             */
+            school_id: number | null;
+            /** School Name */
+            school_name: string | null;
+            /**
+             * Provider Name
+             * @description Поставщик линии; только при scope=line
+             */
+            provider_name: string | null;
+            /** @description Только при scope=line */
+            line_status: components["schemas"]["LineStatus"] | null;
+            thresholds: components["schemas"]["ThresholdValues"];
+            /**
+             * Unstable Deviation Pct
+             * @description Наибольшее отклонение одного показателя от порога, % от порога, при котором замер — unstable; больше или нарушено несколько показателей — critical (ADR-004)
+             * @example 30
+             */
+            unstable_deviation_pct: number;
+            /**
+             * Is Active
+             * @description Отключённый профиль не применяется: действует следующий по цепочке
+             */
+            is_active: boolean;
+        };
+        /**
+         * ThresholdProfileDetailPage
+         * @description Page of threshold profiles.
+         */
+        ThresholdProfileDetailPage: {
+            /** Items */
+            items: components["schemas"]["ThresholdProfileDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /** @enum {string} */
+        ThresholdProfileScope: "global" | "district" | "line";
+        /**
+         * ThresholdProfileUpdate
+         * @description Changes of a profile; its scope and target never change.
+         */
+        ThresholdProfileUpdate: {
+            /** Thresholds */
+            thresholds?: components["schemas"]["ThresholdValues"];
+            /** Unstable Deviation Pct */
+            unstable_deviation_pct?: number;
+            /** Is Active */
+            is_active?: boolean;
         };
         /**
          * ThresholdValues
@@ -2721,6 +3956,75 @@ export interface components {
              */
             packet_loss_max_pct: number;
         };
+        /**
+         * UserCreate
+         * @description New panel user with a role, its scope and an initial password (T-38).
+         */
+        UserCreate: {
+            /**
+             * Email
+             * @description Логин
+             * @example rayon@example.kz
+             */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            role: components["schemas"]["UserRole"];
+            /**
+             * Region Id
+             * @description Район или город (regions); только и обязательно для district
+             */
+            region_id?: number | null;
+            /**
+             * Provider Id
+             * @description Только и обязательно для provider
+             */
+            provider_id?: number | null;
+            /**
+             * School Id
+             * @description Только и обязательно для school
+             */
+            school_id?: number | null;
+            /**
+             * Password
+             * Format: password
+             * @description Начальный пароль; хранится только хэшем
+             */
+            password: string;
+        };
+        /**
+         * UserDetail
+         * @description Panel user in the administration list; the password is never returned.
+         */
+        UserDetail: {
+            /** Id */
+            id: number;
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            role: components["schemas"]["UserRole"];
+            scope: components["schemas"]["UserScope"];
+            /**
+             * Is Active
+             * @description false — учётная запись заблокирована
+             */
+            is_active: boolean;
+        };
+        /**
+         * UserDetailPage
+         * @description Page of the users.
+         */
+        UserDetailPage: {
+            /** Items */
+            items: components["schemas"]["UserDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
         /** @enum {string} */
         UserRole: "school" | "district" | "oblast" | "provider" | "admin";
         /**
@@ -2739,6 +4043,38 @@ export interface components {
             provider_id: number | null;
             /** School Id */
             school_id: number | null;
+        };
+        /**
+         * UserUpdate
+         * @description Changes of a user: data, role with scope, blocking, password reset.
+         *
+         *     ``role`` and the scope ids travel together: with ``role`` the scope is replaced by the ids of
+         *     this body (absent ids are cleared); a scope id without ``role`` is a 422.
+         */
+        UserUpdate: {
+            /** Email */
+            email?: string;
+            /** Full Name */
+            full_name?: string;
+            /** Role */
+            role?: components["schemas"]["UserRole"];
+            /** Region Id */
+            region_id?: number | null;
+            /** Provider Id */
+            provider_id?: number | null;
+            /** School Id */
+            school_id?: number | null;
+            /**
+             * Is Active
+             * @description false — блокировка: вход и обновление токена запрещены, история остаётся
+             */
+            is_active?: boolean;
+            /**
+             * Password
+             * Format: password
+             * @description Новый пароль: сброс администратором
+             */
+            password?: string;
         };
         /** @enum {string} */
         Weekday: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
@@ -5039,6 +6375,1412 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_users: {
+        parameters: {
+            query?: {
+                /** @description Роли; несколько — повтором параметра */
+                role?: components["schemas"]["UserRole"][] | null;
+                /** @description true — активные, false — заблокированные; не задан — все */
+                is_active?: boolean | null;
+                /** @description Район или город (regions) */
+                region_id?: number | null;
+                provider_id?: number | null;
+                school_id?: number | null;
+                /** @description Часть ФИО или e-mail */
+                q?: string | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDetail"];
+                };
+            };
+            /** @description E-mail уже занят другим пользователем (type email_taken) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDetail"];
+                };
+            };
+            /** @description Пользователь не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description E-mail уже занят другим пользователем (type email_taken) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_roles: {
+        parameters: {
+            query?: {
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleListItemPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_providers: {
+        parameters: {
+            query?: {
+                /** @description Часть названия */
+                q?: string | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_provider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDetail"];
+                };
+            };
+            /** @description Поставщик с таким названием уже есть (type provider_name_taken) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_provider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderDetail"];
+                };
+            };
+            /** @description Поставщик не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Поставщик с таким названием уже есть (type provider_name_taken) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_regions: {
+        parameters: {
+            query?: {
+                /** @description Название или код */
+                q?: string | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionListItemPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_region: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionDetail"];
+                };
+            };
+            /** @description Район или город с таким кодом уже есть (type region_code_taken) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_region: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                region_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionDetail"];
+                };
+            };
+            /** @description Район или город не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Район или город с таким кодом уже есть (type region_code_taken) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_connection_types: {
+        parameters: {
+            query?: {
+                /** @description Название или код */
+                q?: string | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionTypeDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_connection_type: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionTypeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionTypeDetail"];
+                };
+            };
+            /** @description Тип подключения с таким кодом уже есть (type connection_type_code_taken) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_connection_type: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_type_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionTypeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionTypeDetail"];
+                };
+            };
+            /** @description Тип подключения не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Тип подключения с таким кодом уже есть (type connection_type_code_taken) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_threshold_profiles: {
+        parameters: {
+            query?: {
+                scope?: components["schemas"]["ThresholdProfileScope"] | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThresholdProfileDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_threshold_profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThresholdProfileCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThresholdProfileDetail"];
+                };
+            };
+            /** @description У этой цели уже есть профиль, в том числе отключённый (type threshold_profile_exists) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_threshold_profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThresholdProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThresholdProfileDetail"];
+                };
+            };
+            /** @description Профиль порогов не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Глобальный профиль нельзя отключить (type global_threshold_profile_required) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_schedules: {
+        parameters: {
+            query?: {
+                scope?: components["schemas"]["ScheduleScope"] | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            /** @description У этой цели уже есть расписание, в том числе отключённое (type schedule_exists) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schedule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            /** @description Расписание не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Глобальное расписание нельзя отключить (type global_schedule_required) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_system_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsDetail"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_system_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsDetail"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_incident_rules: {
+        parameters: {
+            query?: {
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentRuleDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_incident_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentRuleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentRuleDetail"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_incident_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentRuleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentRuleDetail"];
+                };
+            };
+            /** @description Правило не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_agent_releases: {
+        parameters: {
+            query?: {
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentReleaseDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_agent_release: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentReleaseCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentReleaseDetail"];
+                };
+            };
+            /** @description Релиз с этой версией уже есть (type release_version_taken) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_agent_release: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                release_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentReleaseUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentReleaseDetail"];
+                };
+            };
+            /** @description Релиз не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_audit_log: {
+        parameters: {
+            query?: {
+                /** @description Начало периода по created_at, включительно */
+                period_from?: string | null;
+                /** @description Конец периода по created_at, не включается */
+                period_to?: string | null;
+                user_id?: number | null;
+                /** @description Действия; несколько — повтором параметра */
+                action?: components["schemas"]["AuditAction"][] | null;
+                entity_type?: components["schemas"]["AuditEntityType"] | null;
+                /** @description Часть e-mail пользователя или IP-адрес */
+                q?: string | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogListItemPage"];
                 };
             };
             /** @description Ошибка валидации запроса */

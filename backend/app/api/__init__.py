@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api import (
+    admin,
     agent,
     analytics,
     appeals,
@@ -29,5 +30,6 @@ for domain in (
     incidents,
     appeals,
     exports,
+    admin,
 ):
     api_router.include_router(domain.router)

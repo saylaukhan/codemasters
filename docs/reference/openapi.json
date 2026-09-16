@@ -3752,6 +3752,2353 @@
           }
         }
       }
+    },
+    "/api/admin/users": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Пользователи панели с ролью и областью видимости",
+        "description": "По full_name. region_id, provider_id и school_id отбирают по области видимости.",
+        "operationId": "list_users",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserRole"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Роли; несколько — повтором параметра",
+              "title": "Role"
+            },
+            "description": "Роли; несколько — повтором параметра"
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true — активные, false — заблокированные; не задан — все",
+              "title": "Is Active"
+            },
+            "description": "true — активные, false — заблокированные; не задан — все"
+          },
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Район или город (regions)",
+              "title": "Region Id"
+            },
+            "description": "Район или город (regions)"
+          },
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "school_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Часть ФИО или e-mail",
+              "title": "Q"
+            },
+            "description": "Часть ФИО или e-mail"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Создать пользователя с ролью и областью видимости",
+        "description": "Неизвестный region_id, provider_id или school_id — 422.",
+        "operationId": "create_user",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "E-mail уже занят другим пользователем (type email_taken)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить пользователя, заблокировать или сбросить пароль",
+        "description": "role передаётся вместе с областью видимости и заменяет её целиком. Неизвестный region_id, provider_id или school_id — 422.",
+        "operationId": "update_user",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Пользователь не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "E-mail уже занят другим пользователем (type email_taken)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/roles": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Роли и их права",
+        "description": "Пять ролей ТЗ п. 16 в порядке school, district, oblast, provider, admin.",
+        "operationId": "list_roles",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleListItemPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/providers": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Справочник поставщиков интернета",
+        "description": "Сортировка по названию.",
+        "operationId": "list_providers",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Часть названия",
+              "title": "Q"
+            },
+            "description": "Часть названия"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Добавить поставщика",
+        "operationId": "create_provider",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Поставщик с таким названием уже есть (type provider_name_taken)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/providers/{provider_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить поставщика",
+        "operationId": "update_provider",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Provider Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Поставщик не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Поставщик с таким названием уже есть (type provider_name_taken)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/regions": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Справочник районов и городов ВКО",
+        "description": "Сортировка по названию. Границы в списке нет — только признак has_boundary.",
+        "operationId": "list_regions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Название или код",
+              "title": "Q"
+            },
+            "description": "Название или код"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionListItemPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Добавить район или город",
+        "operationId": "create_region",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Район или город с таким кодом уже есть (type region_code_taken)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/regions/{region_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить район или город",
+        "description": "Смена code не меняет School ID уже созданных школ.",
+        "operationId": "update_region",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Region Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegionUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Район или город не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Район или город с таким кодом уже есть (type region_code_taken)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/connection-types": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Справочник типов подключения",
+        "description": "Сортировка по названию.",
+        "operationId": "list_connection_types",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Название или код",
+              "title": "Q"
+            },
+            "description": "Название или код"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTypeDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Добавить тип подключения",
+        "operationId": "create_connection_type",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionTypeCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTypeDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Тип подключения с таким кодом уже есть (type connection_type_code_taken)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/connection-types/{connection_type_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить тип подключения",
+        "operationId": "update_connection_type",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Connection Type Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionTypeUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTypeDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Тип подключения не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Тип подключения с таким кодом уже есть (type connection_type_code_taken)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/thresholds": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Профили порогов: глобальный, районов, линий",
+        "description": "Порядок: глобальный, районы по region_name, линии по school_name. Замер оценивает самый конкретный активный профиль: линия → район → глобальный (ADR-004).",
+        "operationId": "list_threshold_profiles",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ThresholdProfileScope"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scope"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThresholdProfileDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Создать профиль порогов района или линии",
+        "description": "Действует со следующего замера. Неизвестный region_id или line_id — 422.",
+        "operationId": "create_threshold_profile",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThresholdProfileCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThresholdProfileDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "У этой цели уже есть профиль, в том числе отключённый (type threshold_profile_exists)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/thresholds/{profile_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить или отключить профиль порогов",
+        "description": "Уже сохранённые замеры не пересчитываются: у каждого свой снимок порогов.",
+        "operationId": "update_threshold_profile",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThresholdProfileUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThresholdProfileDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Профиль порогов не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Глобальный профиль нельзя отключить (type global_threshold_profile_required)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/schedules": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Расписания замеров: глобальное, районов, школ",
+        "description": "Порядок: глобальное, районы по region_name, школы по school_name. Агент получает самое конкретное активное расписание: школа → район → глобальное.",
+        "operationId": "list_schedules",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ScheduleScope"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scope"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Создать расписание района или школы",
+        "description": "Пересекающиеся слоты — 422. Неизвестный region_id или school_id — 422.",
+        "operationId": "create_schedule",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "У этой цели уже есть расписание, в том числе отключённое (type schedule_exists)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/schedules/{schedule_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить слоты или отключить расписание",
+        "description": "Пересекающиеся слоты — 422.",
+        "operationId": "update_schedule",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schedule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Schedule Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Расписание не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Глобальное расписание нельзя отключить (type global_schedule_required)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/settings": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Системные настройки: сервер замеров, интервалы агента, правила расчётов",
+        "operationId": "get_system_settings",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить системные настройки",
+        "description": "Объекты speedtest и default_working_hours заменяются целиком: speedtest без ndt7_url отключает резервный сервер. Агенты получают новые значения со следующей конфигурацией: новый ETag в GET /api/agent/config (T-17). offline_after_s не больше heartbeat_interval_s с учётом сохранённых значений — 422.",
+        "operationId": "update_system_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/incident-rules": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Правила формирования инцидентов",
+        "operationId": "list_incident_rules",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentRuleDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Создать правило инцидентов",
+        "description": "Без consecutive_violations и duration_min — 422.",
+        "operationId": "create_incident_rule",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentRuleCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentRuleDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/incident-rules/{rule_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить или отключить правило инцидентов",
+        "description": "Следующая детекция применяет новые значения (T-40). Если после изменения consecutive_violations и duration_min оба пусты — 422.",
+        "operationId": "update_incident_rule",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Rule Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentRuleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentRuleDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Правило не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/agent-releases": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Релизы агента, новые сверху",
+        "operationId": "list_agent_releases",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentReleaseDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Опубликовать релиз агента",
+        "operationId": "create_agent_release",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentReleaseCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentReleaseDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Релиз с этой версией уже есть (type release_version_taken)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/agent-releases/{release_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Перевести релиз в другой канал или отозвать",
+        "operationId": "update_agent_release",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "release_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Release Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentReleaseUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentReleaseDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Релиз не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/audit-log": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Журнал аудита, новые сверху",
+        "operationId": "list_audit_log",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало периода по created_at, включительно",
+              "title": "Period From"
+            },
+            "description": "Начало периода по created_at, включительно"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец периода по created_at, не включается",
+              "title": "Period To"
+            },
+            "description": "Конец периода по created_at, не включается"
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditAction"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Действия; несколько — повтором параметра",
+              "title": "Action"
+            },
+            "description": "Действия; несколько — повтором параметра"
+          },
+          {
+            "name": "entity_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AuditEntityType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Часть e-mail пользователя или IP-адрес",
+              "title": "Q"
+            },
+            "description": "Часть e-mail пользователя или IP-адрес"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogListItemPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3779,6 +6126,13 @@
         ],
         "title": "AccessTokenResponse",
         "description": "Access JWT for ``Authorization: Bearer``."
+      },
+      "AgentChannel": {
+        "type": "string",
+        "enum": [
+          "pilot",
+          "stable"
+        ]
       },
       "AgentConfigResponse": {
         "properties": {
@@ -3848,6 +6202,157 @@
         "title": "AgentConfigResponse",
         "description": "Agent configuration; nothing of it is hard-coded in the agent (ТЗ п. 11, п. 20)."
       },
+      "AgentReleaseCreate": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+            "title": "Version",
+            "description": "Версия MSI: major.minor.patch",
+            "examples": [
+              "0.2.0"
+            ]
+          },
+          "channel": {
+            "$ref": "#/components/schemas/AgentChannel"
+          },
+          "download_url": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Download Url",
+            "examples": [
+              "https://monitor.example.kz/downloads/VKO-Agent-0.2.0.msi"
+            ]
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "description": "SHA-256 файла MSI, hex в нижнем регистре"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Что изменилось"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "channel",
+          "download_url",
+          "sha256"
+        ],
+        "title": "AgentReleaseCreate",
+        "description": "New agent release; ``released_at`` is set by the server."
+      },
+      "AgentReleaseDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "examples": [
+              "0.2.0"
+            ]
+          },
+          "channel": {
+            "$ref": "#/components/schemas/AgentChannel"
+          },
+          "download_url": {
+            "type": "string",
+            "title": "Download Url"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Что изменилось"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "false — релиз отозван и агентам не выдаётся"
+          },
+          "released_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Released At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "version",
+          "channel",
+          "download_url",
+          "sha256",
+          "notes",
+          "is_active",
+          "released_at"
+        ],
+        "title": "AgentReleaseDetail",
+        "description": "Published agent release."
+      },
+      "AgentReleaseDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AgentReleaseDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "AgentReleaseDetailPage",
+        "description": "Page of the agent releases, newest first."
+      },
       "AgentReleaseResponse": {
         "properties": {
           "version": {
@@ -3890,6 +6395,21 @@
         ],
         "title": "AgentReleaseResponse",
         "description": "Latest agent release for self-update (plan.md §4.6)."
+      },
+      "AgentReleaseUpdate": {
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/AgentChannel",
+            "title": "Channel"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "AgentReleaseUpdate",
+        "description": "Promotion to another channel or withdrawal of a release."
       },
       "AnalyticsGranularity": {
         "type": "string",
@@ -4826,12 +7346,315 @@
         "title": "AppealUpdate",
         "description": "Status change or comment by the provider or a user; at least one of them."
       },
+      "AuditAction": {
+        "type": "string",
+        "enum": [
+          "login_success",
+          "login_failure",
+          "create",
+          "update",
+          "block",
+          "unblock",
+          "password_reset",
+          "status_change",
+          "export",
+          "transfer_error"
+        ]
+      },
+      "AuditEntityType": {
+        "type": "string",
+        "enum": [
+          "user",
+          "school",
+          "line",
+          "school_contact",
+          "device",
+          "enrollment_code",
+          "region",
+          "provider",
+          "connection_type",
+          "threshold_profile",
+          "schedule",
+          "setting",
+          "incident_rule",
+          "agent_release",
+          "incident",
+          "appeal",
+          "export"
+        ]
+      },
+      "AuditLogListItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Момент действия"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id",
+            "description": "Пусто — запрос агента или вход с неизвестным e-mail"
+          },
+          "user_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Email",
+            "description": "E-mail пользователя на момент действия; при login_failure — введённый"
+          },
+          "action": {
+            "$ref": "#/components/schemas/AuditAction"
+          },
+          "entity_type": {
+            "$ref": "#/components/schemas/AuditEntityType",
+            "description": "login_* — user, transfer_error — device, export — export"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id",
+            "description": "Пусто, если запись не определена: неизвестный e-mail или токен устройства"
+          },
+          "changes": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changes",
+            "description": "Изменённые поля {поле: {old, new}}; пароли, токены и коды не пишутся",
+            "examples": [
+              {
+                "is_active": {
+                  "new": false,
+                  "old": true
+                }
+              }
+            ]
+          },
+          "error_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Type",
+            "description": "type ошибки problem+json для login_failure и transfer_error",
+            "examples": [
+              "invalid_credentials"
+            ]
+          },
+          "ip": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "ipvanyaddress"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip",
+            "description": "IP-адрес клиента"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "user_id",
+          "user_email",
+          "action",
+          "entity_type",
+          "entity_id",
+          "changes",
+          "error_type",
+          "ip"
+        ],
+        "title": "AuditLogListItem",
+        "description": "One audit record: who, when, what (T-39)."
+      },
+      "AuditLogListItemPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditLogListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "AuditLogListItemPage",
+        "description": "Page of the audit log, newest first."
+      },
       "ConnectionStatus": {
         "type": "string",
         "enum": [
           "online",
           "offline"
         ]
+      },
+      "ConnectionTypeCreate": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Code",
+            "description": "Постоянный код: строчная латиница, цифры, «_»",
+            "examples": [
+              "fiber"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "examples": [
+              "Оптоволокно"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "ConnectionTypeCreate",
+        "description": "New line technology (ТЗ п. 14, п. 20)."
+      },
+      "ConnectionTypeDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "ConnectionTypeDetail",
+        "description": "Line technology: fiber, ADSL, radio and so on."
+      },
+      "ConnectionTypeDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionTypeDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "ConnectionTypeDetailPage",
+        "description": "Page of the connection types, by name."
+      },
+      "ConnectionTypeUpdate": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "title": "ConnectionTypeUpdate",
+        "description": "Changes of a connection type."
       },
       "ContractCompliance": {
         "properties": {
@@ -5654,6 +8477,77 @@
           "failed"
         ]
       },
+      "GeoJsonMultiPolygon": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "MultiPolygon",
+            "title": "Type"
+          },
+          "coordinates": {
+            "items": {
+              "items": {
+                "items": {
+                  "prefixItems": [
+                    {
+                      "type": "number",
+                      "maximum": 180.0,
+                      "minimum": -180.0
+                    },
+                    {
+                      "type": "number",
+                      "maximum": 90.0,
+                      "minimum": -90.0
+                    }
+                  ],
+                  "type": "array",
+                  "maxItems": 2,
+                  "minItems": 2
+                },
+                "type": "array",
+                "minItems": 4
+              },
+              "type": "array",
+              "minItems": 1
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Coordinates",
+            "description": "Полигоны → кольца (первое — внешняя граница, остальные — вырезы) → точки [долгота, широта]; кольцо замкнуто: первая точка равна последней",
+            "examples": [
+              [
+                [
+                  [
+                    [
+                      82.5,
+                      49.9
+                    ],
+                    [
+                      82.7,
+                      49.9
+                    ],
+                    [
+                      82.7,
+                      50.0
+                    ],
+                    [
+                      82.5,
+                      49.9
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "title": "GeoJsonMultiPolygon",
+        "description": "GeoJSON MultiPolygon geometry (RFC 7946 §3.1.7) in WGS 84: the boundary of a region."
+      },
       "GeoJsonPoint": {
         "properties": {
           "type": {
@@ -6386,6 +9280,213 @@
           "packet_loss_pct",
           "no_connection"
         ]
+      },
+      "IncidentRuleCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "examples": [
+              "Download ниже порога"
+            ]
+          },
+          "metric": {
+            "$ref": "#/components/schemas/IncidentMetric"
+          },
+          "consecutive_violations": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consecutive Violations",
+            "description": "N нарушений подряд для инцидента",
+            "examples": [
+              3
+            ]
+          },
+          "duration_min": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Min",
+            "description": "Длительность нарушения для инцидента, мин",
+            "examples": [
+              30
+            ]
+          },
+          "recovery_normal_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Recovery Normal Count",
+            "description": "M нормальных подряд для восстановления (restored_at)",
+            "examples": [
+              2
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "metric",
+          "recovery_normal_count"
+        ],
+        "title": "IncidentRuleCreate",
+        "description": "New rule: at least one opening condition, N in a row or T minutes."
+      },
+      "IncidentRuleDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/IncidentMetric"
+          },
+          "consecutive_violations": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consecutive Violations",
+            "description": "N нарушений подряд для инцидента"
+          },
+          "duration_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Min",
+            "description": "Длительность нарушения для инцидента, мин"
+          },
+          "recovery_normal_count": {
+            "type": "integer",
+            "title": "Recovery Normal Count",
+            "description": "M нормальных подряд для восстановления (restored_at)"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "false — правило не применяется, его инциденты остаются"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "metric",
+          "consecutive_violations",
+          "duration_min",
+          "recovery_normal_count",
+          "is_active"
+        ],
+        "title": "IncidentRuleDetail",
+        "description": "Incident rule as the detection of T-40 applies it."
+      },
+      "IncidentRuleDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IncidentRuleDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "IncidentRuleDetailPage",
+        "description": "Page of the incident rules."
+      },
+      "IncidentRuleUpdate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "consecutive_violations": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consecutive Violations"
+          },
+          "duration_min": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Min"
+          },
+          "recovery_normal_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Recovery Normal Count"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "IncidentRuleUpdate",
+        "description": "Changes of a rule; ``metric`` is fixed: another metric is a new rule."
       },
       "IncidentStatus": {
         "type": "string",
@@ -7612,6 +10713,133 @@
         "title": "Problem",
         "description": "Error of any endpoint; clients branch on ``type``, ``detail`` is for a human."
       },
+      "ProviderCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "examples": [
+              "ТОО «Провайдер ВКО»"
+            ]
+          },
+          "appeals_email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 254
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appeals Email",
+            "description": "Служебный адрес поставщика для обращений (T-48); не личный e-mail",
+            "examples": [
+              "support@example.kz"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ProviderCreate",
+        "description": "New internet service provider (ТЗ п. 14, п. 20)."
+      },
+      "ProviderDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "appeals_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appeals Email",
+            "description": "Служебный адрес поставщика для обращений"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "appeals_email"
+        ],
+        "title": "ProviderDetail",
+        "description": "Internet service provider; the scope of the Provider role (ADR-008)."
+      },
+      "ProviderDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "ProviderDetailPage",
+        "description": "Page of the providers, by name."
+      },
+      "ProviderUpdate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "appeals_email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 254
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appeals Email"
+          }
+        },
+        "type": "object",
+        "title": "ProviderUpdate",
+        "description": "Changes of a provider."
+      },
       "QualityStatus": {
         "type": "string",
         "enum": [
@@ -7619,6 +10847,459 @@
           "unstable",
           "critical",
           "offline"
+        ]
+      },
+      "RegionCreate": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 1,
+            "pattern": "^[A-Z0-9]+$",
+            "title": "Code",
+            "description": "Латинские заглавные и цифры; часть School ID VKO-<код>-<номер>",
+            "examples": [
+              "UKG"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "examples": [
+              "Усть-Каменогорск"
+            ]
+          },
+          "boundary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeoJsonMultiPolygon"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "RegionCreate",
+        "description": "New district or city of VKO (ТЗ п. 20); the boundary is usually loaded by T-04."
+      },
+      "RegionDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Часть School ID VKO-<код>-<номер>"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "boundary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeoJsonMultiPolygon"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null — граница не загружена"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "boundary"
+        ],
+        "title": "RegionDetail",
+        "description": "District or city of VKO with its boundary."
+      },
+      "RegionListItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "has_boundary": {
+            "type": "boolean",
+            "title": "Has Boundary",
+            "description": "Граница района или города загружена"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "has_boundary"
+        ],
+        "title": "RegionListItem",
+        "description": "Row of the region reference; the boundary itself is not listed."
+      },
+      "RegionListItemPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RegionListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "RegionListItemPage",
+        "description": "Page of the regions, by name."
+      },
+      "RegionUpdate": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 1,
+            "pattern": "^[A-Z0-9]+$",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "boundary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeoJsonMultiPolygon"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "RegionUpdate",
+        "description": "Changes of a region; ``boundary = null`` removes the boundary."
+      },
+      "RoleListItem": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions",
+            "description": "Коды прав роли для require(permission); матрица — T-20",
+            "examples": [
+              [
+                "schools:read",
+                "incidents:read",
+                "appeals:create"
+              ]
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "permissions"
+        ],
+        "title": "RoleListItem",
+        "description": "One of the five roles of ТЗ п. 16 with its permission codes (ADR-008)."
+      },
+      "RoleListItemPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RoleListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "RoleListItemPage",
+        "description": "Page of the roles."
+      },
+      "ScheduleCreate": {
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/ScheduleScope"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Только и обязательно при scope=district"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Только и обязательно при scope=school"
+          },
+          "slots": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleSlot"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 3,
+            "title": "Slots",
+            "description": "3–5 непересекающихся слотов, местное время Asia/Almaty; хранятся по start",
+            "examples": [
+              [
+                {
+                  "end": "09:00:00",
+                  "start": "08:30:00"
+                },
+                {
+                  "end": "11:30:00",
+                  "start": "11:00:00"
+                },
+                {
+                  "end": "14:00:00",
+                  "start": "13:30:00"
+                },
+                {
+                  "end": "16:30:00",
+                  "start": "16:00:00"
+                }
+              ]
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope",
+          "slots"
+        ],
+        "title": "ScheduleCreate",
+        "description": "New schedule of a district or a school; agents get it with the next configuration."
+      },
+      "ScheduleDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ScheduleScope"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Только при scope=district"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Только при scope=school"
+          },
+          "school_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Name"
+          },
+          "slots": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleSlot"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 3,
+            "title": "Slots",
+            "description": "3–5 непересекающихся слотов, местное время Asia/Almaty; хранятся по start",
+            "examples": [
+              [
+                {
+                  "end": "09:00:00",
+                  "start": "08:30:00"
+                },
+                {
+                  "end": "11:30:00",
+                  "start": "11:00:00"
+                },
+                {
+                  "end": "14:00:00",
+                  "start": "13:30:00"
+                },
+                {
+                  "end": "16:30:00",
+                  "start": "16:00:00"
+                }
+              ]
+            ]
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "Отключённое расписание не применяется: действует следующее по цепочке"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "scope",
+          "region_id",
+          "region_name",
+          "school_id",
+          "school_name",
+          "slots",
+          "is_active"
+        ],
+        "title": "ScheduleDetail",
+        "description": "Measurement schedule with the names of its target."
+      },
+      "ScheduleDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "ScheduleDetailPage",
+        "description": "Page of measurement schedules."
+      },
+      "ScheduleScope": {
+        "type": "string",
+        "enum": [
+          "global",
+          "district",
+          "school"
         ]
       },
       "ScheduleSlot": {
@@ -7647,6 +11328,47 @@
         ],
         "title": "ScheduleSlot",
         "description": "Measurement window; the agent picks a random moment inside it (plan.md §4.2)."
+      },
+      "ScheduleUpdate": {
+        "properties": {
+          "slots": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleSlot"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 3,
+            "title": "Slots",
+            "description": "3–5 непересекающихся слотов, местное время Asia/Almaty; хранятся по start",
+            "examples": [
+              [
+                {
+                  "end": "09:00:00",
+                  "start": "08:30:00"
+                },
+                {
+                  "end": "11:30:00",
+                  "start": "11:00:00"
+                },
+                {
+                  "end": "14:00:00",
+                  "start": "13:30:00"
+                },
+                {
+                  "end": "16:30:00",
+                  "start": "16:00:00"
+                }
+              ]
+            ]
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "ScheduleUpdate",
+        "description": "Changes of a schedule; its scope and target never change, slots are replaced as a whole."
       },
       "SchoolContactCreate": {
         "properties": {
@@ -8502,6 +12224,206 @@
         "title": "SchoolUpdate",
         "description": "Changes of a school; ``is_active = false`` deactivates it and keeps its history."
       },
+      "SettingsDetail": {
+        "properties": {
+          "speedtest": {
+            "$ref": "#/components/schemas/SpeedtestServers",
+            "description": "Сервер замеров: LibreSpeed и резервный ndt7 (ADR-012)"
+          },
+          "heartbeat_interval_s": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Heartbeat Interval S",
+            "examples": [
+              300
+            ]
+          },
+          "config_refresh_interval_s": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Config Refresh Interval S",
+            "examples": [
+              900
+            ]
+          },
+          "offline_after_s": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Offline After S",
+            "description": "Нет heartbeat дольше — offline в рабочие часы, no_data вне их (ADR-014)",
+            "examples": [
+              900
+            ]
+          },
+          "school_status_measurements_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "School Status Measurements Count",
+            "description": "Сколько последних замеров основной линии дают статус школы (ADR-004)",
+            "examples": [
+              3
+            ]
+          },
+          "default_working_hours": {
+            "$ref": "#/components/schemas/WorkingHours",
+            "description": "С ними создаётся школа; рабочие часы существующих школ не меняются (ADR-014)"
+          },
+          "availability_min_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Availability Min Pct",
+            "description": "Порог доступности за период (п. 11)",
+            "examples": [
+              99
+            ]
+          },
+          "contract_mismatch_threshold_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Contract Mismatch Threshold Pct",
+            "description": "Устойчивое несоответствие: доля замеров основной линии ниже договора за окно больше этой (п. 14, T-29)",
+            "examples": [
+              50
+            ]
+          },
+          "contract_mismatch_window_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Contract Mismatch Window Days",
+            "examples": [
+              7
+            ]
+          },
+          "enrollment_code_ttl_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Enrollment Code Ttl Days",
+            "description": "Срок действия кода установки агента (ADR-005)",
+            "examples": [
+              7
+            ]
+          },
+          "export_sync_max_rows": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Export Sync Max Rows",
+            "description": "Выгрузка больше стольких строк и любой PDF формируются в фоне (T-33)",
+            "examples": [
+              10000
+            ]
+          },
+          "export_retention_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Export Retention Days",
+            "description": "Срок хранения файла выгрузки (T-33)",
+            "examples": [
+              7
+            ]
+          },
+          "incident_auto_close_hours": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Incident Auto Close Hours",
+            "description": "Инцидент в resolved переходит в closed через столько часов (ADR-007)",
+            "examples": [
+              24
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "speedtest",
+          "heartbeat_interval_s",
+          "config_refresh_interval_s",
+          "offline_after_s",
+          "school_status_measurements_count",
+          "default_working_hours",
+          "availability_min_pct",
+          "contract_mismatch_threshold_pct",
+          "contract_mismatch_window_days",
+          "enrollment_code_ttl_days",
+          "export_sync_max_rows",
+          "export_retention_days",
+          "incident_auto_close_hours"
+        ],
+        "title": "SettingsDetail",
+        "description": "System-wide values used by the agent configuration, statuses, reports and exports."
+      },
+      "SettingsUpdate": {
+        "properties": {
+          "speedtest": {
+            "$ref": "#/components/schemas/SpeedtestServers",
+            "title": "Speedtest"
+          },
+          "heartbeat_interval_s": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Heartbeat Interval S"
+          },
+          "config_refresh_interval_s": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Config Refresh Interval S"
+          },
+          "offline_after_s": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Offline After S"
+          },
+          "school_status_measurements_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "School Status Measurements Count"
+          },
+          "default_working_hours": {
+            "$ref": "#/components/schemas/WorkingHours",
+            "title": "Default Working Hours"
+          },
+          "availability_min_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Availability Min Pct"
+          },
+          "contract_mismatch_threshold_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Contract Mismatch Threshold Pct"
+          },
+          "contract_mismatch_window_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Contract Mismatch Window Days"
+          },
+          "enrollment_code_ttl_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Enrollment Code Ttl Days"
+          },
+          "export_sync_max_rows": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Export Sync Max Rows"
+          },
+          "export_retention_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Export Retention Days"
+          },
+          "incident_auto_close_hours": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Incident Auto Close Hours"
+          }
+        },
+        "type": "object",
+        "title": "SettingsUpdate",
+        "description": "Changes of the settings; every column is NOT NULL."
+      },
       "SpeedtestServers": {
         "properties": {
           "librespeed_url": {
@@ -8529,6 +12451,249 @@
         ],
         "title": "SpeedtestServers",
         "description": "Measurement servers: LibreSpeed is the main one, ndt7 the fallback (ADR-012)."
+      },
+      "ThresholdProfileCreate": {
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/ThresholdProfileScope"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Только и обязательно при scope=district"
+          },
+          "line_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Id",
+            "description": "Только и обязательно при scope=line"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/ThresholdValues"
+          },
+          "unstable_deviation_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Unstable Deviation Pct",
+            "description": "Наибольшее отклонение одного показателя от порога, % от порога, при котором замер — unstable; больше или нарушено несколько показателей — critical (ADR-004)",
+            "examples": [
+              30
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope",
+          "thresholds",
+          "unstable_deviation_pct"
+        ],
+        "title": "ThresholdProfileCreate",
+        "description": "New profile of a district or a line; it is active from the next measurement."
+      },
+      "ThresholdProfileDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ThresholdProfileScope"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Только при scope=district"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
+          },
+          "line_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Id",
+            "description": "Только при scope=line"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Школа линии; только при scope=line"
+          },
+          "school_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Name"
+          },
+          "provider_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Name",
+            "description": "Поставщик линии; только при scope=line"
+          },
+          "line_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LineStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только при scope=line"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/ThresholdValues"
+          },
+          "unstable_deviation_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Unstable Deviation Pct",
+            "description": "Наибольшее отклонение одного показателя от порога, % от порога, при котором замер — unstable; больше или нарушено несколько показателей — critical (ADR-004)",
+            "examples": [
+              30
+            ]
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "Отключённый профиль не применяется: действует следующий по цепочке"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "scope",
+          "region_id",
+          "region_name",
+          "line_id",
+          "school_id",
+          "school_name",
+          "provider_name",
+          "line_status",
+          "thresholds",
+          "unstable_deviation_pct",
+          "is_active"
+        ],
+        "title": "ThresholdProfileDetail",
+        "description": "Threshold profile with the names of its target."
+      },
+      "ThresholdProfileDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ThresholdProfileDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "ThresholdProfileDetailPage",
+        "description": "Page of threshold profiles."
+      },
+      "ThresholdProfileScope": {
+        "type": "string",
+        "enum": [
+          "global",
+          "district",
+          "line"
+        ]
+      },
+      "ThresholdProfileUpdate": {
+        "properties": {
+          "thresholds": {
+            "$ref": "#/components/schemas/ThresholdValues",
+            "title": "Thresholds"
+          },
+          "unstable_deviation_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Unstable Deviation Pct"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "ThresholdProfileUpdate",
+        "description": "Changes of a profile; its scope and target never change."
       },
       "ThresholdValues": {
         "properties": {
@@ -8584,6 +12749,156 @@
         ],
         "title": "ThresholdValues",
         "description": "Limits of the «Норма» status; base values of ТЗ п. 11 are the examples."
+      },
+      "UserCreate": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "pattern": "^[^@\\s]+@[^@\\s]+$",
+            "title": "Email",
+            "description": "Логин",
+            "examples": [
+              "rayon@example.kz"
+            ]
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Район или город (regions); только и обязательно для district"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id",
+            "description": "Только и обязательно для provider"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Только и обязательно для school"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "format": "password",
+            "title": "Password",
+            "description": "Начальный пароль; хранится только хэшем",
+            "writeOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "full_name",
+          "role",
+          "password"
+        ],
+        "title": "UserCreate",
+        "description": "New panel user with a role, its scope and an initial password (T-38)."
+      },
+      "UserDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/UserScope"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "false — учётная запись заблокирована"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "role",
+          "scope",
+          "is_active"
+        ],
+        "title": "UserDetail",
+        "description": "Panel user in the administration list; the password is never returned."
+      },
+      "UserDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UserDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "UserDetailPage",
+        "description": "Page of the users."
       },
       "UserRole": {
         "type": "string",
@@ -8651,6 +12966,76 @@
         ],
         "title": "UserScope",
         "description": "Visibility scope of a user (ADR-008); the profile menu shows the district (DESIGN.md §3.5).\n\nШкола — ``school_id``, Район/город — ``region_id``, Провайдер — ``provider_id``;\nОбласть and Администратор see the whole oblast, so every field is null."
+      },
+      "UserUpdate": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "pattern": "^[^@\\s]+@[^@\\s]+$",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole",
+            "title": "Role"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "false — блокировка: вход и обновление токена запрещены, история остаётся"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "format": "password",
+            "title": "Password",
+            "description": "Новый пароль: сброс администратором",
+            "writeOnly": true
+          }
+        },
+        "type": "object",
+        "title": "UserUpdate",
+        "description": "Changes of a user: data, role with scope, blocking, password reset.\n\n``role`` and the scope ids travel together: with ``role`` the scope is replaced by the ids of\nthis body (absent ids are cleared); a scope id without ``role`` is a 422."
       },
       "Weekday": {
         "type": "string",
