@@ -41,6 +41,13 @@ CREATE TABLE IF NOT EXISTS measurements (
 	rejected         TEXT              -- why the server will never accept the record (422); NULL while it is sent
 );
 CREATE INDEX IF NOT EXISTS measurements_measured_at ON measurements (measured_at, id);
+
+CREATE TABLE IF NOT EXISTS outages (
+	id             INTEGER PRIMARY KEY AUTOINCREMENT,
+	started_at     INTEGER NOT NULL UNIQUE, -- unix milliseconds; the idempotency key of POST /api/outages
+	last_failed_at INTEGER NOT NULL,        -- the last failed check of an open outage
+	ended_at       INTEGER                  -- NULL while the outage goes on
+);
 `
 
 // Queue is the local measurement queue. It is safe for concurrent use.

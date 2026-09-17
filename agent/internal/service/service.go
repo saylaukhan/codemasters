@@ -126,7 +126,7 @@ func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
 		client := api.New(cfg.ServerURL, token)
 		state := &stateFile{dir: cfg.DataDir, st: st, logger: logger}
 		// wake asks the queue to resend at once: a new measurement, a restored
-		// connection after a network change (ADR-006).
+		// connection after a heartbeat or a network change (ADR-006).
 		wake := make(chan struct{}, 1)
 		settings := &Settings{}
 
@@ -134,6 +134,18 @@ func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
 			state.update(func(s *State) { s.QueueSize = pending })
 		})
 		go watchNetwork(ctx, cfg.ServerURL, wake, logger)
+		StartHeartbeat(ctx, HeartbeatOptions{
+			Client: client,
+			Queue:  q,
+			// The interval is read before every heartbeat: a new value from
+			// GET /api/agent/config applies without a restart (T-13), and
+			// zero (no configuration yet) falls back to the default.
+			Interval: func() time.Duration {
+				return time.Duration(settings.Current().HeartbeatIntervalS) * time.Second
+			},
+			Wake:   wake,
+			Logger: logger,
+		})
 
 		measure := measureFunc(cfg, client, q, settings, state, wake, logger)
 		var sched *scheduler.Scheduler
