@@ -72,6 +72,16 @@ func TestUnknownFlagIsUsageError(t *testing.T) {
 	}
 }
 
+func TestSpeedWithoutServersIsUsageError(t *testing.T) {
+	code, _, stderr := runCLI(t, "speed")
+	if code != exitUsage {
+		t.Fatalf("speed without servers: exit code = %d, want %d", code, exitUsage)
+	}
+	if !strings.Contains(stderr, "--librespeed") {
+		t.Fatalf("speed without servers: stderr %q does not name the flag", stderr)
+	}
+}
+
 func TestRunWithoutConfigIsUsageError(t *testing.T) {
 	code, _, stderr := runCLI(t, "run")
 	if code != exitUsage {

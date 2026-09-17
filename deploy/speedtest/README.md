@@ -26,6 +26,8 @@ curl -s -m 3 -o /dev/null -w '%{http_code}\n' \
   -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
   -H 'Sec-WebSocket-Protocol: net.measurementlab.ndt.v7' \
   http://localhost:8081/ndt/v7/download
+# Замер агентом (T-10): LibreSpeed, а при его отказе — ndt7; метод и сервер — в выводе
+cd agent && go run ./cmd/vko-agent speed --librespeed http://localhost:8080 --ndt7 ws://localhost:8081
 ```
 
 ## Ограничения
