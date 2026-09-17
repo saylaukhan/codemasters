@@ -30,6 +30,8 @@ class MeasurementRollup:
     measurements_count: Mapped[int]
     # Measurements that were not «Норма»: «Нестабильно», «Критично» or «Нет соединения».
     problem_count: Mapped[int]
+    # Measurements slower than the contract promises; «нечего сравнивать» is not one (ТЗ п. 14).
+    below_contract_count: Mapped[int]
     avg_download_mbps: Mapped[float | None]
     min_download_mbps: Mapped[float | None]
     max_download_mbps: Mapped[float | None]
