@@ -1,7 +1,7 @@
 // Command vko-agent is the CLI of the school internet monitoring agent.
 //
-// Subcommands: install, uninstall, run, status, probe, speed, measure, version. The service and the
-// config live in internal/service; the measurement loop arrives in T-08+.
+// Subcommands: install, uninstall, run, status, probe, speed, measure, version. The service, its
+// loop (schedule, measurements, resend) and the config live in internal/service.
 package main
 
 import (

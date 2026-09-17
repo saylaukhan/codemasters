@@ -3,8 +3,10 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -52,4 +54,24 @@ func WriteState(dataDir string, st State) error {
 		return err
 	}
 	return os.Rename(tmp, StatePath(dataDir))
+}
+
+// stateFile serializes the state updates of the goroutines of the running
+// agent: the queue writes QueueSize, the scheduler LastMeasurementAt.
+type stateFile struct {
+	mu     sync.Mutex
+	dir    string
+	st     State
+	logger *slog.Logger
+}
+
+// update applies mutate to the state and writes the file; a failed write is
+// logged and does not stop the agent.
+func (f *stateFile) update(mutate func(*State)) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	mutate(&f.st)
+	if err := WriteState(f.dir, f.st); err != nil {
+		f.logger.Warn("запись состояния", "err", err)
+	}
 }

@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 )
 
@@ -46,13 +47,19 @@ type Options struct {
 	Now func() time.Time
 }
 
-// Scheduler starts measurements by the schedule. Not safe for concurrent use.
+// Scheduler starts measurements by the schedule. Only SetSchedule may be
+// called from another goroutine; everything else belongs to Run.
 type Scheduler struct {
 	opts    Options
 	catchUp time.Time // earliest measurement after the service start or the last wake
 	last    time.Time
 	waitEnd time.Time // when the current wait should end by the wall clock
 	planned time.Time // the next moment already logged
+
+	mu    sync.Mutex
+	sched Schedule
+	// update tells Run that the schedule changed, so it stops waiting at once.
+	update chan struct{}
 }
 
 // New creates a scheduler that counts the service as started now.
@@ -63,7 +70,7 @@ func New(opts Options) *Scheduler {
 	if opts.Logger == nil {
 		opts.Logger = slog.Default()
 	}
-	s := &Scheduler{opts: opts, last: opts.Last}
+	s := &Scheduler{opts: opts, last: opts.Last, sched: opts.Schedule, update: make(chan struct{}, 1)}
 	now := opts.Now()
 	if s.last.After(now) {
 		s.last = now // the clock went back: do not skip slots until it catches up
@@ -80,9 +87,32 @@ func (s *Scheduler) Run(ctx context.Context) {
 		case <-ctx.Done():
 			timer.Stop()
 			return
+		case <-s.update:
+			timer.Stop()
 		case <-timer.C:
 		}
 	}
+}
+
+// SetSchedule replaces the schedule of the running agent: a schedule changed
+// in the admin panel applies without reinstalling the service (ТЗ п. 20,
+// T-13). Safe to call from another goroutine; Run picks it up at once, and a
+// slot already measured today is not measured again.
+func (s *Scheduler) SetSchedule(sched Schedule) {
+	s.mu.Lock()
+	s.sched = sched
+	s.mu.Unlock()
+	select {
+	case s.update <- struct{}{}:
+	default: // a change is already pending
+	}
+}
+
+// schedule returns the schedule in force now.
+func (s *Scheduler) schedule() Schedule {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sched
 }
 
 // start treats now as a start of the computer: the next measurement is not
@@ -127,7 +157,7 @@ func (s *Scheduler) step(ctx context.Context) time.Duration {
 // started at or after its start. Of the slots of today that have begun, only
 // the latest can still be measured: earlier missed slots are not caught up.
 func (s *Scheduler) next(now time.Time) (Run, bool) {
-	sched := s.opts.Schedule
+	sched := s.schedule()
 	// Every day has a slot, so today and tomorrow always hold one that is not done
 	// unless the last measurement is in the future.
 	for d := range 2 {
