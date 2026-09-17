@@ -127,7 +127,7 @@ testcontainers создаёт цепочку школа → линия → то�
 `{items, total, page, page_size}`.
 
 ### T-04 · GeoJSON районов ВКО и seed тестовых школ · S · MVP
-**Статус:** todo
+**Статус:** done (2026-09-17)
 **Зачем:** п. 13 (карта ВКО, школа по School ID); этап 0 плана («GeoJSON ВКО, тестовые данные
 школ»); ADR-003.
 **Где:** `make seed`: справочники (`regions` с геометрией PostGIS, `providers`,
