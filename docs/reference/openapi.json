@@ -125,6 +125,7 @@
           "agent"
         ],
         "summary": "Сигнал «агент жив»",
+        "description": "Record that the agent is alive and remember the version it runs (ТЗ п. 3, ADR-014).\n\nThe moment is the clock of the database, not ``sent_at`` of the computer: the status of a\nschool and its availability are counted against one clock, and a machine whose time is off\nmust not look silent or alive by mistake. ``sent_at`` stays in the contract as what the\nagent believes the time is.",
         "operationId": "send_heartbeat",
         "requestBody": {
           "content": {
@@ -262,7 +263,7 @@
             "description": "Конфигурация не изменилась: If-None-Match совпал с ETag"
           },
           "503": {
-            "description": "Система не настроена: нет системных настроек, расписания или профиля порогов — выполните make seed и миграции",
+            "description": "Система не настроена: нет системных настроек, расписания или профиля порогов — примените миграции и выполните make seed",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -531,6 +532,7 @@
           "agent"
         ],
         "summary": "Простой, зафиксированный агентом",
+        "description": "Store a period the agent spent without connection (ТЗ п. 2, ADR-006).\n\nThe line comes from the monitoring point of the device; the idempotency key is the device\nand ``started_at``, so a resent outage gets 409 instead of a second row — for the agent\nboth answers mean «delete from the queue».",
         "operationId": "create_outage",
         "requestBody": {
           "content": {

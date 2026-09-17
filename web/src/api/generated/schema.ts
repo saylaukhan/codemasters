@@ -56,7 +56,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Сигнал «агент жив» */
+        /**
+         * Сигнал «агент жив»
+         * @description Record that the agent is alive and remember the version it runs (ТЗ п. 3, ADR-014).
+         *
+         *     The moment is the clock of the database, not ``sent_at`` of the computer: the status of a
+         *     school and its availability are counted against one clock, and a machine whose time is off
+         *     must not look silent or alive by mistake. ``sent_at`` stays in the contract as what the
+         *     agent believes the time is.
+         */
         post: operations["send_heartbeat"];
         delete?: never;
         options?: never;
@@ -160,7 +168,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Простой, зафиксированный агентом */
+        /**
+         * Простой, зафиксированный агентом
+         * @description Store a period the agent spent without connection (ТЗ п. 2, ADR-006).
+         *
+         *     The line comes from the monitoring point of the device; the idempotency key is the device
+         *     and ``started_at``, so a resent outage gets 409 instead of a second row — for the agent
+         *     both answers mean «delete from the queue».
+         */
         post: operations["create_outage"];
         delete?: never;
         options?: never;
@@ -4418,7 +4433,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ValidationProblem"];
                 };
             };
-            /** @description Система не настроена: нет системных настроек, расписания или профиля порогов — выполните make seed и миграции */
+            /** @description Система не настроена: нет системных настроек, расписания или профиля порогов — примените миграции и выполните make seed */
             503: {
                 headers: {
                     [name: string]: unknown;

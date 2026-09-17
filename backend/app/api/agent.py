@@ -28,7 +28,7 @@ from app.core.security import (
     parse_enrollment_code,
     verify_secret,
 )
-from app.models import Device, EnrollmentCode, Measurement, MonitoringPoint
+from app.models import Device, EnrollmentCode, Heartbeat, Measurement, MonitoringPoint, Outage
 from app.schemas.agent import (
     AgentConfigResponse,
     AgentReleaseResponse,
@@ -45,12 +45,8 @@ from app.schemas.agent import (
     WhoAmIResponse,
 )
 from app.schemas.errors import Problem
-from app.services.agent_config import (
-    NOT_CONFIGURED_DETAIL,
-    agent_config,
-    config_etag,
-    etag_matches,
-)
+from app.services.agent_config import agent_config, config_etag, etag_matches
+from app.services.settings import NOT_CONFIGURED_DETAIL
 
 # Every endpoint of the agent but registration answers these two (ADR-005).
 DEVICE_RESPONSES: dict[int | str, dict[str, Any]] = {
@@ -65,6 +61,7 @@ CODE_NOT_FOUND = "Код установки не найден"
 EXTERNAL_IP_UNKNOWN = "Сервер не определил внешний IP запроса"
 BLOCKED = "Устройство заблокировано администратором"
 DUPLICATE_MEASUREMENT = "Замер с этим measurement_uuid уже принят"
+DUPLICATE_OUTAGE = "Простой с этим started_at уже принят"
 
 
 @router.post(
@@ -199,8 +196,31 @@ async def device_to_register(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Сигнал «агент жив»",
 )
-async def send_heartbeat(body: HeartbeatRequest) -> None:
-    raise not_implemented("T-16")
+async def send_heartbeat(
+    body: HeartbeatRequest,
+    device: Annotated[Device, Depends(current_device)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> None:
+    """Record that the agent is alive and remember the version it runs (ТЗ п. 3, ADR-014).
+
+    The moment is the clock of the database, not ``sent_at`` of the computer: the status of a
+    school and its availability are counted against one clock, and a machine whose time is off
+    must not look silent or alive by mistake. ``sent_at`` stays in the contract as what the
+    agent believes the time is.
+    """
+    now = func.now()
+    await session.execute(
+        insert(Heartbeat)
+        .values(device_id=device.id, ts=now, online=True)
+        # Two heartbeats inside one transaction timestamp are the same signal, not two.
+        .on_conflict_do_nothing(index_elements=["device_id", "ts"])
+    )
+    await session.execute(
+        update(Device)
+        .where(Device.id == device.id)
+        .values(last_seen_at=now, agent_version=body.agent_version)
+    )
+    await session.commit()
 
 
 @device_router.get(
@@ -414,8 +434,33 @@ def measurement_row(device_id: int, line_id: int, item: MeasurementCreate) -> di
         },
     },
 )
-async def create_outage(body: OutageCreate) -> OutageAccepted:
-    raise not_implemented("T-16")
+async def create_outage(
+    body: OutageCreate,
+    device: Annotated[Device, Depends(current_device)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> OutageAccepted:
+    """Store a period the agent spent without connection (ТЗ п. 2, ADR-006).
+
+    The line comes from the monitoring point of the device; the idempotency key is the device
+    and ``started_at``, so a resent outage gets 409 instead of a second row — for the agent
+    both answers mean «delete from the queue».
+    """
+    line_id = await measured_line(session, device)
+    outage_id = await session.scalar(
+        insert(Outage)
+        .values(
+            device_id=device.id,
+            line_id=line_id,
+            started_at=body.started_at,
+            ended_at=body.ended_at,
+        )
+        .on_conflict_do_nothing(index_elements=["device_id", "started_at"])
+        .returning(Outage.id)
+    )
+    if outage_id is None:
+        raise ApiError(409, "duplicate_outage", DUPLICATE_OUTAGE)
+    await session.commit()
+    return OutageAccepted(id=outage_id)
 
 
 @device_router.get(

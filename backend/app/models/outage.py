@@ -13,7 +13,8 @@ class Outage(TimestampMixin, Base):
 
     __tablename__ = "outages"
     __table_args__ = (
-        Index("ix_outages_device_id_started_at", "device_id", "started_at"),
+        # Idempotency key of a resent outage; it covers the foreign key too (ADR-006, T-16).
+        Index("uq_outages_device_id_started_at", "device_id", "started_at", unique=True),
         Index("ix_outages_line_id_started_at", "line_id", "started_at"),
         CheckConstraint("ended_at IS NULL OR ended_at >= started_at", name="period"),
     )

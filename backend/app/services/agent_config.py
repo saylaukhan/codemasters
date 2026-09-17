@@ -13,24 +13,10 @@ from sqlalchemy import Select, case, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
-from app.models import (
-    AgentRelease,
-    Device,
-    MonitoringPoint,
-    Schedule,
-    School,
-    SystemSettings,
-    ThresholdProfile,
-)
+from app.models import AgentRelease, Device, MonitoringPoint, Schedule, School, ThresholdProfile
 from app.schemas.agent import AgentConfigResponse, ScheduleSlot, SpeedtestServers
 from app.schemas.thresholds import ThresholdValues
-
-SETTINGS_ID = 1
-NOT_CONFIGURED = "not_configured"
-NOT_CONFIGURED_DETAIL = (
-    "Система не настроена: нет системных настроек, расписания или профиля порогов — "
-    "выполните make seed и миграции"
-)
+from app.services.settings import NOT_CONFIGURED, NOT_CONFIGURED_DETAIL, system_settings
 
 # Default channel of an agent until per-device channels arrive with self-update (T-50).
 STABLE_CHANNEL = "stable"
@@ -57,7 +43,7 @@ async def agent_config(session: AsyncSession, device: Device) -> AgentConfigResp
         )
     ).one()
 
-    settings = await session.get(SystemSettings, SETTINGS_ID)
+    settings = await system_settings(session)
     schedule = await session.scalar(
         most_specific(
             select(Schedule).where(
@@ -88,7 +74,7 @@ async def agent_config(session: AsyncSession, device: Device) -> AgentConfigResp
             ThresholdProfile.scope,
         )
     )
-    if settings is None or schedule is None or profile is None:
+    if schedule is None or profile is None:
         raise ApiError(503, NOT_CONFIGURED, NOT_CONFIGURED_DETAIL)
 
     return AgentConfigResponse(
