@@ -6,11 +6,14 @@ line of a request are derived from the device binding, never taken from the body
 Endpoints still answering 501 name the task that implements them.
 """
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Annotated, Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +27,7 @@ from app.core.security import (
     parse_enrollment_code,
     verify_secret,
 )
-from app.models import Device, EnrollmentCode, MonitoringPoint
+from app.models import Device, EnrollmentCode, Measurement, MonitoringPoint
 from app.schemas.agent import (
     AgentConfigResponse,
     AgentReleaseResponse,
@@ -34,6 +37,7 @@ from app.schemas.agent import (
     MeasurementAccepted,
     MeasurementBatchRequest,
     MeasurementBatchResponse,
+    MeasurementBatchResult,
     MeasurementCreate,
     OutageAccepted,
     OutageCreate,
@@ -52,6 +56,7 @@ device_router = APIRouter(dependencies=[Depends(current_device)], responses=DEVI
 
 CODE_NOT_FOUND = "Код установки не найден"
 BLOCKED = "Устройство заблокировано администратором"
+DUPLICATE_MEASUREMENT = "Замер с этим measurement_uuid уже принят"
 
 
 @router.post(
@@ -224,8 +229,23 @@ async def whoami() -> WhoAmIResponse:
         },
     },
 )
-async def create_measurement(body: MeasurementCreate) -> MeasurementAccepted:
-    raise not_implemented("T-15")
+async def create_measurement(
+    body: MeasurementCreate,
+    device: Annotated[Device, Depends(current_device)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> MeasurementAccepted:
+    """Store one measurement (ADR-006).
+
+    The device comes from the token and the line from its monitoring point; a repeat of the
+    same ``measurement_uuid`` answers 409, which the agent treats as «stored» too.
+    """
+    stored = await store_measurements(session, device, [body])
+    if body.measurement_uuid not in stored:
+        raise ApiError(409, "duplicate_measurement", DUPLICATE_MEASUREMENT)
+    await session.commit()
+    return MeasurementAccepted(
+        measurement_uuid=body.measurement_uuid, received_at=stored[body.measurement_uuid]
+    )
 
 
 @device_router.post(
@@ -237,8 +257,102 @@ async def create_measurement(body: MeasurementCreate) -> MeasurementAccepted:
         "её индекс — в errors[].field (`items[3].ping_ms`)."
     ),
 )
-async def create_measurement_batch(body: MeasurementBatchRequest) -> MeasurementBatchResponse:
-    raise not_implemented("T-15")
+async def create_measurement_batch(
+    body: MeasurementBatchRequest,
+    device: Annotated[Device, Depends(current_device)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> MeasurementBatchResponse:
+    """Store the new measurements of a resent queue and report each item (ADR-006).
+
+    A record the server already has — including a record the batch repeats itself — gets 409
+    instead of 201; both mean «delete from the queue», so one batch never comes back twice.
+    """
+    stored = await store_measurements(session, device, body.items)
+    await session.commit()
+    results = []
+    counted: set[UUID] = set()
+    for item in body.items:
+        # A record the batch repeats is stored once, so only its first copy reports 201.
+        fresh = item.measurement_uuid in stored and item.measurement_uuid not in counted
+        counted.add(item.measurement_uuid)
+        results.append(result(item.measurement_uuid, fresh))
+    return MeasurementBatchResponse(results=results)
+
+
+def result(measurement_uuid: UUID, stored: bool) -> MeasurementBatchResult:
+    """One line of the answer: 201 — this copy was stored, 409 — the server already had it."""
+    if stored:
+        return MeasurementBatchResult(measurement_uuid=measurement_uuid, status=201)
+    return MeasurementBatchResult(
+        measurement_uuid=measurement_uuid, status=409, type="duplicate_measurement"
+    )
+
+
+async def store_measurements(
+    session: AsyncSession, device: Device, items: Sequence[MeasurementCreate]
+) -> dict[UUID, datetime]:
+    """Insert the measurements the database does not have yet; returns their ``received_at``.
+
+    Idempotency is by ``measurement_uuid`` alone (ADR-006): the unique index of the hypertable
+    also carries ``measured_at`` (T-02), so the same uuid with another moment would slip
+    through it. The select finds those; ``ON CONFLICT DO NOTHING`` closes the race between two
+    requests that resend the same record at once.
+    """
+    line_id = await measured_line(session, device)
+    unseen: dict[UUID, MeasurementCreate] = {}
+    for item in items:
+        # A resent queue may repeat a record inside one batch: the first copy is the stored one.
+        unseen.setdefault(item.measurement_uuid, item)
+    known = set(
+        await session.scalars(
+            select(Measurement.measurement_uuid).where(Measurement.measurement_uuid.in_(unseen))
+        )
+    )
+    fresh = [item for measurement_uuid, item in unseen.items() if measurement_uuid not in known]
+    if not fresh:
+        return {}
+    rows = await session.execute(
+        insert(Measurement)
+        .values([measurement_row(device.id, line_id, item) for item in fresh])
+        .on_conflict_do_nothing(index_elements=["measurement_uuid", "measured_at"])
+        .returning(Measurement.measurement_uuid, Measurement.received_at)
+    )
+    return {measurement_uuid: received_at for measurement_uuid, received_at in rows.all()}
+
+
+async def measured_line(session: AsyncSession, device: Device) -> int:
+    """Line of the device: from its monitoring point, never from the request (ТЗ п. 12)."""
+    # The foreign key of the device guarantees the point exists, so there is always a line.
+    return (
+        await session.scalars(
+            select(MonitoringPoint.line_id).where(MonitoringPoint.id == device.monitoring_point_id)
+        )
+    ).one()
+
+
+def measurement_row(device_id: int, line_id: int, item: MeasurementCreate) -> dict[str, Any]:
+    """Row of ``measurements``: raw values only, ``received_at`` from the database clock.
+
+    The status of the measurement and the thresholds it was judged by are filled in on receipt
+    by T-18 (ADR-004); until then they stay empty.
+    """
+    return {
+        "measurement_uuid": item.measurement_uuid,
+        "measured_at": item.measured_at,
+        "device_id": device_id,
+        "line_id": line_id,
+        "connection_status": item.connection_status,
+        "download_mbps": item.download_mbps,
+        "upload_mbps": item.upload_mbps,
+        "ping_ms": item.ping_ms,
+        "jitter_ms": item.jitter_ms,
+        "packet_loss_pct": item.packet_loss_pct,
+        "duration_s": item.duration_s,
+        "external_ip": item.external_ip,
+        "server": item.server,
+        "iface_type": item.iface_type,
+        "agent_version": item.agent_version,
+    }
 
 
 @device_router.post(
