@@ -20,6 +20,8 @@ import (
 
 	"github.com/saylaukhan/codemasters/agent/internal/api"
 	"github.com/saylaukhan/codemasters/agent/internal/buildinfo"
+	"github.com/saylaukhan/codemasters/agent/internal/queue"
+	"github.com/saylaukhan/codemasters/agent/internal/secure"
 )
 
 // Service identity; the MSI (plan.md §4.1) uses the same name.
@@ -94,8 +96,8 @@ func (p *program) Stop(kservice.Service) error {
 }
 
 // runAgent is the agent main loop: it records the start in the state file,
-// registers the device (T-07) and waits for stop; the scheduler (T-08) and
-// the queue (T-11) plug in here.
+// opens the queue, registers the device (T-07) and resends the queue (T-11)
+// until stop; the scheduler (T-08) plugs in here.
 func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
 	st, err := ReadState(cfg.DataDir)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -107,13 +109,41 @@ func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
 		return fmt.Errorf("запись состояния: %w", err)
 	}
 
+	q, err := queue.Open(QueuePath(cfg.DataDir), logger)
+	if err != nil {
+		return err
+	}
+	defer q.Close()
+
 	logger.Info("агент запущен", "version", buildinfo.Version, "server_url", cfg.ServerURL,
 		"data_dir", cfg.DataDir)
-	// Not enrolled is not fatal: the reason is logged and the service keeps running.
-	_, _, _ = enroll(ctx, cfg, api.New(cfg.ServerURL, ""), logger)
+	// Not enrolled is not fatal: the reason is logged and the service keeps running;
+	// measurements stay in the queue until the device is registered.
+	if _, token, ok := enroll(ctx, cfg, api.New(cfg.ServerURL, ""), logger); ok {
+		q.Run(ctx, api.New(cfg.ServerURL, token), nil, func(pending int) {
+			st.QueueSize = pending
+			if err := WriteState(cfg.DataDir, st); err != nil {
+				logger.Warn("запись состояния", "err", err)
+			}
+		})
+	}
 	<-ctx.Done()
 	logger.Info("агент остановлен")
 	return nil
+}
+
+// QueuePath returns the measurement queue file inside dataDir.
+func QueuePath(dataDir string) string {
+	return filepath.Join(dataDir, queue.FileName)
+}
+
+// ReadToken returns the device token saved on registration (T-07).
+func ReadToken(dataDir string) (string, error) {
+	secret, err := secure.ReadSecret(filepath.Join(dataDir, tokenFileName))
+	if err != nil {
+		return "", fmt.Errorf("токен устройства: %w", err)
+	}
+	return string(secret), nil
 }
 
 // Run starts the agent: under the service manager as a service, from a

@@ -1,6 +1,6 @@
 // Command vko-agent is the CLI of the school internet monitoring agent.
 //
-// Subcommands: install, uninstall, run, status, probe, speed, version. The service and the
+// Subcommands: install, uninstall, run, status, probe, speed, measure, version. The service and the
 // config live in internal/service; the measurement loop arrives in T-08+.
 package main
 
@@ -17,9 +17,11 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/saylaukhan/codemasters/agent/internal/api"
 	"github.com/saylaukhan/codemasters/agent/internal/buildinfo"
 	"github.com/saylaukhan/codemasters/agent/internal/netinfo"
 	"github.com/saylaukhan/codemasters/agent/internal/probe"
+	"github.com/saylaukhan/codemasters/agent/internal/queue"
 	"github.com/saylaukhan/codemasters/agent/internal/service"
 	"github.com/saylaukhan/codemasters/agent/internal/speed"
 )
@@ -56,6 +58,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cmdProbe(args[1:], stdout, stderr)
 	case "speed":
 		return cmdSpeed(args[1:], stdout, stderr)
+	case "measure":
+		return cmdMeasure(args[1:], stdout, stderr)
 	case "version":
 		return cmdVersion(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
@@ -80,6 +84,8 @@ func printUsage(w io.Writer) {
                             проверить связь, ping/jitter/loss и сетевой адаптер
   speed --librespeed <url> [--ndt7 <url>]
                             замерить Download и Upload (LibreSpeed, резерв ndt7)
+  measure [--config <путь>] [--target <url>] [--librespeed <url>] [--ndt7 <url>]
+                            один замер: в очередь и сразу отправить на сервер
   version                   показать версию агента
 
 Справка по команде: vko-agent <команда> -h
@@ -189,7 +195,11 @@ func cmdStatus(args []string, stdout, stderr io.Writer) int {
 	switch {
 	case errors.Is(err, os.ErrNotExist):
 		fmt.Fprintln(stdout, "Последний замер: нет данных (агент ещё не запускался)")
-		fmt.Fprintln(stdout, "Очередь на отправку: нет данных")
+		if n, ok := queuePending(cfg); ok {
+			fmt.Fprintf(stdout, "Очередь на отправку: %d\n", n)
+		} else {
+			fmt.Fprintln(stdout, "Очередь на отправку: нет данных")
+		}
 		return exitOK
 	case err != nil:
 		fmt.Fprintf(stderr, "status: %v\n", err)
@@ -202,8 +212,26 @@ func cmdStatus(args []string, stdout, stderr io.Writer) int {
 	} else {
 		fmt.Fprintf(stdout, "Последний замер: %s\n", st.LastMeasurementAt.Format(time.RFC3339))
 	}
+	if n, ok := queuePending(cfg); ok {
+		st.QueueSize = n
+	}
 	fmt.Fprintf(stdout, "Очередь на отправку: %d\n", st.QueueSize)
 	return exitOK
+}
+
+// queuePending counts the queue file when it exists: a measurement taken by
+// `measure` is not in the state file of the service.
+func queuePending(cfg service.Config) (int, bool) {
+	if _, err := os.Stat(service.QueuePath(cfg.DataDir)); err != nil {
+		return 0, false
+	}
+	q, err := queue.Open(service.QueuePath(cfg.DataDir), nil)
+	if err != nil {
+		return 0, false
+	}
+	defer q.Close()
+	n, err := q.Pending(context.Background())
+	return n, err == nil
 }
 
 // cmdProbe runs the connectivity check, the ping series and the adapter
@@ -289,6 +317,72 @@ func cmdSpeed(args []string, stdout, stderr io.Writer) int {
 		res.DownloadMbps, res.UploadMbps, res.DurationS)
 	if res.Fallback != "" {
 		fmt.Fprintf(stdout, "Резерв: %s\n", res.Fallback)
+	}
+	return exitOK
+}
+
+// cmdMeasure takes one measurement, puts it into the queue and sends the
+// queue (plan.md §4.3, §4.4). Without a connection or a registration the
+// measurement stays in the queue for the service to resend (ADR-006).
+func cmdMeasure(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("measure", stderr)
+	configPath := fs.String("config", service.DefaultConfigPath(), "путь к файлу конфигурации агента (YAML)")
+	target := fs.String("target", "", "адрес сервера замеров http(s)://хост; по умолчанию server_url")
+	libre := fs.String("librespeed", "", "адрес LibreSpeed http(s)://хост[:порт]; без него скорость не замеряется")
+	ndt7 := fs.String("ndt7", "", "адрес резервного сервера ndt7 ws(s)://хост[:порт]")
+	if code, ok := parseFlags(fs, args); !ok {
+		return code
+	}
+	cfg, err := service.LoadConfig(*configPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "measure: %v\n", err)
+		return exitError
+	}
+	if err := os.MkdirAll(cfg.DataDir, 0o755); err != nil {
+		fmt.Fprintf(stderr, "measure: %v\n", err)
+		return exitError
+	}
+	logger := slog.New(slog.NewTextHandler(stderr, nil))
+	q, err := queue.Open(service.QueuePath(cfg.DataDir), logger)
+	if err != nil {
+		fmt.Fprintf(stderr, "measure: %v\n", err)
+		return exitError
+	}
+	defer q.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	opts := service.MeasureOptions{
+		ServerURL:     cfg.ServerURL,
+		TargetURL:     *target,
+		LibreSpeedURL: *libre,
+		NDT7URL:       *ndt7,
+		Logger:        logger,
+	}
+	token, tokenErr := service.ReadToken(cfg.DataDir)
+	if tokenErr == nil {
+		opts.Client = api.New(cfg.ServerURL, token)
+	}
+	m, err := service.Measure(ctx, opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "measure: %v\n", err)
+		return exitError
+	}
+	if err := q.Add(ctx, m); err != nil {
+		fmt.Fprintf(stderr, "measure: %v\n", err)
+		return exitError
+	}
+	fmt.Fprintf(stdout, "Замер %s: связь %s, в очереди\n", m.MeasurementUUID, m.ConnectionStatus)
+
+	if tokenErr != nil {
+		fmt.Fprintf(stdout, "Отправка: устройство не зарегистрировано (%v)\n", tokenErr)
+	} else if sent, err := q.Flush(ctx, opts.Client); err != nil {
+		fmt.Fprintf(stdout, "Отправка: отправлено %d, остальное позже (%v)\n", sent, err)
+	} else {
+		fmt.Fprintf(stdout, "Отправка: отправлено %d\n", sent)
+	}
+	if n, err := q.Pending(ctx); err == nil {
+		fmt.Fprintf(stdout, "Очередь на отправку: %d\n", n)
 	}
 	return exitOK
 }

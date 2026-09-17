@@ -211,3 +211,29 @@ func TestProbeOfflineIsAResult(t *testing.T) {
 		t.Fatalf("probe without server: exit code %d, stdout %q, stderr %q; want offline with a reason", code, stdout, stderr)
 	}
 }
+
+// TestMeasureOfflineStaysInQueue: without a connection measurements are kept in
+// the SQLite queue and `status` counts them (ТЗ п. 2, ADR-006).
+func TestMeasureOfflineStaysInQueue(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	addr := ln.Addr().String()
+	_ = ln.Close()
+
+	path := filepath.Join(t.TempDir(), "agent.yaml")
+	if err := os.WriteFile(path, []byte("server_url: http://"+addr+"\ndata_dir: data\n"), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	for i := range 2 {
+		code, stdout, stderr := runCLI(t, "measure", "--config", path)
+		if code != exitOK || !strings.Contains(stdout, "связь offline, в очереди") {
+			t.Fatalf("measure #%d: exit code %d, stdout %q, stderr %q; want an offline measurement in the queue", i+1, code, stdout, stderr)
+		}
+	}
+	code, stdout, stderr := runCLI(t, "status", "--config", path)
+	if code != exitOK || !strings.Contains(stdout, "Очередь на отправку: 2") {
+		t.Fatalf("status: exit code %d, stdout %q, stderr %q; want 2 records in the queue", code, stdout, stderr)
+	}
+}
