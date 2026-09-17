@@ -107,7 +107,13 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Один замер */
+        /**
+         * Один замер
+         * @description Store one measurement (ADR-006).
+         *
+         *     The device comes from the token and the line from its monitoring point; a repeat of the
+         *     same ``measurement_uuid`` answers 409, which the agent treats as «stored» too.
+         */
         post: operations["create_measurement"];
         delete?: never;
         options?: never;

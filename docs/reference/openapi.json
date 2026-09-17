@@ -345,6 +345,7 @@
           "agent"
         ],
         "summary": "Один замер",
+        "description": "Store one measurement (ADR-006).\n\nThe device comes from the token and the line from its monitoring point; a repeat of the\nsame ``measurement_uuid`` answers 409, which the agent treats as «stored» too.",
         "operationId": "create_measurement",
         "requestBody": {
           "content": {
