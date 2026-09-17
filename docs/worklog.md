@@ -38,4 +38,92 @@
 
 ## Записи
 
-Пока пусто — первая запись появится с первым слиянием.
+### 2026-09-17 · T-06 · Агент: служба Windows/systemd, конфиг, CLI install/run/status
+Сделано: разбор YAML-конфига агента со значениями по умолчанию для Windows и Linux
+(`agent/internal/service/config.go`), служба `VKOMonitorAgent` через kardianos/service —
+отложенный автозапуск, LocalService, перезапуск 1 мин / 1 мин / 5 мин (через `svc/mgr`),
+systemd `Restart=on-failure`; CLI `install`, `uninstall`, `run --config [--check]`, `status`
+(служба, последний замер, очередь — из `state.json`); журнал `agent.log` в папке данных;
+тесты конфига, файла состояния и CLI. Новые зависимости — `kardianos/service`, `yaml.v3`
+(согласованы). Слияние: 80e9a79.
+Чек-лист: `make check` зелёный на ветке перед слиянием; golangci-lint локально не установлен —
+шаг пропущен, проверяется в CI; diff 742 строки при цели 400 (≈310 — тесты), оставлен одним
+слиянием из-за сроков хакатона, внутри два коммита.
+Не сделано: `vko-agent install` не проверен на живом Windows (только сборка и `go vet` под
+Windows); права LocalService на папку данных и ротация журнала; на Linux unit работает от root —
+три строки в docs/known-limitations.md. Цикл замеров — T-07, T-08, T-11.
+Потрачено / Застрял на: ~15 мин по времени слияний. kardianos ставит только одно действие
+восстановления — схема 1/1/5 мин выставлена отдельно через `golang.org/x/sys/windows/svc/mgr`.
+
+### 2026-09-17 · T-05 · Сервер замеров LibreSpeed в Docker (+ ndt7 резерв)
+Сделано: сервисы `speedtest` (LibreSpeed, порт 8080) и `ndt7` (порт 8081) в
+`docker-compose.yml`, описание в `deploy/speedtest/README.md`; таблица `settings` (миграция
+`20260917_1612_settings`) с `librespeed_url` и `ndt7_url`; начальные адреса — переменные
+`SPEEDTEST_URL`, `NDT7_URL` в `.env.example`, в `settings` их кладёт `make seed` один раз и не
+затирает изменения админа (тесты в `backend/tests/test_seed.py`). Слияние: 60990b0.
+Чек-лист: при слиянии отдельно не заполнялся; `make check` на `developing` после T-06 зелёный.
+Коммит без области компонента (`feat:`), т. к. затронуты compose, backend и документы.
+Не сделано: остальные поля `SettingsDetail` в БД; TLS для LibreSpeed и ndt7; образ ndt-server
+только amd64 — три строки в docs/known-limitations.md.
+Потрачено / Застрял на: не учитывалось (коммит 16:14, слияние 16:21).
+
+### 2026-09-17 · T-04 · GeoJSON районов ВКО и seed тестовых школ
+Сделано: `make seed` загружает 13 районов и городов ВКО с полигонами PostGIS
+(`backend/app/seed_data/regions.geojson`), 356 тестовых школ из списка data.egov.kz с `geom`,
+районом, основной линией и точкой мониторинга (`schools.csv`); seed идемпотентен; тесты —
+повторный seed ничего не меняет, полигоны валидны, точка школы лежит в своём районе, у каждой
+школы есть линия и точка. Слияния нет: прямые коммиты в `developing` — e049421, 23098ba.
+Чек-лист: при слиянии не заполнялся; отступление от процесса — работа без ветки
+`feature/t-04-…` и `git merge --no-ff` (ADR-001). `make check` на `developing` после T-06 зелёный.
+Не сделано: данные школ на 27.04.2024, линии и провайдеры вымышленные, полигоны упрощены
+до ~200 м — строка в docs/known-limitations.md; dev-пользователи — T-20.
+Потрачено / Застрял на: не учитывалось (коммиты 15:55).
+
+### 2026-09-17 · T-03 · Контракт API в OpenAPI и генерация клиента панели
+Сделано: роутеры-заглушки по plan.md §10 (`backend/app/api/`, `admin/*`) — 58 путей, 73
+операции, отвечают 501 `not_implemented` с номером задачи реализации; схемы Pydantic в
+`backend/app/schemas/`; ошибки `application/problem+json` с `errors[]` (`field`, `message`),
+списки `{items, total, page, page_size}`; `make openapi` → `docs/reference/openapi.json` и
+`web/src/api/generated/schema.ts`; тесты контракта в `backend/tests/test_api_contract.py`
+(формат ошибок, списки, все эндпоинты плана, токен устройства и Bearer, агент не передаёт
+школу и статус, ПД только в контактах и пользователях, файл схемы совпадает с кодом, Swagger
+открывается). Порезано на три слияния: a4093ce (база и API агента), cf6fb76 (auth, дашборд,
+карта, школы, устройства, аналитика), e00cdba (инциденты, обращения, выгрузки, админка).
+Чек-лист: при слиянии отдельно не заполнялся; diff большой за счёт сгенерированных
+`openapi.json` и `schema.ts`; `make check` на `developing` после T-06 зелёный.
+Не сделано: эндпоинты вне plan.md §10; правило линии для провайдера; `working_hours`,
+`providers.appeals_email`, хранилище выгрузок — не в схеме БД; доля ниже договора в
+агрегатах; «неделя»/«месяц» скользящие; уникальный индекс простоев; судьба невалидной записи
+batch в очереди; версии FastAPI/Pydantic не закреплены; русские сообщения только для частых
+ошибок — строки с пометкой (T-03) в docs/known-limitations.md.
+Потрачено / Застрял на: не учитывалось (коммиты 00:43–01:30, слияния 01:33).
+
+### 2026-09-17 · T-02 · Схема БД v1: справочники, школы, линии, точки, устройства, замеры, heartbeats
+Сделано: модели SQLAlchemy по одной на таблицу (`regions`, `providers`, `connection_types`,
+`schools`, `lines`, `school_contacts`, `monitoring_points`, `devices`, `enrollment_codes`,
+`measurements`, `heartbeats`, `outages`), первая ревизия `20260917_0006_schema_v1` с
+TimescaleDB и PostGIS; `measurements` и `heartbeats` — hypertables; тесты через testcontainers:
+цепочка школа → линия → точка → устройство → замер, hypertables, повтор `measurement_uuid`
+отклоняется, точка не может взять линию чужой школы, индексы на всех FK. Слияния нет: прямой
+коммит в `developing` — 1837fea.
+Чек-лист: при слиянии не заполнялся; отступление от процесса — без ветки `db/t-02-…` и
+`git merge --no-ff` (ADR-001). `make check` на `developing` после T-06 зелёный.
+Не сделано: уникальность `measurement_uuid` только в паре с `measured_at` (ограничение
+TimescaleDB) — строка в docs/known-limitations.md, дубль по одному uuid ловит T-15.
+Потрачено / Застрял на: не учитывалось (коммит 00:10). Уникальный индекс на hypertable без
+колонки партиционирования TimescaleDB не разрешает — решено парой `(measurement_uuid, measured_at)`.
+
+### 2026-09-16 · T-01 · Каркас репозитория: папки, Makefile, docker-compose, CI
+Сделано: `agent/` (CLI-заготовка `vko-agent` с дымовым тестом, `.golangci.yml`), `backend/`
+(FastAPI с `/health`, config, async db, Alembic, Celery, дымовой тест), `web/` (Vite + React +
+TypeScript, eslint, vitest), `simulator/`, `deploy/Caddyfile`, `docker-compose.yml`,
+`.env.example`, `Makefile` с целями из `AGENTS.md` §7, `.github/workflows/ci.yml` (`make check`
+на push в `developing` и `main`) и `agent-msi.yml`. Слияния нет: прямые коммиты в
+`developing` — 7c54f59, 2f3892f (переименование `frontend/` → `web/` и удаление случайно
+закоммиченного `dist/`).
+Чек-лист: при слиянии не заполнялся; отступление от процесса — без ветки `chore/t-01-…` и
+`git merge --no-ff` (ADR-001), сообщение 2f3892f `fix/rename` не по Conventional Commits.
+`make check` на `developing` после T-06 зелёный.
+Не сделано: ничего по «Сделано, когда»; функции ТЗ — дальнейшие задачи (первая строка
+docs/known-limitations.md).
+Потрачено / Застрял на: не учитывалось (коммиты 23:07–23:30).
