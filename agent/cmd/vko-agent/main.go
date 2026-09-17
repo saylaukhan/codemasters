@@ -1,7 +1,7 @@
 // Command vko-agent is the CLI of the school internet monitoring agent.
 //
 // Subcommands: install, uninstall, run, status, version. The service and the
-// config live in internal/service; the measurement loop arrives in T-07+.
+// config live in internal/service; the measurement loop arrives in T-08+.
 package main
 
 import (
@@ -165,6 +165,11 @@ func cmdStatus(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "Сервер: %s\n", cfg.ServerURL)
 	fmt.Fprintf(stdout, "Папка данных: %s\n", cfg.DataDir)
+	if id, err := service.ReadIdentity(cfg.DataDir); err == nil && id.DeviceID != 0 {
+		fmt.Fprintf(stdout, "Устройство: зарегистрировано (device_id %d)\n", id.DeviceID)
+	} else {
+		fmt.Fprintln(stdout, "Устройство: не зарегистрировано")
+	}
 
 	st, err := service.ReadState(cfg.DataDir)
 	switch {

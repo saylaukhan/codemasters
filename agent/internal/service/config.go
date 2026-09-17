@@ -23,7 +23,8 @@ type Config struct {
 	ServerURL string `yaml:"server_url"`
 	// Room is the classroom the computer stands in; sent on registration (T-07).
 	Room string `yaml:"room"`
-	// EnrollCode is the one-time installation code (T-07). Empty after enrollment.
+	// EnrollCode is the one-time installation code (T-07); ENROLL_CODE is used when
+	// empty. Ignored once the device is registered.
 	EnrollCode string `yaml:"enroll_code"`
 	// DataDir holds the state file, the log and, later, the queue and the token.
 	// A relative path is resolved against the directory of the config file.
