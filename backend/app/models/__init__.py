@@ -17,6 +17,7 @@ from app.models.provider import Provider
 from app.models.region import Region
 from app.models.school import School
 from app.models.school_contact import SchoolContact
+from app.models.system_settings import SystemSettings
 
 __all__ = [
     "Base",
@@ -32,4 +33,5 @@ __all__ = [
     "Region",
     "School",
     "SchoolContact",
+    "SystemSettings",
 ]

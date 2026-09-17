@@ -4,7 +4,9 @@ Loads reference data and local test data (T-04): districts and cities of VKO wit
 providers, connection types and test schools, each with one main line and one primary
 monitoring point. Rows are upserted by natural keys (region code, provider name, connection
 type code, School ID), lines and points are created only for a school that has none, so a
-repeated run changes nothing. Dev users arrive in T-20. Data files and their sources:
+repeated run changes nothing. The row of ``settings`` gets the measurement server addresses from
+the environment (T-05) only when it does not exist: after that they change in the admin panel.
+Dev users arrive in T-20. Data files and their sources:
 ``app/seed_data/README.md``.
 """
 
@@ -21,8 +23,17 @@ from sqlalchemy import exists, func, select, tuple_
 from sqlalchemy.dialects.postgresql import Insert, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.db import get_engine, get_session_factory
-from app.models import ConnectionType, Line, MonitoringPoint, Provider, Region, School
+from app.models import (
+    ConnectionType,
+    Line,
+    MonitoringPoint,
+    Provider,
+    Region,
+    School,
+    SystemSettings,
+)
 
 DATA_DIR = Path(__file__).resolve().parent / "seed_data"
 REGIONS_FILE = DATA_DIR / "regions.geojson"
@@ -155,22 +166,40 @@ async def seed(session: AsyncSession) -> SeedResult:
     )
 
 
-async def run() -> SeedResult:
+async def seed_settings(session: AsyncSession, librespeed_url: str, ndt7_url: str) -> bool:
+    """Create the ``settings`` row with the measurement servers unless it exists (no commit).
+
+    An existing row is left as is: the admin panel may have changed it. An empty ``ndt7_url``
+    means no fallback server. Returns whether the row was created.
+    """
+    result = await session.execute(
+        insert(SystemSettings)
+        .values(id=1, librespeed_url=librespeed_url, ndt7_url=ndt7_url or None)
+        .on_conflict_do_nothing(index_elements=["id"])
+        .returning(SystemSettings.id)
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def run() -> tuple[SeedResult, bool]:
     """Seed the database from ``Settings.database_url`` in one transaction."""
+    settings = get_settings()
     async with get_session_factory()() as session:
         result = await seed(session)
+        settings_created = await seed_settings(session, settings.speedtest_url, settings.ndt7_url)
         await session.commit()
     await get_engine().dispose()
-    return result
+    return result, settings_created
 
 
 def main() -> int:
     """Run the seed and report what was loaded."""
-    result = asyncio.run(run())
+    result, settings_created = asyncio.run(run())
     sys.stdout.write(
         f"seed: районов и городов — {result.regions}, провайдеров — {result.providers}, "
         f"типов подключения — {result.connection_types}, тестовых школ — {result.schools}; "
-        f"создано линий — {result.lines_created}, точек мониторинга — {result.points_created}\n"
+        f"создано линий — {result.lines_created}, точек мониторинга — {result.points_created}; "
+        f"системные настройки — {'созданы' if settings_created else 'уже есть, не изменены'}\n"
     )
     return 0
 

@@ -60,7 +60,7 @@ backend/             Python — FastAPI, модели, миграции Alembic,
 web/                 React + TypeScript + Vite — веб-панель
 simulator/           симулятор агентов: 350 школ, 1000 ПК, 3 месяца истории
 deploy/              Caddyfile, конфигурация LibreSpeed (+ ndt7)
-docker-compose.yml   caddy, api, worker, beat, db, redis, web, speedtest
+docker-compose.yml   caddy, api, worker, beat, db, redis, web, speedtest, ndt7
 Makefile             единая точка входа для команд
 .github/workflows/   ci.yml (make check), agent-msi.yml (сборка MSI)
 docs/                документация: задачи, ADR, чек-лист, worklog, ТЗ и план
@@ -73,7 +73,7 @@ docs/                документация: задачи, ADR, чек-лис�
 Полный список — `make help`.
 
 ```bash
-make up            # docker compose up -d db redis speedtest — инфраструктура для разработки
+make up            # docker compose up -d db redis speedtest ndt7 — инфраструктура для разработки
 make migrate       # alembic upgrade head
 make seed          # справочники, GeoJSON районов ВКО, тестовые школы, dev-пользователи
 make api           # uvicorn app.main:app --reload на http://localhost:8000 (Swagger: /api/docs)

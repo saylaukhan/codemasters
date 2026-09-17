@@ -29,7 +29,7 @@
 git clone git@github.com:saylaukhan/codemasters.git
 cd codemasters
 cp .env.example .env     # локальные значения уже внутри, секретов там нет
-make up                  # docker compose up -d db redis speedtest
+make up                  # docker compose up -d db redis speedtest ndt7
 make migrate             # alembic upgrade head
 make seed                # справочники, GeoJSON районов ВКО, тестовые школы, dev-пользователи
 ```
@@ -55,7 +55,7 @@ ADR-011). Имена переменных фиксирует T-01. Началь�
 панель адрес не зашивается, рабочее значение меняется в админке (T-37) и уходит агенту через
 `GET /api/agent/config` (T-17, T-13; п. 11, п. 20).
 
-Порты: api 8000, web 5173, db 5432, redis 6379, speedtest 8080, caddy 80/443.
+Порты: api 8000, web 5173, db 5432, redis 6379, speedtest 8080, ndt7 8081, caddy 80/443.
 
 Dev-пользователи после `make seed` (пароль у всех `Password1`, только локально):
 
