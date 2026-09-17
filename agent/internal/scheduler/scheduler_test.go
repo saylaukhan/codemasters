@@ -13,8 +13,15 @@ import (
 // itself gets it from the server.
 func testSchedule(t *testing.T) Schedule {
 	t.Helper()
+	return almatySchedule(t, [2]string{"13:30:00", "14:00:00"}, [2]string{"08:30", "09:00"},
+		[2]string{"11:00", "11:30"}, [2]string{"16:00", "16:30"})
+}
+
+// almatySchedule builds a schedule of the given slots in Asia/Almaty.
+func almatySchedule(t *testing.T, windows ...[2]string) Schedule {
+	t.Helper()
 	var slots []Slot
-	for _, s := range [][2]string{{"13:30:00", "14:00:00"}, {"08:30", "09:00"}, {"11:00", "11:30"}, {"16:00", "16:30"}} {
+	for _, s := range windows {
 		slot, err := ParseSlot(s[0], s[1])
 		if err != nil {
 			t.Fatalf("ParseSlot(%q, %q): %v", s[0], s[1], err)
@@ -261,5 +268,51 @@ func TestSetScheduleAppliesWithoutRestart(t *testing.T) {
 		if !run.At.Equal(want) || run.CatchUp {
 			t.Errorf("run %d = %s catch-up %v, want planned %s in slot %s", i, run.At, run.CatchUp, want, changed.Slots[i])
 		}
+	}
+}
+
+// TestSetScheduleCatchesUpAddedSlot: a slot the administrator adds during the
+// day, when it has already begun or even ended, is measured after a catch-up
+// delay and not the second the configuration arrives — the computers of the
+// school get the new schedule almost together and must not measure at one
+// second (T-13, plan.md §4.2, §15).
+func TestSetScheduleCatchesUpAddedSlot(t *testing.T) {
+	base := almatySchedule(t, [2]string{"08:30", "09:00"}, [2]string{"11:00", "11:30"}, [2]string{"16:00", "16:30"})
+	added := almatySchedule(t, [2]string{"08:30", "09:00"}, [2]string{"11:00", "11:30"},
+		[2]string{"14:00", "14:30"}, [2]string{"16:00", "16:30"})
+	const addedSlot = 2
+
+	for name, arrives := range map[string]string{
+		"slot is running": "2026-09-17 14:20:00",
+		"slot is over":    "2026-09-17 15:00:00",
+	} {
+		t.Run(name, func(t *testing.T) {
+			morning := almaty(t, base, "2026-09-17 07:00:00")
+			d := startDevice(base, "device-a", morning.AddDate(0, 0, -1), morning)
+			d.runUntil(almaty(t, base, arrives))
+			if len(d.runs) != 2 {
+				t.Fatalf("runs before the change = %+v, want the 08:30 and 11:00 slots", d.runs)
+			}
+
+			change := d.clock
+			if moment := added.Moment("device-a", change, addedSlot); !moment.Before(change) {
+				t.Fatalf("the moment of the added slot is %s, still ahead at %s; pick another seed", moment, change)
+			}
+			d.s.SetSchedule(added)
+
+			// The missed slot does not measure at once, outside its window.
+			d.runUntil(change.Add(catchUpMin))
+			if len(d.runs) != 2 {
+				t.Fatalf("runs right after the change = %+v, want no measurement at once", d.runs)
+			}
+
+			d.runUntil(change.Add(catchUpMax + time.Minute))
+			if len(d.runs) != 3 || !d.runs[2].CatchUp || d.runs[2].Slot != added.Slots[addedSlot] {
+				t.Fatalf("runs after the change = %+v, want one catch-up in slot %s", d.runs, added.Slots[addedSlot])
+			}
+			if at := d.runs[2].At; at.Before(change.Add(catchUpMin)) || at.After(change.Add(catchUpMax)) {
+				t.Fatalf("catch-up at %s, want 1–15 min after the change at %s", at, change)
+			}
+		})
 	}
 }

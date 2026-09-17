@@ -58,6 +58,9 @@ type Scheduler struct {
 
 	mu    sync.Mutex
 	sched Schedule
+	// changed is set by SetSchedule and taken by step together with the
+	// schedule: a new schedule counts as a start of the computer.
+	changed bool
 	// update tells Run that the schedule changed, so it stops waiting at once.
 	update chan struct{}
 }
@@ -101,6 +104,7 @@ func (s *Scheduler) Run(ctx context.Context) {
 func (s *Scheduler) SetSchedule(sched Schedule) {
 	s.mu.Lock()
 	s.sched = sched
+	s.changed = true
 	s.mu.Unlock()
 	select {
 	case s.update <- struct{}{}:
@@ -108,11 +112,15 @@ func (s *Scheduler) SetSchedule(sched Schedule) {
 	}
 }
 
-// schedule returns the schedule in force now.
-func (s *Scheduler) schedule() Schedule {
+// schedule returns the schedule in force now and whether it was replaced since
+// the previous call; the two are taken together, so a schedule never arrives
+// without the change that brought it.
+func (s *Scheduler) schedule() (Schedule, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.sched
+	changed := s.changed
+	s.changed = false
+	return s.sched, changed
 }
 
 // start treats now as a start of the computer: the next measurement is not
@@ -132,14 +140,23 @@ func (s *Scheduler) step(ctx context.Context) time.Duration {
 		s.opts.Logger.Info("выход из сна: замер как после включения ПК", "slept_until", now)
 		s.start(now)
 	}
-	run, ok := s.next(now)
+	sched, changed := s.schedule()
+	if changed {
+		// All computers of a school get a new schedule almost at once: a slot
+		// it added and already started is measured after a catch-up delay, as
+		// after a service start, and not by the whole school at one second
+		// (plan.md §4.2). Planned future moments do not move.
+		s.opts.Logger.Info("новое расписание: пропущенный слот как после включения ПК")
+		s.start(now)
+	}
+	run, ok := s.next(now, sched)
 	if ok && !run.At.After(now) {
 		run.At = now
 		s.opts.Logger.Info("замер по расписанию", "slot", run.Slot.String(), "catch_up", run.CatchUp)
 		s.last = now
 		s.opts.Measure(ctx, run)
 		now = s.opts.Now()
-		run, ok = s.next(now)
+		run, ok = s.next(now, sched)
 	}
 	wait := tick
 	if ok {
@@ -156,8 +173,7 @@ func (s *Scheduler) step(ctx context.Context) time.Duration {
 // next returns the next measurement. A slot counts as done once a measurement
 // started at or after its start. Of the slots of today that have begun, only
 // the latest can still be measured: earlier missed slots are not caught up.
-func (s *Scheduler) next(now time.Time) (Run, bool) {
-	sched := s.schedule()
+func (s *Scheduler) next(now time.Time, sched Schedule) (Run, bool) {
 	// Every day has a slot, so today and tomorrow always hold one that is not done
 	// unless the last measurement is in the future.
 	for d := range 2 {
