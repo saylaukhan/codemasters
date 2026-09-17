@@ -86,8 +86,11 @@ async def test_measurement_is_stored_under_the_school_of_the_device(
     # received_at is the server clock: the gap to measured_at is the time in the offline queue.
     assert row.received_at > row.measured_at
     assert datetime.fromisoformat(response.json()["received_at"]) == row.received_at
-    # The status of the measurement and its thresholds arrive with T-18 (ADR-004).
-    assert (row.quality_status, row.thresholds_snapshot, row.contract_ok) == (None, None, None)
+    # The server judges the measurement on receipt; the rules themselves are tested in T-18
+    # (tests/test_measurement_status.py). This line has no contract speeds, so contract_ok is empty.
+    assert row.quality_status == "normal"
+    assert row.thresholds_snapshot is not None
+    assert row.contract_ok is None
 
 
 async def test_repeat_of_the_same_uuid_answers_409_and_stores_nothing(
