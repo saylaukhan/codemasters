@@ -1,6 +1,6 @@
 // Command vko-agent is the CLI of the school internet monitoring agent.
 //
-// Subcommands: install, uninstall, run, status, probe, version. The service and the
+// Subcommands: install, uninstall, run, status, probe, speed, version. The service and the
 // config live in internal/service; the measurement loop arrives in T-08+.
 package main
 
@@ -21,6 +21,7 @@ import (
 	"github.com/saylaukhan/codemasters/agent/internal/netinfo"
 	"github.com/saylaukhan/codemasters/agent/internal/probe"
 	"github.com/saylaukhan/codemasters/agent/internal/service"
+	"github.com/saylaukhan/codemasters/agent/internal/speed"
 )
 
 // Exit codes: 0 - success, 1 - runtime error, 2 - wrong usage (as in flag).
@@ -53,6 +54,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cmdStatus(args[1:], stdout, stderr)
 	case "probe":
 		return cmdProbe(args[1:], stdout, stderr)
+	case "speed":
+		return cmdSpeed(args[1:], stdout, stderr)
 	case "version":
 		return cmdVersion(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
@@ -75,6 +78,8 @@ func printUsage(w io.Writer) {
   status [--config <путь>]  показать состояние службы, последний замер и очередь
   probe [--config <путь>] [--target <url>]
                             проверить связь, ping/jitter/loss и сетевой адаптер
+  speed --librespeed <url> [--ndt7 <url>]
+                            замерить Download и Upload (LibreSpeed, резерв ndt7)
   version                   показать версию агента
 
 Справка по команде: vko-agent <команда> -h
@@ -250,6 +255,41 @@ func cmdProbe(args []string, stdout, stderr io.Writer) int {
 		gateway = "неизвестен"
 	}
 	fmt.Fprintf(stdout, "Адаптер: %s (%s), адрес %s, шлюз %s\n", info.Interface, info.Type, info.LocalIP, gateway)
+	return exitOK
+}
+
+// cmdSpeed measures Download and Upload once and prints them (plan.md §4.3,
+// step 4). The service gets the server addresses from GET /api/agent/config
+// (T-13); here they are flags without defaults, nothing is hard-coded (ADR-012).
+func cmdSpeed(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("speed", stderr)
+	libre := fs.String("librespeed", "", "адрес LibreSpeed http(s)://хост[:порт]")
+	ndt7 := fs.String("ndt7", "", "адрес резервного сервера ndt7 ws(s)://хост[:порт]")
+	if code, ok := parseFlags(fs, args); !ok {
+		return code
+	}
+	if *libre == "" && *ndt7 == "" {
+		fmt.Fprintln(stderr, "speed: укажите --librespeed и (или) --ndt7")
+		return exitUsage
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	res, err := speed.Run(ctx, speed.Options{
+		LibreSpeedURL: *libre,
+		NDT7URL:       *ndt7,
+		Logger:        slog.New(slog.NewTextHandler(stderr, nil)),
+	})
+	if err != nil {
+		fmt.Fprintf(stderr, "speed: %v\n", err)
+		return exitError
+	}
+	fmt.Fprintf(stdout, "Метод: %s, сервер %s\n", res.Method, res.Server)
+	fmt.Fprintf(stdout, "Download: %.2f Мбит/с, Upload: %.2f Мбит/с, длительность %.1f с\n",
+		res.DownloadMbps, res.UploadMbps, res.DurationS)
+	if res.Fallback != "" {
+		fmt.Fprintf(stdout, "Резерв: %s\n", res.Fallback)
+	}
 	return exitOK
 }
 
