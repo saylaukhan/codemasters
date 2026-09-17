@@ -18,6 +18,7 @@ import (
 
 	kservice "github.com/kardianos/service"
 
+	"github.com/saylaukhan/codemasters/agent/internal/api"
 	"github.com/saylaukhan/codemasters/agent/internal/buildinfo"
 )
 
@@ -92,9 +93,9 @@ func (p *program) Stop(kservice.Service) error {
 	return nil
 }
 
-// runAgent is the agent main loop. In T-06 it records the start in the state
-// file and waits for stop; registration (T-07), the scheduler (T-08) and the
-// queue (T-11) plug in here.
+// runAgent is the agent main loop: it records the start in the state file,
+// registers the device (T-07) and waits for stop; the scheduler (T-08) and
+// the queue (T-11) plug in here.
 func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
 	st, err := ReadState(cfg.DataDir)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -108,6 +109,8 @@ func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
 
 	logger.Info("агент запущен", "version", buildinfo.Version, "server_url", cfg.ServerURL,
 		"data_dir", cfg.DataDir)
+	// Not enrolled is not fatal: the reason is logged and the service keeps running.
+	_, _, _ = enroll(ctx, cfg, api.New(cfg.ServerURL, ""), logger)
 	<-ctx.Done()
 	logger.Info("агент остановлен")
 	return nil
