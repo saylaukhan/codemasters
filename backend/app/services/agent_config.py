@@ -7,25 +7,19 @@ hash of that answer, so any change of ``schedules``, ``threshold_profiles``, ``s
 """
 
 import hashlib
-from typing import Any
 
-from sqlalchemy import Select, case, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
-from app.models import AgentRelease, Device, MonitoringPoint, Schedule, School, ThresholdProfile
+from app.models import AgentRelease, Device, MonitoringPoint, Schedule, School
 from app.schemas.agent import AgentConfigResponse, ScheduleSlot, SpeedtestServers
 from app.schemas.thresholds import ThresholdValues
 from app.services.settings import NOT_CONFIGURED, NOT_CONFIGURED_DETAIL, system_settings
+from app.services.thresholds import most_specific, threshold_profile
 
 # Default channel of an agent until per-device channels arrive with self-update (T-50).
 STABLE_CHANNEL = "stable"
-
-
-def most_specific(statement: Select[Any], scopes: list[str], scope_column: Any) -> Select[Any]:
-    """Order the rows of the chain so that the narrowest scope comes first; ``scopes`` is it."""
-    order = case({scope: position for position, scope in enumerate(scopes)}, value=scope_column)
-    return statement.order_by(order).limit(1)
 
 
 async def agent_config(session: AsyncSession, device: Device) -> AgentConfigResponse:
@@ -58,22 +52,9 @@ async def agent_config(session: AsyncSession, device: Device) -> AgentConfigResp
             Schedule.scope,
         )
     )
-    profile = await session.scalar(
-        most_specific(
-            select(ThresholdProfile).where(
-                ThresholdProfile.is_active,
-                or_(
-                    ThresholdProfile.scope == "global",
-                    (ThresholdProfile.scope == "district")
-                    & (ThresholdProfile.region_id == target.region_id),
-                    (ThresholdProfile.scope == "line")
-                    & (ThresholdProfile.line_id == target.line_id),
-                ),
-            ),
-            ["line", "district", "global"],
-            ThresholdProfile.scope,
-        )
-    )
+    # The agent is told the thresholds of its line so that it can show them, never judge by
+    # them: the status of a measurement is the server's (ADR-004, T-18).
+    profile = await threshold_profile(session, line_id=target.line_id, region_id=target.region_id)
     if schedule is None or profile is None:
         raise ApiError(503, NOT_CONFIGURED, NOT_CONFIGURED_DETAIL)
 

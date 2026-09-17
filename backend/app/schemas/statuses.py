@@ -17,6 +17,9 @@ type ConnectionStatus = Literal["online", "offline"]
 # Network interface of a measurement; Wi-Fi does not rate the line (ADR-012).
 type IfaceType = Literal["ethernet", "wifi", "other"]
 
+# Scope of a threshold profile, from the narrowest to the widest (ADR-004).
+type ProfileScope = Literal["line", "district", "global"]
+
 # Role of a line at a school (ADR-003).
 type LineStatus = Literal["main", "reserve", "disabled"]
 

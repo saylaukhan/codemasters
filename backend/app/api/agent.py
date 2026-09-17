@@ -47,6 +47,7 @@ from app.schemas.agent import (
 from app.schemas.errors import Problem
 from app.services.agent_config import agent_config, config_etag, etag_matches
 from app.services.settings import NOT_CONFIGURED_DETAIL
+from app.services.status import Evaluation, evaluate, line_rules
 
 # Every endpoint of the agent but registration answers these two (ADR-005).
 DEVICE_RESPONSES: dict[int | str, dict[str, Any]] = {
@@ -379,9 +380,13 @@ async def store_measurements(
     fresh = [item for measurement_uuid, item in unseen.items() if measurement_uuid not in known]
     if not fresh:
         return {}
+    # The thresholds of the line are read once: every record of one request is judged by them.
+    rules = await line_rules(session, line_id)
     rows = await session.execute(
         insert(Measurement)
-        .values([measurement_row(device.id, line_id, item) for item in fresh])
+        .values(
+            [measurement_row(device.id, line_id, item, evaluate(item, rules)) for item in fresh]
+        )
         .on_conflict_do_nothing(index_elements=["measurement_uuid", "measured_at"])
         .returning(Measurement.measurement_uuid, Measurement.received_at)
     )
@@ -398,11 +403,14 @@ async def measured_line(session: AsyncSession, device: Device) -> int:
     ).one()
 
 
-def measurement_row(device_id: int, line_id: int, item: MeasurementCreate) -> dict[str, Any]:
-    """Row of ``measurements``: raw values only, ``received_at`` from the database clock.
+def measurement_row(
+    device_id: int, line_id: int, item: MeasurementCreate, verdict: Evaluation
+) -> dict[str, Any]:
+    """Row of ``measurements``: the values of the agent, ``received_at`` from the database clock.
 
-    The status of the measurement and the thresholds it was judged by are filled in on receipt
-    by T-18 (ADR-004); until then they stay empty.
+    The agent sends raw numbers only; the status, the thresholds it was judged by and the
+    comparison with the contract are the server's and are written at the moment of receipt
+    (ТЗ п. 11, ADR-004).
     """
     return {
         "measurement_uuid": item.measurement_uuid,
@@ -420,6 +428,9 @@ def measurement_row(device_id: int, line_id: int, item: MeasurementCreate) -> di
         "server": item.server,
         "iface_type": item.iface_type,
         "agent_version": item.agent_version,
+        "quality_status": verdict.quality_status,
+        "thresholds_snapshot": verdict.thresholds_snapshot,
+        "contract_ok": verdict.contract_ok,
     }
 
 
