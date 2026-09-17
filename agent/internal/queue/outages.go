@@ -50,12 +50,15 @@ func (q *Queue) TouchOutage(ctx context.Context, at time.Time) error {
 	return nil
 }
 
-// CloseOutage ends the open outage; from now on it waits to be sent. An
-// endedAt before the start is moved to the start: the server rejects the
-// other order (OutageCreate).
-func (q *Queue) CloseOutage(ctx context.Context, endedAt time.Time) error {
+// CloseOutage ends the outage that began at startedAt; from now on it waits to
+// be sent. Only that one is closed: a row left open by a failed write must not
+// be ended by the next outage, or the server gets a week-long one. An endedAt
+// before the start is moved to the start: the server rejects the other order
+// (OutageCreate).
+func (q *Queue) CloseOutage(ctx context.Context, startedAt, endedAt time.Time) error {
 	_, err := q.db.ExecContext(ctx,
-		`UPDATE outages SET ended_at = max(started_at, ?) WHERE ended_at IS NULL`, endedAt.UnixMilli())
+		`UPDATE outages SET ended_at = max(started_at, ?) WHERE ended_at IS NULL AND started_at = ?`,
+		endedAt.UnixMilli(), startedAt.UnixMilli())
 	if err != nil {
 		return fmt.Errorf("очередь: конец простоя: %w", err)
 	}
@@ -79,10 +82,11 @@ func (q *Queue) CurrentOutage(ctx context.Context) (Outage, bool, error) {
 }
 
 // PendingOutages returns finished outages the server has not confirmed yet,
-// oldest first.
+// oldest first; a rejected one is never sent again.
 func (q *Queue) PendingOutages(ctx context.Context) ([]Outage, error) {
 	rows, err := q.db.QueryContext(ctx,
-		`SELECT started_at, ended_at, last_failed_at FROM outages WHERE ended_at IS NOT NULL ORDER BY started_at`)
+		`SELECT started_at, ended_at, last_failed_at FROM outages
+		 WHERE ended_at IS NOT NULL AND rejected IS NULL ORDER BY started_at`)
 	if err != nil {
 		return nil, fmt.Errorf("очередь: простои к отправке: %w", err)
 	}
@@ -123,19 +127,35 @@ func (q *Queue) FlushOutages(ctx context.Context, s OutageSender) (sent int, err
 	for _, o := range items {
 		switch err := s.SendOutage(ctx, o.StartedAt, o.EndedAt); {
 		case api.Invalid(err):
-			// Repeating the same body will never succeed: keeping it blocks the rest.
-			q.logger.Error("сервер отклонил простой как невалидный: запись удалена",
+			// Repeating the same body will never succeed, so the record is marked
+			// and stops blocking the rest; deleted it is not, the server neither
+			// confirmed nor stored it.
+			q.logger.Error("сервер отклонил простой как невалидный: запись больше не отправляется",
 				"started_at", o.StartedAt, "ended_at", o.EndedAt, "err", err)
+			if err := q.rejectOutage(ctx, o.StartedAt, err.Error()); err != nil {
+				return sent, err
+			}
 		case err != nil:
 			return sent, err
 		default:
+			if err := q.RemoveOutage(ctx, o.StartedAt); err != nil {
+				return sent, err
+			}
 			sent++
-		}
-		if err := q.RemoveOutage(ctx, o.StartedAt); err != nil {
-			return sent, err
 		}
 	}
 	return sent, nil
+}
+
+// rejectOutage marks an outage the server will never accept: it stays in the
+// file until the age limit drops it, but is not sent again.
+func (q *Queue) rejectOutage(ctx context.Context, startedAt time.Time, reason string) error {
+	_, err := q.db.ExecContext(ctx,
+		`UPDATE outages SET rejected = ? WHERE started_at = ?`, reason, startedAt.UnixMilli())
+	if err != nil {
+		return fmt.Errorf("очередь: отклонённый простой: %w", err)
+	}
+	return nil
 }
 
 // pruneOutages drops sent-out outages older than the queue age limit: they

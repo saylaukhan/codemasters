@@ -112,11 +112,17 @@ func (h *heartbeat) beat(ctx context.Context) {
 	}
 
 	h.tracker.Interval = h.interval()
-	h.record(ctx, h.tracker.Observe(at, online), at)
+	event := h.tracker.Observe(at, online)
+	h.record(ctx, event, at)
 	if !online {
 		return
 	}
-	h.wake()
+	// Only a restored connection wakes the queue: a beat while the line was up
+	// all along would cancel the growing pause between resend attempts and turn
+	// the upper bound of the backoff into the heartbeat interval (ADR-006).
+	if event.Closed {
+		h.wake()
+	}
 	if sent, err := h.opts.Queue.FlushOutages(ctx, h.opts.Client); err != nil {
 		h.opts.Logger.Warn("отправка простоев не удалась, повтор позже", "sent", sent, "err", err)
 	} else if sent > 0 {
@@ -137,7 +143,7 @@ func (h *heartbeat) record(ctx context.Context, event scheduler.OutageEvent, at 
 	case event.Closed:
 		h.opts.Logger.Info("связь восстановлена", "started_at", event.StartedAt,
 			"ended_at", event.EndedAt, "duration", event.Duration())
-		err = h.opts.Queue.CloseOutage(ctx, event.EndedAt)
+		err = h.opts.Queue.CloseOutage(ctx, event.StartedAt, event.EndedAt)
 	}
 	if err != nil {
 		h.opts.Logger.Error("запись простоя в очередь", "err", err)

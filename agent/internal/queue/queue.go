@@ -46,9 +46,28 @@ CREATE TABLE IF NOT EXISTS outages (
 	id             INTEGER PRIMARY KEY AUTOINCREMENT,
 	started_at     INTEGER NOT NULL UNIQUE, -- unix milliseconds; the idempotency key of POST /api/outages
 	last_failed_at INTEGER NOT NULL,        -- the last failed check of an open outage
-	ended_at       INTEGER                  -- NULL while the outage goes on
+	ended_at       INTEGER,                 -- NULL while the outage goes on
+	rejected       TEXT                     -- why the server will never accept the outage (422); NULL while it is sent
 );
 `
+
+// addOutageRejected adds outages.rejected to a queue.db written by an earlier
+// agent: CREATE TABLE IF NOT EXISTS leaves such a file as it was, and it still
+// keeps outages that must not be lost (ADR-006).
+func addOutageRejected(db *sql.DB) error {
+	var n int
+	err := db.QueryRow(`SELECT count(*) FROM pragma_table_info('outages') WHERE name = 'rejected'`).Scan(&n)
+	if err != nil {
+		return fmt.Errorf("колонки outages: %w", err)
+	}
+	if n > 0 {
+		return nil
+	}
+	if _, err := db.Exec(`ALTER TABLE outages ADD COLUMN rejected TEXT`); err != nil {
+		return fmt.Errorf("колонка outages.rejected: %w", err)
+	}
+	return nil
+}
 
 // Queue is the local measurement queue. It is safe for concurrent use.
 type Queue struct {
@@ -70,6 +89,10 @@ func Open(path string, logger *slog.Logger) (*Queue, error) {
 		return nil, fmt.Errorf("очередь %s: %w", path, err)
 	}
 	if _, err := db.Exec(schema); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("очередь %s: %w", path, err)
+	}
+	if err := addOutageRejected(db); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("очередь %s: %w", path, err)
 	}
