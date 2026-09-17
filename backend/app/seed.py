@@ -1,14 +1,177 @@
 """``make seed`` entry point: ``python -m app.seed``.
 
-Reference data, VKO district GeoJSON and test schools arrive in T-04; dev users in T-20.
+Loads reference data and local test data (T-04): districts and cities of VKO with boundaries,
+providers, connection types and test schools, each with one main line and one primary
+monitoring point. Rows are upserted by natural keys (region code, provider name, connection
+type code, School ID), lines and points are created only for a school that has none, so a
+repeated run changes nothing. Dev users arrive in T-20. Data files and their sources:
+``app/seed_data/README.md``.
 """
 
+import asyncio
+import csv
+import json
 import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from geoalchemy2 import WKTElement
+from sqlalchemy import exists, func, select, tuple_
+from sqlalchemy.dialects.postgresql import Insert, insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.db import get_engine, get_session_factory
+from app.models import ConnectionType, Line, MonitoringPoint, Provider, Region, School
+
+DATA_DIR = Path(__file__).resolve().parent / "seed_data"
+REGIONS_FILE = DATA_DIR / "regions.geojson"
+SCHOOLS_FILE = DATA_DIR / "schools.csv"
+
+CONNECTION_TYPES = {
+    "fiber": "Оптоволокно",
+    "adsl": "ADSL",
+    "radio": "Радиоканал",
+    "satellite": "Спутник",
+    "mobile": "Мобильная сеть",
+}
+POINT_NAME = "Кабинет информатики"
+
+
+@dataclass(frozen=True)
+class SeedResult:
+    """What a seed run loaded and what it had to create."""
+
+    regions: int
+    providers: int
+    connection_types: int
+    schools: int
+    lines_created: int
+    points_created: int
+
+
+def upsert(model: Any, rows: list[dict[str, Any]], key: str) -> Insert:
+    """INSERT … ON CONFLICT (key) DO UPDATE that touches a row only when a value differs."""
+    stmt = insert(model).values(rows)
+    columns = [column for column in rows[0] if column != key]
+    table = model.__table__.c
+    return stmt.on_conflict_do_update(
+        index_elements=[key],
+        set_={**{column: stmt.excluded[column] for column in columns}, "updated_at": func.now()},
+        where=tuple_(*(table[column] for column in columns)).is_distinct_from(
+            tuple_(*(stmt.excluded[column] for column in columns))
+        ),
+    )
+
+
+async def seed(session: AsyncSession) -> SeedResult:
+    """Load reference data and test schools into the session's transaction (no commit)."""
+    features = json.loads(REGIONS_FILE.read_text(encoding="utf-8"))["features"]
+    with SCHOOLS_FILE.open(encoding="utf-8", newline="") as file:
+        schools = list(csv.DictReader(file))
+
+    region_rows = [
+        {
+            "code": feature["properties"]["code"],
+            "name": feature["properties"]["name"],
+            "geom": func.ST_GeomFromGeoJSON(json.dumps(feature["geometry"])),
+        }
+        for feature in features
+    ]
+    await session.execute(upsert(Region, region_rows, "code"))
+
+    connection_type_rows = [{"code": code, "name": name} for code, name in CONNECTION_TYPES.items()]
+    await session.execute(upsert(ConnectionType, connection_type_rows, "code"))
+
+    provider_names = sorted({school["provider"] for school in schools})
+    await session.execute(
+        insert(Provider)
+        .values([{"name": name} for name in provider_names])
+        .on_conflict_do_nothing(index_elements=["name"])
+    )
+
+    region_ids = dict((await session.execute(select(Region.code, Region.id))).tuples().all())
+    provider_ids = dict((await session.execute(select(Provider.name, Provider.id))).tuples().all())
+    connection_type_ids = dict(
+        (await session.execute(select(ConnectionType.code, ConnectionType.id))).tuples().all()
+    )
+
+    school_rows = [
+        {
+            "school_code": school["school_code"],
+            "full_name": school["full_name"],
+            "region_id": region_ids[school["region_code"]],
+            "address": school["address"],
+            "geom": WKTElement(f"POINT({school['longitude']} {school['latitude']})", srid=4326),
+        }
+        for school in schools
+    ]
+    await session.execute(upsert(School, school_rows, "school_code"))
+
+    by_code = {school["school_code"]: school for school in schools}
+    without_lines = await session.execute(
+        select(School.id, School.school_code).where(
+            School.school_code.in_(by_code), ~exists().where(Line.school_id == School.id)
+        )
+    )
+    line_rows = [
+        {
+            "school_id": school_id,
+            "provider_id": provider_ids[by_code[code]["provider"]],
+            "connection_type_id": connection_type_ids[by_code[code]["connection_type"]],
+            "contract_down_mbps": float(by_code[code]["contract_down_mbps"]),
+            "contract_up_mbps": float(by_code[code]["contract_up_mbps"]),
+            "status": "main",
+        }
+        for school_id, code in without_lines.tuples()
+    ]
+    if line_rows:
+        await session.execute(insert(Line).values(line_rows))
+
+    without_points = await session.execute(
+        select(Line.school_id, func.min(Line.id))
+        .join(School, School.id == Line.school_id)
+        .where(
+            School.school_code.in_(by_code),
+            Line.status == "main",
+            ~exists().where(MonitoringPoint.school_id == Line.school_id),
+        )
+        .group_by(Line.school_id)
+    )
+    point_rows = [
+        {"school_id": school_id, "line_id": line_id, "name": POINT_NAME, "is_primary": True}
+        for school_id, line_id in without_points.tuples()
+    ]
+    if point_rows:
+        await session.execute(insert(MonitoringPoint).values(point_rows))
+
+    return SeedResult(
+        regions=len(region_rows),
+        providers=len(provider_names),
+        connection_types=len(connection_type_rows),
+        schools=len(school_rows),
+        lines_created=len(line_rows),
+        points_created=len(point_rows),
+    )
+
+
+async def run() -> SeedResult:
+    """Seed the database from ``Settings.database_url`` in one transaction."""
+    async with get_session_factory()() as session:
+        result = await seed(session)
+        await session.commit()
+    await get_engine().dispose()
+    return result
 
 
 def main() -> int:
-    """Report that seeding is not implemented yet."""
-    sys.stdout.write("seed: справочники и тестовые школы появятся в T-04\n")
+    """Run the seed and report what was loaded."""
+    result = asyncio.run(run())
+    sys.stdout.write(
+        f"seed: районов и городов — {result.regions}, провайдеров — {result.providers}, "
+        f"типов подключения — {result.connection_types}, тестовых школ — {result.schools}; "
+        f"создано линий — {result.lines_created}, точек мониторинга — {result.points_created}\n"
+    )
     return 0
 
 
