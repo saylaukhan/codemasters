@@ -206,13 +206,11 @@ def test_unexpected_error_is_problem_json_without_internals(client: TestClient) 
 
 
 def test_contract_stub_answers_not_implemented(client: TestClient) -> None:
-    response = client.post(
-        "/api/devices/register",
-        json={"enrollment_code": "VKO-7F3K-92QD", "device_uid": "pc-1", "agent_version": "0.1.0"},
-    )
+    # Registration of a device is implemented (T-14), so the stub checked here is a panel one.
+    response = client.get("/api/schools")
 
     body = assert_problem(response, 501, "not_implemented")
-    assert "T-14" in body["detail"]
+    assert "T-24" in body["detail"]
 
 
 def test_outage_cannot_end_before_it_starts() -> None:

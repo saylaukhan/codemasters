@@ -1,14 +1,21 @@
-"""Shared FastAPI dependencies: security schemes and list pagination.
+"""Shared FastAPI dependencies: security schemes, device authentication and list pagination.
 
-Security schemes only declare authentication in OpenAPI (``auto_error=False``): the device
-token is checked from T-14, the panel JWT and ``require(permission)`` from T-20.
+``current_device`` turns ``Authorization: Device <token>`` into the row of ``devices`` (T-14,
+ADR-005); the panel JWT and ``require(permission)`` arrive in T-20, so ``user_token`` and
+``refresh_cookie`` still only declare authentication in OpenAPI (``auto_error=False``).
 """
 
 from dataclasses import dataclass
 from typing import Annotated
 
-from fastapi import Query
+from fastapi import Depends, Query, Security
 from fastapi.security import APIKeyCookie, APIKeyHeader, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.db import get_session
+from app.core.errors import ApiError
+from app.core.security import parse_device_token, verify_secret
+from app.models import Device
 
 # Agent requests: ``Authorization: Device <token>`` (ADR-005).
 device_token = APIKeyHeader(
@@ -33,6 +40,41 @@ refresh_cookie = APIKeyCookie(
     description="Refresh-токен панели в httpOnly cookie",
     auto_error=False,
 )
+
+# Authentication scheme of the agent: the value of the Authorization header starts with it.
+DEVICE_SCHEME = "Device"
+# The agent gets one wording for a missing, malformed, unknown or wrong token: telling them
+# apart would let a caller check device ids without a token (ADR-005).
+UNAUTHORIZED_DETAIL = "Токен устройства отсутствует или недействителен"
+
+
+async def current_device(
+    authorization: Annotated[str | None, Security(device_token)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Device:
+    """Device behind ``Authorization: Device <token>``; 401 unknown, 403 blocked (ADR-005).
+
+    Every other request of the agent is derived from the row it returns: the school and the
+    line of a measurement come from ``monitoring_points``, never from the request (ТЗ п. 12).
+    """
+    scheme, _, token = (authorization or "").partition(" ")
+    parsed = parse_device_token(token.strip()) if scheme == DEVICE_SCHEME else None
+    if parsed is None:
+        raise unauthorized_device()
+    device_id, secret = parsed
+    device = await session.get(Device, device_id)
+    if device is None or not verify_secret(secret, device.token_hash):
+        raise unauthorized_device()
+    # Blocking keeps the device and its history, but stops every request of the agent
+    # (ТЗ п. 16, п. 20).
+    if device.status != "active":
+        raise ApiError(403, "device_blocked", "Устройство заблокировано администратором")
+    return device
+
+
+def unauthorized_device() -> ApiError:
+    return ApiError(401, "unauthorized", UNAUTHORIZED_DETAIL, {"WWW-Authenticate": DEVICE_SCHEME})
+
 
 MAX_PAGE_SIZE = 100
 

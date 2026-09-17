@@ -9,6 +9,7 @@ readme = { text = "Backend of the VKO school internet monitoring system.", conte
 requires-python = ">=3.12"
 dynamic = ["version"]
 dependencies = [
+    "argon2-cffi>=23.1",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "sqlalchemy[asyncio]>=2.0",

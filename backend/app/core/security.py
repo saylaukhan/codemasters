@@ -1,0 +1,111 @@
+"""Secrets the API checks: device tokens and agent installation codes (ТЗ п. 12, ADR-005).
+
+Neither secret is stored: the database keeps only their argon2id hash — ``devices.token_hash``
+and ``enrollment_codes.code_hash``. An argon2 hash carries a random salt, so no row can be
+found by hashing what the client sent; every secret therefore starts with the id of its own
+row (``17.<random>`` for a token, ``VKO-0011-...`` for a code). The id selects exactly one row
+and argon2 checks the random part, so a wrong id is as useless as a wrong secret.
+
+Parameters are the argon2id minimum recommended by OWASP (19 MiB, 2 passes, 1 lane): both
+secrets are machine-generated and long, so the cost is there to slow down a stolen dump, not
+to stretch a human password. The password hasher of the panel arrives with T-20.
+"""
+
+import re
+import secrets
+
+from argon2 import PasswordHasher
+from argon2.exceptions import Argon2Error, InvalidHashError
+
+_HASHER = PasswordHasher(time_cost=2, memory_cost=19 * 1024, parallelism=1)
+
+# Crockford base32: no I, L, O, U, so a code read over the phone has one spelling only.
+CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+# What a human may type instead: the letters Crockford maps back to digits.
+CODE_ALIASES = str.maketrans({"O": "0", "I": "1", "L": "1"})
+
+ENROLLMENT_CODE_PREFIX = "VKO"
+# Id of the row, then the random part in two groups: VKO-0011-7F3K9-2QD4X.
+ENROLLMENT_ID_LENGTH = 4
+ENROLLMENT_SECRET_LENGTH = 10
+# Matches the part after the prefix: the prefix itself holds an "O" the aliases would fold.
+ENROLLMENT_CODE_RE = re.compile(
+    rf"^([{CODE_ALPHABET}]{{{ENROLLMENT_ID_LENGTH}}})"
+    rf"-([{CODE_ALPHABET}]{{5}})-([{CODE_ALPHABET}]{{5}})$"
+)
+
+# Device token: id of the device, a dot, and 32 random bytes in url-safe base64.
+DEVICE_SECRET_BYTES = 32
+DEVICE_TOKEN_RE = re.compile(r"^([1-9][0-9]{0,18})\.([A-Za-z0-9_-]{16,128})$")
+
+
+def hash_secret(secret: str) -> str:
+    """Return the argon2id hash stored in ``token_hash`` / ``code_hash``."""
+    return _HASHER.hash(secret)
+
+
+def verify_secret(secret: str, hashed: str) -> bool:
+    """Check ``secret`` against a stored hash; a damaged or foreign hash is a mismatch."""
+    try:
+        return _HASHER.verify(hashed, secret)
+    except (Argon2Error, InvalidHashError):
+        return False
+
+
+def encode_id(value: int, length: int) -> str:
+    """Row id as ``length`` base32 characters, most significant first."""
+    if value < 0 or value >= 32**length:
+        raise ValueError(f"идентификатор {value} не помещается в {length} символов")
+    digits = []
+    for _ in range(length):
+        value, index = divmod(value, 32)
+        digits.append(CODE_ALPHABET[index])
+    return "".join(reversed(digits))
+
+
+def decode_id(text: str) -> int:
+    """Inverse of ``encode_id``; the caller has already matched the alphabet."""
+    value = 0
+    for char in text:
+        value = value * 32 + CODE_ALPHABET.index(char)
+    return value
+
+
+def new_enrollment_secret() -> str:
+    """Random part of an installation code: 10 base32 characters, 50 bits."""
+    return "".join(secrets.choice(CODE_ALPHABET) for _ in range(ENROLLMENT_SECRET_LENGTH))
+
+
+def format_enrollment_code(code_id: int, secret: str) -> str:
+    """Code shown to a human once: ``VKO-<id>-<secret>``; only its hash is stored."""
+    groups = f"{encode_id(code_id, ENROLLMENT_ID_LENGTH)}-{secret[:5]}-{secret[5:]}"
+    return f"{ENROLLMENT_CODE_PREFIX}-{groups}"
+
+
+def parse_enrollment_code(code: str) -> tuple[int, str] | None:
+    """Split a typed code into the row id and the secret; ``None`` when it is not a code."""
+    prefix, _, rest = "".join(code.upper().split()).partition("-")
+    if prefix != ENROLLMENT_CODE_PREFIX:
+        return None
+    match = ENROLLMENT_CODE_RE.match(rest.translate(CODE_ALIASES))
+    if match is None:
+        return None
+    return decode_id(match[1]), match[2] + match[3]
+
+
+def new_device_secret() -> str:
+    """Random part of a device token."""
+    return secrets.token_urlsafe(DEVICE_SECRET_BYTES)
+
+
+def format_device_token(device_id: int, secret: str) -> str:
+    """Token the agent sends in ``Authorization: Device <token>`` (ADR-005)."""
+    return f"{device_id}.{secret}"
+
+
+def parse_device_token(token: str) -> tuple[int, str] | None:
+    """Split a token into the device id and the secret; ``None`` when it is not a token."""
+    match = DEVICE_TOKEN_RE.match(token)
+    if match is None:
+        return None
+    return int(match[1]), match[2]
