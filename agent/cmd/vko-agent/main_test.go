@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -180,5 +181,23 @@ func TestStatusWithMissingConfigFails(t *testing.T) {
 	}
 	if !strings.Contains(stdout, "Служба VKOMonitorAgent:") || !strings.Contains(stderr, "missing.yaml") {
 		t.Fatalf("status without config: stdout %q / stderr %q", stdout, stderr)
+	}
+}
+
+func TestProbeOfflineIsAResult(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	addr := ln.Addr().String()
+	_ = ln.Close() // nothing listens on the port any more
+
+	path := filepath.Join(t.TempDir(), "agent.yaml")
+	if err := os.WriteFile(path, []byte("server_url: http://"+addr+"\n"), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	code, stdout, stderr := runCLI(t, "probe", "--config", path)
+	if code != exitOK || !strings.Contains(stdout, "Связь: offline") || !strings.Contains(stdout, "Причина:") {
+		t.Fatalf("probe without server: exit code %d, stdout %q, stderr %q; want offline with a reason", code, stdout, stderr)
 	}
 }

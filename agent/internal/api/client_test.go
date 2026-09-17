@@ -85,3 +85,25 @@ func TestDeviceAuthorizationHeader(t *testing.T) {
 		t.Fatalf("do: %v", err)
 	}
 }
+
+func TestWhoAmI(t *testing.T) {
+	answer := `{"external_ip": "95.56.12.34"}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/agent/whoami" || r.Header.Get("Authorization") != "Device tok-42" {
+			t.Errorf("request = %s %s (%q), want GET /api/agent/whoami with the device token",
+				r.Method, r.URL.Path, r.Header.Get("Authorization"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(answer))
+	}))
+	defer srv.Close()
+
+	ip, err := New(srv.URL, "tok-42").WhoAmI(context.Background())
+	if err != nil || ip != "95.56.12.34" {
+		t.Fatalf("WhoAmI = %q, %v, want 95.56.12.34", ip, err)
+	}
+	answer = `{"external_ip": "unknown"}`
+	if _, err := New(srv.URL, "tok-42").WhoAmI(context.Background()); err == nil {
+		t.Fatal("WhoAmI with an invalid external_ip: want error")
+	}
+}

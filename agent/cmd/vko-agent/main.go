@@ -1,20 +1,25 @@
 // Command vko-agent is the CLI of the school internet monitoring agent.
 //
-// Subcommands: install, uninstall, run, status, version. The service and the
+// Subcommands: install, uninstall, run, status, probe, version. The service and the
 // config live in internal/service; the measurement loop arrives in T-08+.
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"time"
 
 	"github.com/saylaukhan/codemasters/agent/internal/buildinfo"
+	"github.com/saylaukhan/codemasters/agent/internal/netinfo"
+	"github.com/saylaukhan/codemasters/agent/internal/probe"
 	"github.com/saylaukhan/codemasters/agent/internal/service"
 )
 
@@ -46,6 +51,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cmdRun(args[1:], stdout, stderr)
 	case "status":
 		return cmdStatus(args[1:], stdout, stderr)
+	case "probe":
+		return cmdProbe(args[1:], stdout, stderr)
 	case "version":
 		return cmdVersion(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
@@ -66,6 +73,8 @@ func printUsage(w io.Writer) {
   uninstall                 остановить и удалить службу (данные остаются)
   run --config <путь>       запустить агента; без службы — до Ctrl+C
   status [--config <путь>]  показать состояние службы, последний замер и очередь
+  probe [--config <путь>] [--target <url>]
+                            проверить связь, ping/jitter/loss и сетевой адаптер
   version                   показать версию агента
 
 Справка по команде: vko-agent <команда> -h
@@ -189,6 +198,58 @@ func cmdStatus(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "Последний замер: %s\n", st.LastMeasurementAt.Format(time.RFC3339))
 	}
 	fmt.Fprintf(stdout, "Очередь на отправку: %d\n", st.QueueSize)
+	return exitOK
+}
+
+// cmdProbe runs the connectivity check, the ping series and the adapter
+// detection once and prints them (plan.md §4.3, steps 1–3). The service gets
+// the measurement server from GET /api/agent/config (T-13); here it is
+// --target, the API server by default.
+func cmdProbe(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("probe", stderr)
+	configPath := fs.String("config", service.DefaultConfigPath(), "путь к файлу конфигурации агента (YAML)")
+	target := fs.String("target", "", "адрес сервера замеров http(s)://хост; по умолчанию server_url")
+	if code, ok := parseFlags(fs, args); !ok {
+		return code
+	}
+	cfg, err := service.LoadConfig(*configPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "probe: %v\n", err)
+		return exitError
+	}
+	if *target == "" {
+		*target = cfg.ServerURL
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	res, err := probe.Run(ctx, probe.Options{
+		ServerURL: cfg.ServerURL,
+		TargetURL: *target,
+		Logger:    slog.New(slog.NewTextHandler(stderr, nil)),
+	})
+	if err != nil {
+		fmt.Fprintf(stderr, "probe: %v\n", err)
+		return exitError
+	}
+	fmt.Fprintf(stdout, "Связь: %s\n", res.Status)
+	if res.Status == probe.Offline {
+		fmt.Fprintf(stdout, "Причина: %s\n", res.Reason)
+		return exitOK
+	}
+	fmt.Fprintf(stdout, "Метод: %s до %s, ответов %d из %d\n", res.Method, res.Host, res.Received, res.Sent)
+	fmt.Fprintf(stdout, "Ping: %.1f мс, Jitter: %.1f мс, Packet Loss: %.1f %%\n", res.PingMs, res.JitterMs, res.LossPct)
+
+	info, err := netinfo.Detect(res.Host)
+	if err != nil {
+		fmt.Fprintf(stdout, "Адаптер: не определён (%v)\n", err)
+		return exitOK
+	}
+	gateway := info.Gateway
+	if gateway == "" {
+		gateway = "неизвестен"
+	}
+	fmt.Fprintf(stdout, "Адаптер: %s (%s), адрес %s, шлюз %s\n", info.Interface, info.Type, info.LocalIP, gateway)
 	return exitOK
 }
 
