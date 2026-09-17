@@ -108,7 +108,7 @@ class EnrollmentCodeIssued(BaseModel):
     """Issued installation code: shown once, the server keeps only its hash (ADR-005)."""
 
     code: str = Field(
-        examples=["VKO-7F3K-92QD"],
+        examples=["VKO-0011-7F3K9-2QD4X"],
         description="Код для параметра установки ENROLL_CODE; повторно не показывается",
     )
     school_id: int

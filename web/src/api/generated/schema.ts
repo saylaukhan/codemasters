@@ -2058,7 +2058,7 @@ export interface components {
         DeviceRegisterRequest: {
             /**
              * Enrollment Code
-             * @example VKO-7F3K-92QD
+             * @example VKO-0011-7F3K9-2QD4X
              */
             enrollment_code: string;
             /**
@@ -2109,7 +2109,7 @@ export interface components {
             /**
              * Code
              * @description Код для параметра установки ENROLL_CODE; повторно не показывается
-             * @example VKO-7F3K-92QD
+             * @example VKO-0011-7F3K9-2QD4X
              */
             code: string;
             /** School Id */
