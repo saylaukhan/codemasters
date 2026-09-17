@@ -46,6 +46,8 @@ type ProblemError struct {
 	Type   string `json:"type"`
 	Title  string `json:"title"`
 	Detail string `json:"detail"`
+	// RetryAfter is the Retry-After header of the answer (429 or 503), 0 when absent.
+	RetryAfter time.Duration `json:"-"`
 }
 
 func (e *ProblemError) Error() string {
@@ -103,6 +105,7 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) error
 		// Not every failure is problem+json (a proxy may answer HTML): keep the status anyway.
 		_ = json.NewDecoder(io.LimitReader(resp.Body, maxErrorBody)).Decode(pe)
 		pe.Status = resp.StatusCode
+		pe.RetryAfter = parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
 		return pe
 	}
 	if out == nil {
