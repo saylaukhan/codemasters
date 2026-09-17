@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/saylaukhan/codemasters/agent/internal/buildinfo"
+	"github.com/saylaukhan/codemasters/agent/internal/service"
 )
 
 // runCLI invokes run with in-memory writers and returns the exit code and
@@ -90,37 +92,93 @@ func TestRunWithMissingConfigFails(t *testing.T) {
 	}
 }
 
-func TestRunWithExistingConfigSucceeds(t *testing.T) {
+func TestRunWithInvalidConfigFails(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "agent.yaml")
 	if err := os.WriteFile(path, []byte("room: test\n"), 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
-	code, stdout, stderr := runCLI(t, "run", "--config", path)
-	if code != exitOK {
-		t.Fatalf("run with config: exit code = %d, want %d; stderr: %s", code, exitOK, stderr)
+	code, _, stderr := runCLI(t, "run", "--config", path, "--check")
+	if code != exitError {
+		t.Fatalf("run with invalid config: exit code = %d, want %d", code, exitError)
 	}
-	if !strings.Contains(stdout, "T-06") {
-		t.Fatalf("run with config: stdout %q does not name the follow-up task", stdout)
+	if !strings.Contains(stderr, "server_url") {
+		t.Fatalf("run with invalid config: stderr %q does not name the missing field", stderr)
+	}
+}
+
+func TestRunCheckWithValidConfig(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agent.yaml")
+	if err := os.WriteFile(path, []byte("server_url: http://localhost:8000\nroom: test\n"), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	code, stdout, stderr := runCLI(t, "run", "--config", path, "--check")
+	if code != exitOK {
+		t.Fatalf("run --check: exit code = %d, want %d; stderr: %s", code, exitOK, stderr)
+	}
+	if !strings.Contains(stdout, "http://localhost:8000") {
+		t.Fatalf("run --check: stdout %q does not show the server", stdout)
 	}
 }
 
 // TestRunWithRepoDevConfig guards `make agent-run`, which passes ./dev.yaml
 // relative to the agent/ directory.
 func TestRunWithRepoDevConfig(t *testing.T) {
-	code, _, stderr := runCLI(t, "run", "--config", filepath.Join("..", "..", "dev.yaml"))
+	code, _, stderr := runCLI(t, "run", "--config", filepath.Join("..", "..", "dev.yaml"), "--check")
 	if code != exitOK {
 		t.Fatalf("run with dev.yaml: exit code = %d, want %d; stderr: %s", code, exitOK, stderr)
 	}
 }
 
-func TestStubCommandsSucceed(t *testing.T) {
-	for _, name := range []string{"install", "status"} {
-		code, stdout, stderr := runCLI(t, name)
-		if code != exitOK {
-			t.Fatalf("%s: exit code = %d, want %d; stderr: %s", name, code, exitOK, stderr)
+func TestStatusWithoutStateFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "agent.yaml")
+	cfg := "server_url: http://localhost:8000\ndata_dir: data\n"
+	if err := os.WriteFile(path, []byte(cfg), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	code, stdout, stderr := runCLI(t, "status", "--config", path)
+	if code != exitOK {
+		t.Fatalf("status: exit code = %d, want %d; stderr: %s", code, exitOK, stderr)
+	}
+	for _, want := range []string{"Служба VKOMonitorAgent:", "Последний замер: нет данных", "Очередь на отправку"} {
+		if !strings.Contains(stdout, want) {
+			t.Fatalf("status: stdout %q does not contain %q", stdout, want)
 		}
-		if !strings.Contains(stdout, "T-06") {
-			t.Fatalf("%s: stdout %q does not name the follow-up task", name, stdout)
+	}
+}
+
+func TestStatusShowsState(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "agent.yaml")
+	if err := os.WriteFile(path, []byte("server_url: http://localhost:8000\ndata_dir: data\n"), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	dataDir := filepath.Join(dir, "data")
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	measured := time.Date(2026, 9, 17, 12, 7, 0, 0, time.FixedZone("", 5*3600))
+	st := service.State{Version: "dev", StartedAt: measured.Add(-time.Hour), LastMeasurementAt: &measured, QueueSize: 7}
+	if err := service.WriteState(dataDir, st); err != nil {
+		t.Fatalf("WriteState: %v", err)
+	}
+	code, stdout, stderr := runCLI(t, "status", "--config", path)
+	if code != exitOK {
+		t.Fatalf("status: exit code = %d, want %d; stderr: %s", code, exitOK, stderr)
+	}
+	for _, want := range []string{"Последний замер: 2026-09-17T12:07:00+05:00", "Очередь на отправку: 7"} {
+		if !strings.Contains(stdout, want) {
+			t.Fatalf("status: stdout %q does not contain %q", stdout, want)
 		}
+	}
+}
+
+func TestStatusWithMissingConfigFails(t *testing.T) {
+	code, stdout, stderr := runCLI(t, "status", "--config", filepath.Join(t.TempDir(), "missing.yaml"))
+	if code != exitError {
+		t.Fatalf("status without config: exit code = %d, want %d", code, exitError)
+	}
+	if !strings.Contains(stdout, "Служба VKOMonitorAgent:") || !strings.Contains(stderr, "missing.yaml") {
+		t.Fatalf("status without config: stdout %q / stderr %q", stdout, stderr)
 	}
 }
