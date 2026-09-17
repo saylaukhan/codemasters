@@ -17,6 +17,7 @@ CLAUDE.local.md
 # Go (agent/)
 agent/bin/
 agent/dist/
+agent/.data/
 agent/*.exe
 agent/*.msi
 agent/installer/wix/obj/
