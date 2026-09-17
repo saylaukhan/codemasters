@@ -20,7 +20,7 @@ MAX_BATCH_SIZE = 100
 class DeviceRegisterRequest(BaseModel):
     """First start of an agent: one-time installation code issued for a school."""
 
-    enrollment_code: str = Field(min_length=1, max_length=64, examples=["VKO-7F3K-92QD"])
+    enrollment_code: str = Field(min_length=1, max_length=64, examples=["VKO-0011-7F3K9-2QD4X"])
     device_uid: str = Field(
         min_length=1, max_length=128, description="Постоянный идентификатор ПК от агента"
     )

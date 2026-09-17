@@ -37,6 +37,9 @@ ENROLLMENT_CODE_RE = re.compile(
 # Device token: id of the device, a dot, and 32 random bytes in url-safe base64.
 DEVICE_SECRET_BYTES = 32
 DEVICE_TOKEN_RE = re.compile(r"^([1-9][0-9]{0,18})\.([A-Za-z0-9_-]{16,128})$")
+# ``devices.id`` is a bigint: a larger number is not an unknown device but a value the database
+# cannot even take as a parameter, so it is rejected here and answered 401 like any other token.
+MAX_DEVICE_ID = 2**63 - 1
 
 
 def hash_secret(secret: str) -> str:
@@ -108,4 +111,7 @@ def parse_device_token(token: str) -> tuple[int, str] | None:
     match = DEVICE_TOKEN_RE.match(token)
     if match is None:
         return None
-    return int(match[1]), match[2]
+    device_id = int(match[1])
+    if device_id > MAX_DEVICE_ID:
+        return None
+    return device_id, match[2]

@@ -89,13 +89,17 @@ async def test_token_of_the_device_opens_the_agent_api(
     unknown_device = await api_client.post(
         HEARTBEAT, json=heartbeat(), headers=as_device("999999.not-the-right-secret")
     )
+    # An id past the range of a bigint never reaches the database as a query parameter.
+    beyond_bigint = await api_client.post(
+        HEARTBEAT, json=heartbeat(), headers=as_device("9999999999999999999.not-the-right-secret")
+    )
     wrong_scheme = await api_client.post(
         HEARTBEAT, json=heartbeat(), headers={"Authorization": f"Bearer {token}"}
     )
 
     # Authentication passed; the endpoint itself lands in T-16.
     assert problem(accepted, 501, "not_implemented")["detail"].endswith("T-16")
-    for refused in (without, wrong_secret, unknown_device, wrong_scheme):
+    for refused in (without, wrong_secret, unknown_device, beyond_bigint, wrong_scheme):
         assert problem(refused, 401, "unauthorized")["detail"]
         assert refused.headers["www-authenticate"] == "Device"
 
