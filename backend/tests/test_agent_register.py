@@ -97,8 +97,8 @@ async def test_token_of_the_device_opens_the_agent_api(
         HEARTBEAT, json=heartbeat(), headers={"Authorization": f"Bearer {token}"}
     )
 
-    # Authentication passed; the endpoint itself lands in T-16.
-    assert problem(accepted, 501, "not_implemented")["detail"].endswith("T-16")
+    # Authentication passed: the heartbeat of T-16 answers without a body.
+    assert accepted.status_code == 204, accepted.text
     for refused in (without, wrong_secret, unknown_device, beyond_bigint, wrong_scheme):
         assert problem(refused, 401, "unauthorized")["detail"]
         assert refused.headers["www-authenticate"] == "Device"
