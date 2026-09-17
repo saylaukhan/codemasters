@@ -1,12 +1,13 @@
 """Alembic environment: async engine, database URL from Settings.
 
 Migrations are forward-only (ADR-003, CONTRIBUTING.md §6). Autogenerate compares the database
-with ``app.models``; it does not know about hypertables, extensions and RLS, so every generated
-revision is read and completed by hand.
+with ``app.models``; it does not know about hypertables, extensions, RLS and continuous
+aggregates, so every generated revision is read and completed by hand.
 """
 
 import asyncio
 from logging.config import fileConfig
+from typing import Any
 
 from alembic import context
 from geoalchemy2 import alembic_helpers
@@ -29,6 +30,21 @@ if not config.get_main_option("sqlalchemy.url"):
     config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
 
 
+def include_object(
+    object_: Any, name: str | None, type_: str, reflected: bool, compare_to: Any
+) -> bool:
+    """What autogenerate compares: everything geoalchemy2 keeps, minus continuous aggregates.
+
+    ``m_hourly`` and ``m_daily`` are TimescaleDB views created by the migration of T-19; their
+    models exist only for reading, and without this autogenerate would try to create tables of
+    the same name.
+    """
+    if getattr(object_, "info", {}).get("continuous_aggregate"):
+        return False
+    keep: bool = alembic_helpers.include_object(object_, name, type_, reflected, compare_to)
+    return keep
+
+
 def run_migrations_offline() -> None:
     """Emit SQL to stdout without connecting to the database (``alembic upgrade --sql``)."""
     url = config.get_main_option("sqlalchemy.url")
@@ -39,7 +55,7 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         # PostGIS: render geoalchemy2 types with their import, skip spatial_ref_sys.
         render_item=alembic_helpers.render_item,
-        include_object=alembic_helpers.include_object,
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -52,7 +68,7 @@ def do_run_migrations(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         render_item=alembic_helpers.render_item,
-        include_object=alembic_helpers.include_object,
+        include_object=include_object,
     )
 
     with context.begin_transaction():
