@@ -11,6 +11,8 @@ from app.models.device import Device
 from app.models.enrollment_code import EnrollmentCode
 from app.models.heartbeat import Heartbeat
 from app.models.line import Line
+from app.models.m_daily import MDaily
+from app.models.m_hourly import MHourly
 from app.models.measurement import Measurement
 from app.models.monitoring_point import MonitoringPoint
 from app.models.outage import Outage
@@ -30,6 +32,8 @@ __all__ = [
     "EnrollmentCode",
     "Heartbeat",
     "Line",
+    "MDaily",
+    "MHourly",
     "Measurement",
     "MonitoringPoint",
     "Outage",
