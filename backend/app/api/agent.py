@@ -8,10 +8,11 @@ Endpoints still answering 501 name the task that implements them.
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from ipaddress import IPv4Address, IPv6Address, ip_address
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, status
+from fastapi import APIRouter, Depends, Header, Request, Response, status
 from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
@@ -44,6 +45,12 @@ from app.schemas.agent import (
     WhoAmIResponse,
 )
 from app.schemas.errors import Problem
+from app.services.agent_config import (
+    NOT_CONFIGURED_DETAIL,
+    agent_config,
+    config_etag,
+    etag_matches,
+)
 
 # Every endpoint of the agent but registration answers these two (ADR-005).
 DEVICE_RESPONSES: dict[int | str, dict[str, Any]] = {
@@ -55,6 +62,7 @@ router = APIRouter(tags=["agent"])
 device_router = APIRouter(dependencies=[Depends(current_device)], responses=DEVICE_RESPONSES)
 
 CODE_NOT_FOUND = "Код установки не найден"
+EXTERNAL_IP_UNKNOWN = "Сервер не определил внешний IP запроса"
 BLOCKED = "Устройство заблокировано администратором"
 DUPLICATE_MEASUREMENT = "Замер с этим measurement_uuid уже принят"
 
@@ -205,17 +213,57 @@ async def send_heartbeat(body: HeartbeatRequest) -> None:
             }
         },
         304: {"description": "Конфигурация не изменилась: If-None-Match совпал с ETag"},
+        503: {"model": Problem, "description": NOT_CONFIGURED_DETAIL},
     },
 )
 async def get_agent_config(
+    device: Annotated[Device, Depends(current_device)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    response: Response,
     if_none_match: Annotated[str | None, Header()] = None,
 ) -> AgentConfigResponse:
-    raise not_implemented("T-17")
+    """Schedule, thresholds, measurement servers and version the agent must run (ТЗ п. 11, п. 20).
+
+    Everything is assembled from the database along the chain device → line → district → global
+    settings; the ETag is the hash of the answer, so an unchanged configuration costs the agent
+    a 304 without a body (ADR-004, ADR-012).
+    """
+    config = await agent_config(session, device)
+    etag = config_etag(config)
+    if etag_matches(if_none_match, etag):
+        # 304 carries no body, so the problem+json handler answers with the headers alone.
+        raise ApiError(304, "not_modified", None, {"ETag": etag})
+    response.headers["ETag"] = etag
+    return config
 
 
-@device_router.get("/agent/whoami", summary="Внешний IP запроса")
-async def whoami() -> WhoAmIResponse:
-    raise not_implemented("T-17")
+@device_router.get(
+    "/agent/whoami",
+    summary="Внешний IP запроса",
+    responses={503: {"model": Problem, "description": EXTERNAL_IP_UNKNOWN}},
+)
+async def whoami(request: Request) -> WhoAmIResponse:
+    """External IP of the request: the agent stores it with every measurement (plan.md §4.5)."""
+    return WhoAmIResponse(external_ip=external_ip(request))
+
+
+def external_ip(request: Request) -> IPv4Address | IPv6Address:
+    """Address of the request as the server sees it.
+
+    Behind Caddy the peer of the connection is the proxy, and the real address is the last entry
+    of ``X-Forwarded-For``: the proxy appends it to whatever the client sent, so an agent cannot
+    talk the server into naming an address of its own choosing.
+    """
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    candidates = [part.strip() for part in reversed(forwarded.split(","))]
+    if request.client is not None:
+        candidates.append(request.client.host)
+    for candidate in candidates:
+        try:
+            return ip_address(candidate)
+        except ValueError:
+            continue
+    raise ApiError(503, "external_ip_unknown", EXTERNAL_IP_UNKNOWN)
 
 
 @device_router.post(

@@ -194,6 +194,7 @@
           "agent"
         ],
         "summary": "Конфигурация агента: расписание, пороги, сервер замеров, версия",
+        "description": "Schedule, thresholds, measurement servers and version the agent must run (ТЗ п. 11, п. 20).\n\nEverything is assembled from the database along the chain device → line → district → global\nsettings; the ETag is the hash of the answer, so an unchanged configuration costs the agent\na 304 without a body (ADR-004, ADR-012).",
         "operationId": "get_agent_config",
         "security": [
           {
@@ -260,6 +261,16 @@
           "304": {
             "description": "Конфигурация не изменилась: If-None-Match совпал с ETag"
           },
+          "503": {
+            "description": "Система не настроена: нет системных настроек, расписания или профиля порогов — выполните make seed и миграции",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Ошибка валидации запроса",
             "content": {
@@ -289,6 +300,7 @@
           "agent"
         ],
         "summary": "Внешний IP запроса",
+        "description": "External IP of the request: the agent stores it with every measurement (plan.md §4.5).",
         "operationId": "whoami",
         "responses": {
           "200": {
@@ -313,6 +325,16 @@
           },
           "403": {
             "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервер не определил внешний IP запроса",
             "content": {
               "application/problem+json": {
                 "schema": {

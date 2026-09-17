@@ -17,7 +17,16 @@ from app.core.security import (
     new_device_secret,
     new_enrollment_secret,
 )
-from app.models import Device, EnrollmentCode, Line, MonitoringPoint, Provider, Region, School
+from app.models import (
+    Device,
+    EnrollmentCode,
+    Line,
+    MonitoringPoint,
+    Provider,
+    Region,
+    School,
+    SystemSettings,
+)
 
 ENROLLMENT_CODE_TTL = timedelta(days=7)
 
@@ -108,3 +117,22 @@ async def register_device(
     session.add(device)
     await session.flush()
     return device, format_device_token(device.id, secret)
+
+
+async def create_settings(
+    session: AsyncSession,
+    *,
+    librespeed_url: str = "https://speedtest.example.kz",
+    ndt7_url: str | None = None,
+) -> SystemSettings:
+    """The single row of ``settings`` that ``make seed`` creates on a fresh database (T-05).
+
+    Everything else in it keeps the defaults of the migration, which is what a seeded database
+    has too: the intervals of the agent, and later the values of the other tasks (T-17, T-37).
+    """
+    settings = SystemSettings(id=1, librespeed_url=librespeed_url, ndt7_url=ndt7_url)
+    session.add(settings)
+    await session.flush()
+    # Columns filled by the database defaults are read back, as a fresh session would see them.
+    await session.refresh(settings)
+    return settings

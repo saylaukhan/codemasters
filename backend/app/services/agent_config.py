@@ -1,0 +1,138 @@
+"""Configuration an agent asks for: schedule, thresholds, servers, version (T-17, ADR-012).
+
+Nothing here is hard-coded in the agent: the answer is assembled from the database along the
+chain device → line → district → global settings (ТЗ п. 11, п. 20; ADR-004). The ETag is the
+hash of that answer, so any change of ``schedules``, ``threshold_profiles``, ``settings`` or
+``agent_releases`` gives the agent a new configuration and everything else costs it a 304.
+"""
+
+import hashlib
+from typing import Any
+
+from sqlalchemy import Select, case, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.errors import ApiError
+from app.models import (
+    AgentRelease,
+    Device,
+    MonitoringPoint,
+    Schedule,
+    School,
+    SystemSettings,
+    ThresholdProfile,
+)
+from app.schemas.agent import AgentConfigResponse, ScheduleSlot, SpeedtestServers
+from app.schemas.thresholds import ThresholdValues
+
+SETTINGS_ID = 1
+NOT_CONFIGURED = "not_configured"
+NOT_CONFIGURED_DETAIL = (
+    "Система не настроена: нет системных настроек, расписания или профиля порогов — "
+    "выполните make seed и миграции"
+)
+
+# Default channel of an agent until per-device channels arrive with self-update (T-50).
+STABLE_CHANNEL = "stable"
+
+
+def most_specific(statement: Select[Any], scopes: list[str], scope_column: Any) -> Select[Any]:
+    """Order the rows of the chain so that the narrowest scope comes first; ``scopes`` is it."""
+    order = case({scope: position for position, scope in enumerate(scopes)}, value=scope_column)
+    return statement.order_by(order).limit(1)
+
+
+async def agent_config(session: AsyncSession, device: Device) -> AgentConfigResponse:
+    """Build the configuration of ``device`` (ТЗ п. 2, п. 11, п. 20).
+
+    The school and the line come from the monitoring point of the device, never from the
+    request (ТЗ п. 12, ADR-005); a missing settings row, schedule or threshold profile is an
+    incomplete installation, not a bad request, so it answers 503.
+    """
+    target = (
+        await session.execute(
+            select(MonitoringPoint.school_id, MonitoringPoint.line_id, School.region_id)
+            .join(School, School.id == MonitoringPoint.school_id)
+            .where(MonitoringPoint.id == device.monitoring_point_id)
+        )
+    ).one()
+
+    settings = await session.get(SystemSettings, SETTINGS_ID)
+    schedule = await session.scalar(
+        most_specific(
+            select(Schedule).where(
+                Schedule.is_active,
+                or_(
+                    Schedule.scope == "global",
+                    (Schedule.scope == "district") & (Schedule.region_id == target.region_id),
+                    (Schedule.scope == "school") & (Schedule.school_id == target.school_id),
+                ),
+            ),
+            ["school", "district", "global"],
+            Schedule.scope,
+        )
+    )
+    profile = await session.scalar(
+        most_specific(
+            select(ThresholdProfile).where(
+                ThresholdProfile.is_active,
+                or_(
+                    ThresholdProfile.scope == "global",
+                    (ThresholdProfile.scope == "district")
+                    & (ThresholdProfile.region_id == target.region_id),
+                    (ThresholdProfile.scope == "line")
+                    & (ThresholdProfile.line_id == target.line_id),
+                ),
+            ),
+            ["line", "district", "global"],
+            ThresholdProfile.scope,
+        )
+    )
+    if settings is None or schedule is None or profile is None:
+        raise ApiError(503, NOT_CONFIGURED, NOT_CONFIGURED_DETAIL)
+
+    return AgentConfigResponse(
+        # Slots are local times of the zone of the schedule; storage stays UTC (ADR-014).
+        timezone=schedule.timezone,
+        schedule_slots=[ScheduleSlot.model_validate(slot) for slot in schedule.slots],
+        heartbeat_interval_s=settings.heartbeat_interval_s,
+        config_refresh_interval_s=settings.config_refresh_interval_s,
+        speedtest=SpeedtestServers(
+            librespeed_url=settings.librespeed_url, ndt7_url=settings.ndt7_url
+        ),
+        thresholds=ThresholdValues(
+            download_min_mbps=profile.download_min_mbps,
+            upload_min_mbps=profile.upload_min_mbps,
+            ping_max_ms=profile.ping_max_ms,
+            jitter_max_ms=profile.jitter_max_ms,
+            packet_loss_max_pct=profile.packet_loss_max_pct,
+        ),
+        latest_version=await latest_version(session),
+    )
+
+
+async def latest_version(session: AsyncSession) -> str | None:
+    """Version of the newest published release the agent may update to; ``None`` while none is.
+
+    Every agent is on the ``stable`` channel until T-50 gives devices a channel of their own.
+    """
+    return await session.scalar(
+        select(AgentRelease.version)
+        .where(AgentRelease.is_active, AgentRelease.channel == STABLE_CHANNEL)
+        .order_by(AgentRelease.released_at.desc(), AgentRelease.id.desc())
+        .limit(1)
+    )
+
+
+def config_etag(config: AgentConfigResponse) -> str:
+    """Strong ETag of the configuration: its content hashed, quoted as RFC 9110 requires."""
+    digest = hashlib.sha256(config.model_dump_json().encode()).hexdigest()
+    return f'"{digest[:32]}"'
+
+
+def etag_matches(if_none_match: str | None, etag: str) -> bool:
+    """Whether ``If-None-Match`` already holds ``etag``; weak tags compare by their value."""
+    if not if_none_match:
+        return False
+    tags = [tag.strip() for tag in if_none_match.split(",")]
+    return "*" in tags or any(tag.removeprefix("W/") == etag for tag in tags)
