@@ -43,6 +43,7 @@
           "agent"
         ],
         "summary": "Регистрация устройства по коду установки",
+        "description": "Exchange a one-time installation code for device credentials (ADR-005).\n\nThe token is returned once and stored as an argon2 hash; the school comes from the code,\nthe line from the monitoring point the device is bound to.",
         "operationId": "register_device",
         "requestBody": {
           "content": {
@@ -67,6 +68,26 @@
           },
           "400": {
             "description": "Код просрочен, использован или не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Устройство зарегистрировано в другой школе или у школы нет точки",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -118,6 +139,26 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "401": {
+            "description": "Токен устройства отсутствует или недействителен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           },
           "422": {
             "description": "Ошибка валидации запроса",
@@ -196,6 +237,26 @@
               }
             }
           },
+          "401": {
+            "description": "Токен устройства отсутствует или недействителен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "304": {
             "description": "Конфигурация не изменилась: If-None-Match совпал с ETag"
           },
@@ -236,6 +297,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WhoAmIResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Токен устройства отсутствует или недействителен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }
@@ -282,6 +363,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MeasurementAccepted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Токен устройства отсутствует или недействителен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }
@@ -353,6 +454,26 @@
               }
             }
           },
+          "401": {
+            "description": "Токен устройства отсутствует или недействителен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Ошибка валидации запроса",
             "content": {
@@ -409,6 +530,26 @@
               }
             }
           },
+          "401": {
+            "description": "Токен устройства отсутствует или недействителен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Простой с этим started_at уже принят (type duplicate_outage)",
             "content": {
@@ -461,6 +602,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AgentReleaseResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Токен устройства отсутствует или недействителен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }

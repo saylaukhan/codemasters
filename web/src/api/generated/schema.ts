@@ -33,7 +33,13 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Регистрация устройства по коду установки */
+        /**
+         * Регистрация устройства по коду установки
+         * @description Exchange a one-time installation code for device credentials (ADR-005).
+         *
+         *     The token is returned once and stored as an argon2 hash; the school comes from the code,
+         *     the line from the monitoring point the device is bound to.
+         */
         post: operations["register_device"];
         delete?: never;
         options?: never;
@@ -4244,6 +4250,24 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Устройство заблокировано */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Устройство зарегистрировано в другой школе или у школы нет точки */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Ошибка валидации запроса */
             422: {
                 headers: {
@@ -4283,6 +4307,24 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Токен устройства отсутствует или недействителен */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Устройство заблокировано */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
             };
             /** @description Ошибка валидации запроса */
             422: {
@@ -4333,6 +4375,24 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Токен устройства отсутствует или недействителен */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Устройство заблокировано */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Ошибка валидации запроса */
             422: {
                 headers: {
@@ -4371,6 +4431,24 @@ export interface operations {
                     "application/json": components["schemas"]["WhoAmIResponse"];
                 };
             };
+            /** @description Токен устройства отсутствует или недействителен */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Устройство заблокировано */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Ошибка (RFC 9457) */
             default: {
                 headers: {
@@ -4402,6 +4480,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeasurementAccepted"];
+                };
+            };
+            /** @description Токен устройства отсутствует или недействителен */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Устройство заблокировано */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Замер с этим measurement_uuid уже принят (type duplicate_measurement) */
@@ -4455,6 +4551,24 @@ export interface operations {
                     "application/json": components["schemas"]["MeasurementBatchResponse"];
                 };
             };
+            /** @description Токен устройства отсутствует или недействителен */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Устройство заблокировано */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Ошибка валидации запроса */
             422: {
                 headers: {
@@ -4495,6 +4609,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OutageAccepted"];
+                };
+            };
+            /** @description Токен устройства отсутствует или недействителен */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Устройство заблокировано */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Простой с этим started_at уже принят (type duplicate_outage) */
@@ -4542,6 +4674,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentReleaseResponse"];
+                };
+            };
+            /** @description Токен устройства отсутствует или недействителен */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Устройство заблокировано */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Релизов нет */

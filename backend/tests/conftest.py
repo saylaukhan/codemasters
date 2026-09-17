@@ -1,4 +1,5 @@
-"""Shared fixtures: a disposable PostgreSQL 16 + TimescaleDB + PostGIS migrated to head.
+"""Shared fixtures: a disposable PostgreSQL 16 + TimescaleDB + PostGIS migrated to head and
+an HTTP client of the application bound to it.
 
 The container runs the image of the ``db`` service from docker-compose.yml, so the schema is
 tested on the same extensions it runs on. Docker is required; the container starts only for
@@ -11,8 +12,12 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from testcontainers.community.postgres import PostgresContainer
+
+from app.core.db import get_session
+from app.main import create_app
 
 POSTGRES_IMAGE = "timescale/timescaledb-ha:pg16"
 ALEMBIC_DIR = Path(__file__).resolve().parents[1] / "alembic"
@@ -44,3 +49,14 @@ async def session(database_url: str) -> AsyncIterator[AsyncSession]:
             yield db_session
         await transaction.rollback()
     await engine.dispose()
+
+
+@pytest.fixture
+async def api_client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
+    """Application answering over ASGI on the session of the test: rows an endpoint writes are
+    visible to the test and disappear with its transaction."""
+    application = create_app()
+    application.dependency_overrides[get_session] = lambda: session
+    transport = ASGITransport(app=application)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        yield client
