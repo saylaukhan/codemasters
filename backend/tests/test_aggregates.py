@@ -35,6 +35,9 @@ SAMPLES = [
     ((2026, 9, 18, 15, 0), 5.0, 4.0, 300.0, 40.0, 9.0, "critical", "wifi"),
 ]
 
+# Download speed the line of the school is sold at: the samples below it are «ниже договора».
+CONTRACT_DOWN_MBPS = 60.0
+
 DAY = datetime(2026, 9, 18, tzinfo=ALMATY)
 PREVIOUS_DAY = datetime(2026, 9, 17, tzinfo=ALMATY)
 PROBLEM_STATUSES = {"unstable", "critical", "offline"}
@@ -43,6 +46,11 @@ PROBLEM_STATUSES = {"unstable", "critical", "offline"}
 def moment(sample: tuple[Any, ...]) -> datetime:
     """The moment of a sample as the agent measured it, in the local time of the school."""
     return datetime(*sample[0], tzinfo=ALMATY)
+
+
+def below_contract(sample: tuple[Any, ...]) -> bool | None:
+    """Whether the sample reached the contract speed; empty when there was nothing to compare."""
+    return None if sample[1] is None else sample[1] >= CONTRACT_DOWN_MBPS
 
 
 def wired(samples: list[tuple[Any, ...]]) -> list[tuple[Any, ...]]:
@@ -62,6 +70,7 @@ async def measuring_device(session: AsyncSession) -> tuple[School, Line, Device]
     point = await primary_point(session, school)
     device, _ = await register_device(session, point)
     line = (await session.scalars(select(Line).where(Line.school_id == school.id))).one()
+    line.contract_down_mbps = CONTRACT_DOWN_MBPS
 
     for sample in SAMPLES:
         _, download, upload, ping, jitter, loss, quality, iface = sample
@@ -79,6 +88,8 @@ async def measuring_device(session: AsyncSession) -> tuple[School, Line, Device]
                 connection_status="offline" if quality == "offline" else "online",
                 iface_type=iface,
                 quality_status=quality,
+                # What T-18 writes on receipt: nothing measured — nothing to compare.
+                contract_ok=below_contract(sample),
             )
         )
     await session.flush()
@@ -94,6 +105,9 @@ def assert_matches_the_raw_measurements(
 
     assert row.measurements_count == len(samples)
     assert row.problem_count == len([sample for sample in samples if sample[6] in PROBLEM_STATUSES])
+    assert row.below_contract_count == len(
+        [sample for sample in samples if below_contract(sample) is False]
+    )
     assert row.avg_download_mbps == pytest.approx(fmean(downloads))
     assert row.min_download_mbps == min(downloads)
     assert row.max_download_mbps == max(downloads)
@@ -115,6 +129,8 @@ async def test_a_day_of_m_daily_is_a_day_of_almaty(session: AsyncSession) -> Non
     assert_matches_the_raw_measurements(day, within(SAMPLES, DAY, hours=24))
     assert day.measurements_count == 4
     assert day.avg_download_mbps == 50.0
+    # Two of the four were slower than the contract; the one without connection compares nothing.
+    assert day.below_contract_count == 2
 
 
 async def test_m_hourly_splits_the_day_into_the_hours_of_almaty(session: AsyncSession) -> None:
