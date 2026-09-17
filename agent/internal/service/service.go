@@ -120,6 +120,7 @@ func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
 	// Not enrolled is not fatal: the reason is logged and the service keeps running;
 	// measurements stay in the queue until the device is registered.
 	if _, token, ok := enroll(ctx, cfg, api.New(cfg.ServerURL, ""), logger); ok {
+		StartHeartbeat(ctx, HeartbeatOptions{Client: api.New(cfg.ServerURL, token), Queue: q, Logger: logger})
 		q.Run(ctx, api.New(cfg.ServerURL, token), nil, func(pending int) {
 			st.QueueSize = pending
 			if err := WriteState(cfg.DataDir, st); err != nil {
