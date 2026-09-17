@@ -61,10 +61,27 @@ services:
     restart: unless-stopped
 
   speedtest:
-    # LibreSpeed measurement server. Server configuration and the ndt7 fallback — T-05.
-    image: adolfintel/speedtest
+    # LibreSpeed — the main measurement server (ADR-012); endpoints and manual check:
+    # deploy/speedtest/README.md. Agents get its address from GET /api/agent/config, not from here.
+    image: ghcr.io/librespeed/speedtest:6.3.0
+    environment:
+      MODE: standalone
+      TITLE: Мониторинг интернета ВКО
+      TELEMETRY: "false"
+      WEBPORT: "8080"
     ports:
-      - "8080:80"
+      - "8080:8080"
+    restart: unless-stopped
+
+  ndt7:
+    # ndt7 server of M-Lab — the fallback when LibreSpeed does not answer (ADR-012).
+    # Cleartext ws:// only: no certificate is configured, TLS services stay off.
+    image: measurementlab/ndt-server:v0.25.3
+    # The image is published for amd64 only; on Apple Silicon it runs under emulation.
+    platform: linux/amd64
+    command: ["-ndt7_addr_cleartext", ":8081"]
+    ports:
+      - "8081:8081"
     restart: unless-stopped
 
   api:

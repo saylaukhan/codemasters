@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     secret_key: str
     api_base_url: str
     speedtest_url: str
+    ndt7_url: str = ""
     tz: str = "Asia/Almaty"
 
     llm_api_key: str = ""

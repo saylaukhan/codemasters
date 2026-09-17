@@ -1,10 +1,10 @@
-"""Seed (T-04): VKO districts with boundaries, test schools inside them, repeatable runs."""
+"""Seed (T-04, T-05): VKO districts, test schools inside them, settings; repeatable runs."""
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Line, MonitoringPoint, Region, School
-from app.seed import seed
+from app.models import Line, MonitoringPoint, Region, School, SystemSettings
+from app.seed import seed, seed_settings
 
 SEEDED_TABLES = (
     "regions",
@@ -77,3 +77,22 @@ async def test_every_school_has_a_main_line_and_a_primary_point(session: AsyncSe
     )
 
     assert list(incomplete) == []
+
+
+async def test_seed_creates_settings_once_and_keeps_admin_changes(session: AsyncSession) -> None:
+    created = await seed_settings(session, "http://speedtest.test:8080", "ws://speedtest.test:8081")
+    await session.execute(
+        update(SystemSettings).values(librespeed_url="https://speedtest.example.kz", ndt7_url=None)
+    )
+
+    created_again = await seed_settings(session, "http://other.test:8080", "")
+
+    row = (await session.scalars(select(SystemSettings))).one()
+    assert (created, created_again) == (True, False)
+    assert (row.librespeed_url, row.ndt7_url) == ("https://speedtest.example.kz", None)
+
+
+async def test_seed_settings_without_ndt7_stores_no_fallback(session: AsyncSession) -> None:
+    await seed_settings(session, "http://speedtest.test:8080", "")
+
+    assert await session.scalar(select(SystemSettings.ndt7_url)) is None

@@ -1,7 +1,7 @@
 # Single entry point for project commands (AGENTS.md §7).
 # Works with GNU Make 3.81 (macOS default): no 4.x-only features are used.
 # Toolchains per part: Go 1.23+ (agent/), Python 3.12+ (backend/), Node.js 24 (web/),
-# Docker Compose (db, redis, speedtest).
+# Docker Compose (db, redis, speedtest, ndt7).
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
@@ -27,14 +27,14 @@ help: ## Показать этот список команд
 	@echo
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(firstword $(MAKEFILE_LIST)) | awk 'BEGIN {FS = ":.*## "} {printf "  %-16s %s\n", $$1, $$2}'
 	@echo
-	@echo "Порты: api 8000, web 5173, db 5432, redis 6379, speedtest 8080, caddy 80/443."
+	@echo "Порты: api 8000, web 5173, db 5432, redis 6379, speedtest 8080, ndt7 8081, caddy 80/443."
 	@echo "Перед первым запуском: cp .env.example .env && make install && make up"
 
 # --- Infrastructure -----------------------------------------------------------------------
 
-up: ## Поднять инфраструктуру для разработки: db, redis, speedtest (docker compose up -d)
+up: ## Поднять инфраструктуру для разработки: db, redis, speedtest, ndt7 (docker compose up -d)
 	@test -f .env || { echo "Нет файла .env — выполните: cp .env.example .env" >&2; exit 1; }
-	docker compose up -d db redis speedtest
+	docker compose up -d db redis speedtest ndt7
 
 down: ## Остановить контейнеры (docker compose down, без -v: данные остаются)
 	docker compose down
