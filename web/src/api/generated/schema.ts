@@ -71,7 +71,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Конфигурация агента: расписание, пороги, сервер замеров, версия */
+        /**
+         * Конфигурация агента: расписание, пороги, сервер замеров, версия
+         * @description Schedule, thresholds, measurement servers and version the agent must run (ТЗ п. 11, п. 20).
+         *
+         *     Everything is assembled from the database along the chain device → line → district → global
+         *     settings; the ETag is the hash of the answer, so an unchanged configuration costs the agent
+         *     a 304 without a body (ADR-004, ADR-012).
+         */
         get: operations["get_agent_config"];
         put?: never;
         post?: never;
@@ -88,7 +95,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Внешний IP запроса */
+        /**
+         * Внешний IP запроса
+         * @description External IP of the request: the agent stores it with every measurement (plan.md §4.5).
+         */
         get: operations["whoami"];
         put?: never;
         post?: never;
@@ -4408,6 +4418,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ValidationProblem"];
                 };
             };
+            /** @description Система не настроена: нет системных настроек, расписания или профиля порогов — выполните make seed и миграции */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Ошибка (RFC 9457) */
             default: {
                 headers: {
@@ -4448,6 +4467,15 @@ export interface operations {
             };
             /** @description Устройство заблокировано */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Сервер не определил внешний IP запроса */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
