@@ -225,3 +225,41 @@ func TestRunStopsOnCancel(t *testing.T) {
 		t.Fatal("Run did not return after cancel")
 	}
 }
+
+// TestSetScheduleAppliesWithoutRestart: a schedule changed in the admin panel
+// is picked up by the running scheduler; slots already measured today are not
+// measured again and no extra catch-up appears (T-13).
+func TestSetScheduleAppliesWithoutRestart(t *testing.T) {
+	sched := testSchedule(t)
+	start := almaty(t, sched, "2026-09-17 07:00:00")
+	d := startDevice(sched, "device-a", start.AddDate(0, 0, -1), start)
+	d.runUntil(almaty(t, sched, "2026-09-17 12:00:00"))
+	if len(d.runs) != 2 {
+		t.Fatalf("runs before the change = %+v, want the 08:30 and 11:00 slots", d.runs)
+	}
+
+	changed, err := NewSchedule("Asia/Almaty", []Slot{{Start: 14 * time.Hour, End: 14*time.Hour + 30*time.Minute},
+		{Start: 18 * time.Hour, End: 18*time.Hour + 30*time.Minute}})
+	if err != nil {
+		t.Fatalf("NewSchedule: %v", err)
+	}
+	d.s.SetSchedule(changed)
+
+	// Nothing is measured just because the schedule changed.
+	d.runUntil(almaty(t, sched, "2026-09-17 13:00:00"))
+	if len(d.runs) != 2 {
+		t.Fatalf("runs right after the change = %+v, want no extra measurement", d.runs)
+	}
+
+	d.runUntil(almaty(t, sched, "2026-09-18 00:00:00"))
+	rest := d.runs[2:]
+	if len(rest) != len(changed.Slots) {
+		t.Fatalf("runs by the new schedule = %d, want %d: %+v", len(rest), len(changed.Slots), rest)
+	}
+	for i, run := range rest {
+		want := changed.Moment("device-a", start, i)
+		if !run.At.Equal(want) || run.CatchUp {
+			t.Errorf("run %d = %s catch-up %v, want planned %s in slot %s", i, run.At, run.CatchUp, want, changed.Slots[i])
+		}
+	}
+}

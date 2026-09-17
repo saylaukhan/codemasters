@@ -21,6 +21,7 @@ import (
 	"github.com/saylaukhan/codemasters/agent/internal/api"
 	"github.com/saylaukhan/codemasters/agent/internal/buildinfo"
 	"github.com/saylaukhan/codemasters/agent/internal/queue"
+	"github.com/saylaukhan/codemasters/agent/internal/scheduler"
 	"github.com/saylaukhan/codemasters/agent/internal/secure"
 )
 
@@ -96,8 +97,9 @@ func (p *program) Stop(kservice.Service) error {
 }
 
 // runAgent is the agent main loop: it records the start in the state file,
-// opens the queue, registers the device (T-07) and resends the queue (T-11)
-// until stop; the scheduler (T-08) plugs in here.
+// opens the queue, registers the device (T-07), keeps the configuration of the
+// server up to date, measures by its schedule (T-08, T-13), resends the queue
+// (T-11) and watches for a network change, until stop.
 func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
 	st, err := ReadState(cfg.DataDir)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -119,17 +121,87 @@ func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
 		"data_dir", cfg.DataDir)
 	// Not enrolled is not fatal: the reason is logged and the service keeps running;
 	// measurements stay in the queue until the device is registered.
-	if _, token, ok := enroll(ctx, cfg, api.New(cfg.ServerURL, ""), logger); ok {
-		q.Run(ctx, api.New(cfg.ServerURL, token), nil, func(pending int) {
-			st.QueueSize = pending
-			if err := WriteState(cfg.DataDir, st); err != nil {
-				logger.Warn("запись состояния", "err", err)
-			}
+	id, token, ok := enroll(ctx, cfg, api.New(cfg.ServerURL, ""), logger)
+	if ok {
+		client := api.New(cfg.ServerURL, token)
+		state := &stateFile{dir: cfg.DataDir, st: st, logger: logger}
+		// wake asks the queue to resend at once: a new measurement, a restored
+		// connection after a network change (ADR-006).
+		wake := make(chan struct{}, 1)
+		settings := &Settings{}
+
+		go q.Run(ctx, client, wake, func(pending int) {
+			state.update(func(s *State) { s.QueueSize = pending })
 		})
+		go watchNetwork(ctx, cfg.ServerURL, wake, logger)
+
+		measure := measureFunc(cfg, client, q, settings, state, wake, logger)
+		var sched *scheduler.Scheduler
+		// apply runs only in the goroutine of runConfig, so sched is not shared.
+		apply := func(ac api.AgentConfig, s scheduler.Schedule) {
+			if sched != nil {
+				sched.SetSchedule(s)
+				return
+			}
+			sched = scheduler.New(scheduler.Options{
+				Schedule: s,
+				Seed:     id.DeviceUID,
+				Last:     lastMeasurementAt(st),
+				Measure:  measure,
+				Logger:   logger,
+			})
+			go sched.Run(ctx)
+		}
+		go runConfig(ctx, client, cfg.DataDir, settings, apply, logger)
 	}
 	<-ctx.Done()
 	logger.Info("агент остановлен")
 	return nil
+}
+
+// lastMeasurementAt is when the agent measured before this start; the zero
+// time when it never did.
+func lastMeasurementAt(st State) time.Time {
+	if st.LastMeasurementAt == nil {
+		return time.Time{}
+	}
+	return *st.LastMeasurementAt
+}
+
+// measureFunc is the callback of the scheduler: one measurement by the
+// addresses of the current server configuration (ADR-012), into the queue,
+// then a wake-up of the resend and the state file (plan.md §4.3, §4.4).
+func measureFunc(cfg Config, client *api.Client, q *queue.Queue, settings *Settings, state *stateFile,
+	wake chan<- struct{}, logger *slog.Logger,
+) func(context.Context, scheduler.Run) {
+	return func(ctx context.Context, _ scheduler.Run) {
+		ac := settings.Current()
+		m, err := Measure(ctx, MeasureOptions{
+			ServerURL:     cfg.ServerURL,
+			TargetURL:     ac.Speedtest.LibreSpeedURL,
+			LibreSpeedURL: ac.Speedtest.LibreSpeedURL,
+			NDT7URL:       ac.Speedtest.NDT7URL,
+			Client:        client,
+			Logger:        logger,
+		})
+		if err != nil {
+			if ctx.Err() == nil {
+				logger.Error("замер не выполнен", "err", err)
+			}
+			return
+		}
+		if err := q.Add(ctx, m); err != nil {
+			logger.Error("замер не сохранён в очередь", "err", err)
+			return
+		}
+		logger.Info("замер выполнен", "measurement_uuid", m.MeasurementUUID, "connection", m.ConnectionStatus)
+		at := m.MeasuredAt
+		state.update(func(s *State) { s.LastMeasurementAt = &at })
+		select {
+		case wake <- struct{}{}:
+		default: // a wake-up is already pending
+		}
+	}
 }
 
 // QueuePath returns the measurement queue file inside dataDir.

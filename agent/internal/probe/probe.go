@@ -120,6 +120,13 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	return Result{Status: Online, Method: MethodTCP, Host: host, Stats: series.Stats()}, nil
 }
 
+// Check reports whether the monitoring server answers: the same connectivity
+// check Run makes before the ping series. The service uses it after a network
+// change (T-13); no answer means the line is down, not that the check failed.
+func Check(ctx context.Context, serverURL string) error {
+	return checkConnection(ctx, serverURL)
+}
+
 // checkConnection resolves the server name and sends an HTTP request to the
 // server. Any HTTP answer means the line works: a 5xx of the API is a server
 // problem, not a lost connection of the school.
