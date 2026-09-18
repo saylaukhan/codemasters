@@ -106,3 +106,90 @@
   color: var(--text-muted);
   font-size: var(--font-size-xs);
 }
+
+/* «Обзор»: heatmap and «Договор и факт» side by side under the speed chart (T-28). */
+.charts {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 1280px) {
+  .charts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Same frame as the chart card, DESIGN.md §3.16. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+}
+
+.panelTitle {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.barCaption {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.track {
+  position: relative;
+  height: var(--space-2);
+  border-radius: var(--radius-chip);
+  background: var(--bg-subtle);
+}
+
+.fill {
+  height: 100%;
+  border-radius: var(--radius-chip);
+  background: var(--status-normal-main);
+}
+
+.fillBelow {
+  background: var(--status-critical-main);
+}
+
+/* The contract value: a 2px tick across the track, the color of threshold and contract lines. */
+.contractTick {
+  position: absolute;
+  top: calc(-1 * var(--space-1));
+  bottom: calc(-1 * var(--space-1));
+  width: calc(2 * var(--border-width));
+  margin-left: calc(-1 * var(--border-width));
+  background: var(--chart-threshold);
+}
+
+.share {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.shareValue {
+  color: var(--text-primary);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
