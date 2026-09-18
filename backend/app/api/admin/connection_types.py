@@ -1,16 +1,18 @@
 """Connection type reference of the admin panel (T-34, ТЗ п. 14, п. 20): fiber, ADSL, radio.
 
-Contract stubs: every endpoint answers 501 until T-34. There is no DELETE: lines refer to
-connection types. plan.md §10 does not list this path; T-34 requires it.
+There is no DELETE: lines refer to connection types. plan.md §10 does not list this path; T-34
+requires it. Every change goes to the audit log with its changed fields.
 """
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require
+from app.auth.audit import describe_action
+from app.core.db import get_session
 from app.core.deps import PageParams, page_params
-from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.references import (
     ConnectionTypeCreate,
@@ -18,6 +20,7 @@ from app.schemas.references import (
     ConnectionTypeDetailPage,
     ConnectionTypeUpdate,
 )
+from app.services import references
 
 router = APIRouter(
     prefix="/connection-types", tags=["admin"], dependencies=[Depends(require("references:manage"))]
@@ -35,8 +38,10 @@ async def list_connection_types(
     q: Annotated[
         str | None, Query(min_length=1, max_length=255, description="Название или код")
     ] = None,
+    *,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ConnectionTypeDetailPage:
-    raise not_implemented("T-34")
+    return await references.connection_type_list(session, params, q)
 
 
 @router.post(
@@ -45,8 +50,10 @@ async def list_connection_types(
     summary="Добавить тип подключения",
     responses={409: CONNECTION_TYPE_CODE_TAKEN},
 )
-async def create_connection_type(body: ConnectionTypeCreate) -> ConnectionTypeDetail:
-    raise not_implemented("T-34")
+async def create_connection_type(
+    body: ConnectionTypeCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> ConnectionTypeDetail:
+    return await references.create_connection_type(session, body)
 
 
 @router.patch(
@@ -58,6 +65,13 @@ async def create_connection_type(body: ConnectionTypeCreate) -> ConnectionTypeDe
     },
 )
 async def update_connection_type(
-    connection_type_id: int, body: ConnectionTypeUpdate
+    connection_type_id: int,
+    body: ConnectionTypeUpdate,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ConnectionTypeDetail:
-    raise not_implemented("T-34")
+    connection_type, changes = await references.update_connection_type(
+        session, connection_type_id, body
+    )
+    describe_action(request, changes=changes or None)
+    return connection_type

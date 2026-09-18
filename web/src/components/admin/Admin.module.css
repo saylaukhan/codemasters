@@ -1,0 +1,106 @@
+/* Administration, T-34: toolbar over the table (DESIGN.md §3.9), drawer with the form (§3.20). */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.search {
+  width: calc(var(--popover-width) * 1.25);
+  max-width: 100%;
+}
+
+.code {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+.name {
+  display: inline-block;
+  max-width: calc(var(--popover-width) * 1.25);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.alert {
+  margin-top: var(--space-4);
+}
+
+/* Point on the map: latitude and longitude side by side, the picker under them. */
+.coordinates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.number {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.point {
+  margin-bottom: var(--space-5);
+}
+
+.pointHint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.picker {
+  position: relative;
+  height: calc(var(--space-5) * 10);
+  overflow: hidden;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-subtle);
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.picker :global(.maplibregl-canvas-container.maplibregl-interactive) {
+  cursor: crosshair;
+}
+
+.picker :global(.maplibregl-ctrl-attrib) {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.picker :global(.maplibregl-ctrl-attrib a) {
+  color: var(--text-secondary);
+}
+
+/* The point of the school: accent dot with the surface outline, as a marker of the map (§2.5). */
+.marker {
+  width: var(--space-4);
+  height: var(--space-4);
+  border: calc(var(--border-width) * 2) solid var(--bg-surface);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--shadow-dropdown);
+}

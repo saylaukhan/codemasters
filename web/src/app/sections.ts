@@ -12,7 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-import type { SectionKey } from '../lib/labels'
+import type { AdminTabKey, SectionKey } from '../lib/labels'
 
 export interface Section {
   key: SectionKey
@@ -59,3 +59,6 @@ export const schoolCardPath = (schoolId: number): string => `/schools/${schoolId
 
 /** Card of one computer (T-26): the computers of the school card lead here. */
 export const deviceCardPath = (deviceId: number): string => `/devices/${deviceId}`
+
+/** Tab of «Администрирование» (T-34): schools and the references, each at its own address. */
+export const adminTabPath = (tab: AdminTabKey): string => `/admin/${tab}`
