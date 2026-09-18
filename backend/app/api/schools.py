@@ -148,7 +148,10 @@ async def get_school(
     "/{school_id}",
     dependencies=[Depends(require("schools:write"))],
     summary="Изменить или деактивировать школу",
-    description="Рабочие часы (working_hours) настраиваются в T-37. Неизвестный region_id — 422.",
+    description=(
+        "working_hours заменяются целиком; простой и «Нет соединения» считаются только в них "
+        "(ADR-014). Неизвестный region_id — 422."
+    ),
     responses={404: SCHOOL_NOT_FOUND, 409: SCHOOL_CODE_TAKEN},
 )
 async def update_school(

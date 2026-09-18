@@ -5,6 +5,7 @@ import type { FormRule } from 'antd'
 import { camelKey } from '../../api/case'
 import { ApiError } from '../../api/client'
 import type { GeoPoint, SchoolCreate, SchoolDetail, SchoolUpdate } from '../../api/types'
+import { hoursOf, hoursValues, type HoursValues } from './hours'
 
 /** A required text: blanks do not count. */
 export const required = (message: string): FormRule => ({ required: true, whitespace: true, message })
@@ -70,6 +71,8 @@ export interface SchoolFormValues {
   lat: number | null
   lon: number | null
   isActive: boolean
+  /** Only of a school being edited: a new one starts with the default of the settings (T-37). */
+  workingHours?: HoursValues
 }
 
 export const schoolFormValues = (school?: SchoolDetail): SchoolFormValues => ({
@@ -80,6 +83,7 @@ export const schoolFormValues = (school?: SchoolDetail): SchoolFormValues => ({
   lat: school?.location?.lat ?? null,
   lon: school?.location?.lon ?? null,
   isActive: school?.isActive ?? true,
+  workingHours: school && hoursValues(school.workingHours),
 })
 
 /** The point of the form: both coordinates or none. */
@@ -95,9 +99,12 @@ export const schoolCreateBody = (values: SchoolFormValues): SchoolCreate => ({
   location: pointOf(values),
 })
 
-/** Body of PATCH /api/schools/{id}: the changed fields only; a cleared address or point is `null`. */
+const updatableOf = (values: SchoolFormValues): SchoolUpdate => ({
+  ...schoolCreateBody(values),
+  isActive: values.isActive,
+  workingHours: values.workingHours && hoursOf(values.workingHours),
+})
+
+/** Body of PATCH /api/schools/{id}: the changed fields only, working hours whole; a cleared address or point is `null`. */
 export const schoolUpdateBody = (initial: SchoolFormValues, values: SchoolFormValues): SchoolUpdate =>
-  changedFields<SchoolUpdate>(
-    { ...schoolCreateBody(initial), isActive: initial.isActive },
-    { ...schoolCreateBody(values), isActive: values.isActive },
-  )
+  changedFields<SchoolUpdate>(updatableOf(initial), updatableOf(values))

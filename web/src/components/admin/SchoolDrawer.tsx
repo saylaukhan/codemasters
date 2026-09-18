@@ -18,6 +18,7 @@ import {
   type SchoolFormValues,
 } from './form'
 import { useRegionOptions, useSaveSchool, useSchoolToEdit, type Save } from './queries'
+import { WorkingHoursFields } from './WorkingHoursFields'
 
 // The map library is loaded when a school form is opened, not with the list.
 const LocationPicker = lazy(() => import('./LocationPicker').then((module) => ({ default: module.LocationPicker })))
@@ -116,6 +117,12 @@ function SchoolForm({ form, school, onSave }: SchoolFormProps) {
         </div>
       </div>
       {school && (
+        <WorkingHoursFields
+          name={['workingHours']}
+          extra="Простой и «Нет соединения» считаются только в рабочие часы: ночью ПК выключены — это не авария."
+        />
+      )}
+      {school && (
         <Form.Item
           name="isActive"
           valuePropName="checked"
@@ -135,7 +142,7 @@ interface SchoolDrawerProps {
   onClose: () => void
 }
 
-/** New school or a change of one (ТЗ п. 20): School ID, name, district, address, point, activity. */
+/** New school or a change of one (ТЗ п. 20): School ID, name, district, address, point, working hours, activity. */
 export function SchoolDrawer({ open, schoolId, onClose }: SchoolDrawerProps) {
   const [form] = Form.useForm<SchoolFormValues>()
   const editing = schoolId !== undefined

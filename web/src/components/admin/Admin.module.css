@@ -126,3 +126,37 @@
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-medium);
 }
+
+/* Thresholds, schedules and settings, T-37: the chain explained over the list; settings in cards of a form. */
+.lead {
+  margin: 0 0 var(--space-4);
+  color: var(--text-secondary);
+}
+
+.settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--popover-width) * 1.25), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.section {
+  padding: var(--space-5);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+}
+
+.sectionTitle {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* A slot of a schedule: its time range and the button that removes it. */
+.slot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}

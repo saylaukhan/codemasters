@@ -6,10 +6,14 @@ for the night is not a broken line (plan.md §6, §16). Hours are local times of
 day is built in that zone and then read as an absolute interval.
 """
 
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import School, SystemSettings
 from app.schemas.schools import WorkingHours
 
 # Order of ``Weekday`` of the API against ``date.weekday()`` (Monday is 0).
@@ -17,6 +21,22 @@ WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
 # One interval of the time line, both ends aware datetimes, ``start`` before ``end``.
 type Interval = tuple[datetime, datetime]
+
+
+async def school_hours(
+    session: AsyncSession, school_ids: Collection[int], settings: SystemSettings
+) -> dict[int, WorkingHours]:
+    """Working hours of every school of ``school_ids``: its own, else the admin default (T-37)."""
+    default = WorkingHours.model_validate(settings.default_working_hours)
+    own = {
+        school_id: WorkingHours.model_validate(hours)
+        for school_id, hours in await session.execute(
+            select(School.id, School.working_hours).where(
+                School.id.in_(school_ids), School.working_hours.is_not(None)
+            )
+        )
+    }
+    return {school_id: own.get(school_id, default) for school_id in school_ids}
 
 
 def working_windows(

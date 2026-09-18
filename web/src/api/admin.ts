@@ -1,5 +1,6 @@
-// References of the administration (T-34): districts and cities, providers, connection types. Nothing is
-// deleted: schools and lines refer to them; a PATCH changes only the fields present.
+// References of the administration (T-34): districts and cities, providers, connection types; threshold
+// profiles, schedules and settings (T-37). Nothing is deleted: schools and lines refer to the references,
+// a profile or a schedule is switched off; a PATCH changes only the fields present.
 import { apiRequest, type QueryValue } from './client'
 import type { components } from './generated/schema'
 import type {
@@ -9,6 +10,11 @@ import type {
   ProviderUpdate,
   RegionCreate,
   RegionUpdate,
+  ScheduleCreate,
+  ScheduleUpdate,
+  SettingsUpdate,
+  ThresholdProfileCreate,
+  ThresholdProfileUpdate,
 } from './types'
 
 type Schemas = components['schemas']
@@ -42,3 +48,27 @@ export const updateConnectionType = (connectionTypeId: number, body: ConnectionT
     method: 'PATCH',
     body,
   })
+
+export const getThresholdProfiles = (query: Record<string, QueryValue>, signal?: AbortSignal) =>
+  apiRequest<Schemas['ThresholdProfileDetailPage']>('/admin/thresholds', { query, signal })
+
+export const createThresholdProfile = (body: ThresholdProfileCreate) =>
+  apiRequest<Schemas['ThresholdProfileDetail']>('/admin/thresholds', { method: 'POST', body })
+
+export const updateThresholdProfile = (profileId: number, body: ThresholdProfileUpdate) =>
+  apiRequest<Schemas['ThresholdProfileDetail']>(`/admin/thresholds/${profileId}`, { method: 'PATCH', body })
+
+export const getSchedules = (query: Record<string, QueryValue>, signal?: AbortSignal) =>
+  apiRequest<Schemas['ScheduleDetailPage']>('/admin/schedules', { query, signal })
+
+export const createSchedule = (body: ScheduleCreate) =>
+  apiRequest<Schemas['ScheduleDetail']>('/admin/schedules', { method: 'POST', body })
+
+export const updateSchedule = (scheduleId: number, body: ScheduleUpdate) =>
+  apiRequest<Schemas['ScheduleDetail']>(`/admin/schedules/${scheduleId}`, { method: 'PATCH', body })
+
+export const getSettings = (signal?: AbortSignal) =>
+  apiRequest<Schemas['SettingsDetail']>('/admin/settings', { signal })
+
+export const updateSettings = (body: SettingsUpdate) =>
+  apiRequest<Schemas['SettingsDetail']>('/admin/settings', { method: 'PATCH', body })

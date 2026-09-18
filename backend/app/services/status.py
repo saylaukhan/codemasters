@@ -31,12 +31,11 @@ from app.models import (
     ThresholdProfile,
 )
 from app.schemas.agent import MeasurementCreate
-from app.schemas.schools import WorkingHours
 from app.schemas.statuses import ProfileScope, QualityStatus, SchoolStatus
 from app.schemas.thresholds import MetricBreach, ThresholdsSnapshot
 from app.services.settings import NOT_CONFIGURED, NOT_CONFIGURED_DETAIL, system_settings
 from app.services.thresholds import threshold_profile
-from app.services.working_hours import is_working_time
+from app.services.working_hours import is_working_time, school_hours
 
 # Statuses of a measurement from the mildest to the worst (ADR-004).
 SEVERITY: tuple[SchoolStatus, ...] = ("normal", "unstable", "critical", "offline")
@@ -218,10 +217,7 @@ async def school_statuses(
     if not school_ids:
         return {}
     settings = await system_settings(session)
-    hours = WorkingHours.model_validate(settings.default_working_hours)
-    silent_status: SchoolStatus = (
-        "offline" if is_working_time(hours, settings.timezone, now) else "no_data"
-    )
+    hours = await school_hours(session, school_ids, settings)
 
     heard = (
         select(func.max(Heartbeat.ts))
@@ -265,7 +261,8 @@ async def school_statuses(
     for school_id in school_ids:
         moment = last_seen.get(school_id)
         if moment is None or now - moment > timedelta(seconds=settings.offline_after_s):
-            statuses[school_id] = silent_status
+            working = is_working_time(hours[school_id], settings.timezone, now)
+            statuses[school_id] = "offline" if working else "no_data"
             continue
         # Several main lines of one school: the last ``count`` of all of them together.
         newest = sorted(series[school_id], reverse=True)[:count]

@@ -18,13 +18,13 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Device, Heartbeat, MonitoringPoint, Outage
-from app.schemas.schools import WorkingHours
 from app.services.settings import system_settings
 from app.services.working_hours import (
     Interval,
     duration_s,
     intersect,
     merge,
+    school_hours,
     subtract,
     working_windows,
 )
@@ -54,13 +54,18 @@ async def schools_availability(
     session: AsyncSession, school_ids: Collection[int], *, start: datetime, end: datetime
 ) -> dict[int, Availability]:
     """Availability of every school of ``school_ids``, in two queries whatever their number."""
-    settings = await system_settings(session)
-    hours = WorkingHours.model_validate(settings.default_working_hours)
-    windows = merge(working_windows(hours, settings.timezone, start, end))
-    observed_s = duration_s(windows)
-    silence = timedelta(seconds=settings.offline_after_s)
     if not school_ids:
         return {}
+    settings = await system_settings(session)
+    silence = timedelta(seconds=settings.offline_after_s)
+    # Schools mostly share the default hours: the windows of each set of hours are built once.
+    windows_of: dict[str, list[Interval]] = {}
+    windows: dict[int, list[Interval]] = {}
+    for school_id, hours in (await school_hours(session, school_ids, settings)).items():
+        key = hours.model_dump_json()
+        if key not in windows_of:
+            windows_of[key] = merge(working_windows(hours, settings.timezone, start, end))
+        windows[school_id] = windows_of[key]
 
     # A stretch starts at a heartbeat that comes more than ``silence`` after the previous one of
     # the same school; it is covered from its first heartbeat to ``silence`` after its last.
@@ -116,14 +121,15 @@ async def schools_availability(
 
     result: dict[int, Availability] = {}
     for school_id in school_ids:
+        observed_s = duration_s(windows[school_id])
         if not observed_s or (school_id not in covered and school_id not in reported):
             result[school_id] = Availability(uptime_pct=None, observed_s=observed_s, downtime_s=0)
             continue
         # Working time no heartbeat vouches for, plus the outages the agents reported themselves.
         downtime_s = duration_s(
             merge(
-                subtract(windows, merge(covered[school_id]))
-                + intersect(windows, merge(reported[school_id]))
+                subtract(windows[school_id], merge(covered[school_id]))
+                + intersect(windows[school_id], merge(reported[school_id]))
             )
         )
         result[school_id] = Availability(

@@ -1,16 +1,18 @@
 """Measurement schedules of the admin panel (plan.md §10 «Админка»): list, create, change.
 
-Contract stubs: every endpoint answers 501 until T-37. There is no DELETE: a schedule is
-switched off with ``is_active``. Agents get the new slots with the configuration (T-17).
+There is no DELETE: a schedule is switched off with ``is_active``. Agents get the new slots
+with the configuration (T-17). Every change goes to the audit log (T-37).
 """
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require
+from app.auth.audit import describe_action
+from app.core.db import get_session
 from app.core.deps import PageParams, page_params
-from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.schedules import (
     ScheduleCreate,
@@ -19,6 +21,7 @@ from app.schemas.schedules import (
     ScheduleScope,
     ScheduleUpdate,
 )
+from app.services import config_admin
 
 router = APIRouter(
     prefix="/schedules", tags=["admin"], dependencies=[Depends(require("schedules:manage"))]
@@ -38,8 +41,10 @@ SCHEDULE_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Расп
 async def list_schedules(
     params: Annotated[PageParams, Depends(page_params)],
     scope: ScheduleScope | None = None,
+    *,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ScheduleDetailPage:
-    raise not_implemented("T-37")
+    return await config_admin.schedule_list(session, params, scope)
 
 
 @router.post(
@@ -55,8 +60,10 @@ async def list_schedules(
         },
     },
 )
-async def create_schedule(body: ScheduleCreate) -> ScheduleDetail:
-    raise not_implemented("T-37")
+async def create_schedule(
+    body: ScheduleCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> ScheduleDetail:
+    return await config_admin.create_schedule(session, body)
 
 
 @router.patch(
@@ -71,5 +78,12 @@ async def create_schedule(body: ScheduleCreate) -> ScheduleDetail:
         },
     },
 )
-async def update_schedule(schedule_id: int, body: ScheduleUpdate) -> ScheduleDetail:
-    raise not_implemented("T-37")
+async def update_schedule(
+    schedule_id: int,
+    body: ScheduleUpdate,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ScheduleDetail:
+    schedule, changes = await config_admin.update_schedule(session, schedule_id, body)
+    describe_action(request, changes=changes or None)
+    return schedule

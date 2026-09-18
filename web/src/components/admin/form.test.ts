@@ -15,6 +15,7 @@ const SCHOOL = {
   address: 'ул. Абая, 1',
   location: { lat: 49.9483, lon: 82.6286 },
   isActive: true,
+  workingHours: { weekdays: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'], start: '08:00:00', end: '18:00:00' },
 } as SchoolDetail
 
 describe('formErrors', () => {
@@ -25,8 +26,9 @@ describe('formErrors', () => {
       fields: [{ name: 'schoolCode', errors: ['School ID занят'] }],
       alert: false,
     })
-    expect(formErrors(new ApiError({ status: 409, type: 'region_code_taken', title: 'Конфликт' }), ['code', 'name']))
-      .toEqual({ fields: [{ name: 'code', errors: ['Район или город с таким кодом уже есть'] }], alert: false })
+    expect(
+      formErrors(new ApiError({ status: 409, type: 'region_code_taken', title: 'Конфликт' }), ['code', 'name']),
+    ).toEqual({ fields: [{ name: 'code', errors: ['Район или город с таким кодом уже есть'] }], alert: false })
   })
 
   it('maps the snake_case paths of a 422 to the fields of the form', () => {
@@ -58,8 +60,9 @@ describe('formErrors', () => {
     })
 
     expect(formErrors(outside, SCHOOL_FIELDS)).toEqual({ fields: [], alert: true })
-    expect(formErrors(new ApiError({ status: 500, type: 'internal', title: 'Ошибка сервера' }), SCHOOL_FIELDS).alert)
-      .toBe(true)
+    expect(
+      formErrors(new ApiError({ status: 500, type: 'internal', title: 'Ошибка сервера' }), SCHOOL_FIELDS).alert,
+    ).toBe(true)
     expect(formErrors(new Error('offline'), SCHOOL_FIELDS).alert).toBe(true)
     expect(formErrors(null, SCHOOL_FIELDS)).toEqual({ fields: [], alert: false })
   })
@@ -91,6 +94,15 @@ describe('school bodies', () => {
     expect(schoolUpdateBody(initial, { ...initial, fullName: 'Школа-лицей № 17', lon: 82.7 })).toEqual({
       fullName: 'Школа-лицей № 17',
       location: { lat: 49.9483, lon: 82.7 },
+    })
+  })
+
+  it('sends the working hours whole when a day or an hour changes', () => {
+    const initial = schoolFormValues(SCHOOL)
+    const hours = initial.workingHours as NonNullable<typeof initial.workingHours>
+
+    expect(schoolUpdateBody(initial, { ...initial, workingHours: { ...hours, weekdays: ['mon', 'tue'] } })).toEqual({
+      workingHours: { weekdays: ['mon', 'tue'], start: '08:00:00', end: '18:00:00' },
     })
   })
 

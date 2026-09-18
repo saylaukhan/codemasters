@@ -1,16 +1,18 @@
 """Threshold profiles of the admin panel (plan.md §10 «Админка»): list, create, change.
 
-Contract stubs: every endpoint answers 501 until T-37. There is no DELETE: a profile is switched
-off with ``is_active``; measurements keep the thresholds they were evaluated with (ADR-004).
+There is no DELETE: a profile is switched off with ``is_active``; measurements keep the
+thresholds they were evaluated with (ADR-004). Every change goes to the audit log (T-37).
 """
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require
+from app.auth.audit import describe_action
+from app.core.db import get_session
 from app.core.deps import PageParams, page_params
-from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.threshold_profiles import (
     ThresholdProfileCreate,
@@ -19,6 +21,7 @@ from app.schemas.threshold_profiles import (
     ThresholdProfileScope,
     ThresholdProfileUpdate,
 )
+from app.services import config_admin
 
 router = APIRouter(
     prefix="/thresholds", tags=["admin"], dependencies=[Depends(require("thresholds:manage"))]
@@ -38,8 +41,10 @@ PROFILE_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Проф�
 async def list_threshold_profiles(
     params: Annotated[PageParams, Depends(page_params)],
     scope: ThresholdProfileScope | None = None,
+    *,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ThresholdProfileDetailPage:
-    raise not_implemented("T-37")
+    return await config_admin.threshold_profile_list(session, params, scope)
 
 
 @router.post(
@@ -55,8 +60,10 @@ async def list_threshold_profiles(
         },
     },
 )
-async def create_threshold_profile(body: ThresholdProfileCreate) -> ThresholdProfileDetail:
-    raise not_implemented("T-37")
+async def create_threshold_profile(
+    body: ThresholdProfileCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> ThresholdProfileDetail:
+    return await config_admin.create_threshold_profile(session, body)
 
 
 @router.patch(
@@ -73,6 +80,11 @@ async def create_threshold_profile(body: ThresholdProfileCreate) -> ThresholdPro
     },
 )
 async def update_threshold_profile(
-    profile_id: int, body: ThresholdProfileUpdate
+    profile_id: int,
+    body: ThresholdProfileUpdate,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ThresholdProfileDetail:
-    raise not_implemented("T-37")
+    profile, changes = await config_admin.update_threshold_profile(session, profile_id, body)
+    describe_action(request, changes=changes or None)
+    return profile

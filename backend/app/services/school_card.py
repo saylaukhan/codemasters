@@ -34,12 +34,11 @@ from app.schemas.schools import (
     SchoolContactDetail,
     SchoolContactDetailPage,
     SchoolDetail,
-    WorkingHours,
 )
 from app.schemas.statuses import SchoolStatus
 from app.services.settings import system_settings
 from app.services.status import WIFI, school_statuses, worst_of_the_majority
-from app.services.working_hours import is_working_time
+from app.services.working_hours import is_working_time, school_hours
 
 # Order of the lines in the card: the main one first, the switched-off ones last.
 LINE_ORDER = case({"main": 0, "reserve": 1, "disabled": 2}, value=Line.status)
@@ -87,6 +86,7 @@ async def school_detail(session: AsyncSession, school_id: int, *, now: datetime)
                 func.ST_X(School.geom).label("lon"),
                 func.ST_Y(School.geom).label("lat"),
                 School.is_active,
+                School.working_hours,
             )
             .join(Region, Region.id == School.region_id)
             .where(School.id == school_id)
@@ -124,8 +124,8 @@ async def school_detail(session: AsyncSession, school_id: int, *, now: datetime)
             "address": row.address,
             "location": None if row.lon is None else {"lat": row.lat, "lon": row.lon},
             "is_active": row.is_active,
-            # Schools have no hours of their own until T-37: the admin defaults apply.
-            "working_hours": settings.default_working_hours,
+            # A school without hours of its own works by the admin default (T-37).
+            "working_hours": row.working_hours or settings.default_working_hours,
             "status": (await school_statuses(session, [school_id], now=now))[school_id],
             "on_reserve_line": newest_line == "reserve",
             "latest_measurement": latest_measurement(on_main),
@@ -139,10 +139,7 @@ async def device_items(
     """Rows of ``Device, MonitoringPoint, line_status`` with the last measurement and the
     current status of each computer; shared by the school card and the device card (T-26)."""
     settings = await system_settings(session)
-    hours = WorkingHours.model_validate(settings.default_working_hours)
-    silent: SchoolStatus = (
-        "offline" if is_working_time(hours, settings.timezone, now) else "no_data"
-    )
+    hours = await school_hours(session, {row.MonitoringPoint.school_id for row in rows}, settings)
     latest: dict[int, Measurement] = {
         measurement.device_id: measurement
         for measurement in await session.scalars(
@@ -156,12 +153,13 @@ async def device_items(
         )
     }
 
-    def current_status(device: Device) -> SchoolStatus:
+    def current_status(device: Device, point: MonitoringPoint) -> SchoolStatus:
         if device.status == "blocked":
             return "no_data"
         seen = device.last_seen_at
         if seen is None or now - seen > timedelta(seconds=settings.offline_after_s):
-            return silent
+            working = is_working_time(hours[point.school_id], settings.timezone, now)
+            return "offline" if working else "no_data"
         measurement = latest.get(device.id)
         if measurement is None or measurement.quality_status is None:
             return "no_data"
@@ -181,7 +179,7 @@ async def device_items(
                 "agent_version": row.Device.agent_version,
                 "last_seen_at": row.Device.last_seen_at,
                 "status": row.Device.status,
-                "current_status": current_status(row.Device),
+                "current_status": current_status(row.Device, row.MonitoringPoint),
                 "latest_measurement": latest_measurement(latest.get(row.Device.id)),
             }
         )

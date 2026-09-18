@@ -53,3 +53,5 @@ class SystemSettings(TimestampMixin, Base):
     export_retention_days: Mapped[int] = mapped_column(server_default=text("7"))
     # Days an agent installation code stays valid (ADR-005, T-36).
     enrollment_code_ttl_days: Mapped[int] = mapped_column(server_default=text("7"))
+    # A resolved incident is closed after this many hours (ADR-007, T-40).
+    incident_auto_close_hours: Mapped[int] = mapped_column(server_default=text("24"))
