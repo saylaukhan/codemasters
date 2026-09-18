@@ -1,9 +1,9 @@
 """Export API (plan.md §10 «Экспорт», ТЗ п. 9): create an export, then download its file.
 
-Raw measurements (T-30) are built within the POST; aggregates (T-31) and the PDF report (T-32)
-still answer 501. The same two endpoints serve background exports of T-33: the POST answers
-``pending``, the GET answers 202 until the file is ready. Exports cover only the user's scope
-(ADR-008); the file is served only to the user who made it. The work is in
+Raw measurements (T-30) and aggregates per school (T-31) are built within the POST; the PDF
+report (T-32) still answers 501. The same two endpoints serve background exports of T-33: the
+POST answers ``pending``, the GET answers 202 until the file is ready. Exports cover only the
+user's scope (ADR-008); the file is served only to the user who made it. The work is in
 ``app/services/exports/``.
 """
 

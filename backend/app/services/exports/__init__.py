@@ -1,8 +1,8 @@
 """Exports of the panel (ТЗ п. 9, plan.md §12): build a file, keep it, serve it to its owner.
 
 Until T-33 the file is built within ``POST /api/exports``, so an export is born ``ready``.
-Raw measurements come from ``raw.py``, the files from ``files.py``; aggregates per school are
-T-31, the PDF report of a school is T-32.
+Raw measurements come from ``raw.py``, aggregates per school from ``aggregates.py``, the files
+from ``files.py``; the PDF report of a school is T-32.
 """
 
 from datetime import datetime, timedelta
@@ -15,21 +15,25 @@ from sqlalchemy.orm import undefer
 from app.core.errors import ApiError, not_implemented
 from app.models import Export
 from app.schemas.exports import ExportCreate
+from app.services.exports.aggregates import aggregate_records
+from app.services.exports.columns import AGGREGATE_COLUMN_TITLES, AGGREGATE_COLUMNS
 from app.services.exports.files import export_file
 from app.services.exports.raw import check_selection, raw_records
 from app.services.settings import system_settings
 
 __all__ = ["create_export", "owned_export"]
 
-MODE_TASKS = {"aggregates": "T-31", "school_report": "T-32"}
+MODE_TASKS = {"school_report": "T-32"}
+
+FILE_PREFIXES = {"raw": "measurements", "aggregates": "schools"}
 
 
 def file_name(body: ExportCreate, zone: ZoneInfo) -> str:
-    """``measurements_<first day>_<last day>.<format>``: days of the period in local time; the
-    end of the period is exclusive."""
+    """``measurements_<first day>_<last day>.<format>`` (``schools_…`` for aggregates): days of
+    the period in local time; the end of the period is exclusive."""
     first = body.period_from.astimezone(zone).date()
     last = (body.period_to - timedelta(microseconds=1)).astimezone(zone).date()
-    return f"measurements_{first.isoformat()}_{last.isoformat()}.{body.format}"
+    return f"{FILE_PREFIXES[body.mode]}_{first.isoformat()}_{last.isoformat()}.{body.format}"
 
 
 async def create_export(
@@ -41,7 +45,18 @@ async def create_export(
     settings = await system_settings(session)
     zone = ZoneInfo(settings.timezone)
     await check_selection(session, body)
-    records = await raw_records(session, body, zone)
+    if body.mode == "aggregates":
+        records = await aggregate_records(session, body)
+        content = export_file(
+            body.format,
+            AGGREGATE_COLUMNS,
+            records,
+            titles=AGGREGATE_COLUMN_TITLES,
+            sheet_name="Школы",
+        )
+    else:
+        records = await raw_records(session, body, zone)
+        content = export_file(body.format, body.columns, records)
     export = Export(
         user_id=user_id,
         mode=body.mode,
@@ -50,7 +65,7 @@ async def create_export(
         params=body.model_dump(mode="json"),
         rows_count=len(records),
         file_name=file_name(body, zone),
-        content=export_file(body.format, body.columns, records),
+        content=content,
         expires_at=now + timedelta(days=settings.export_retention_days),
     )
     session.add(export)
