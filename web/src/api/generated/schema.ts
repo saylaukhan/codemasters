@@ -308,6 +308,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/map/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Границы районов и городов ВКО: GeoJSON
+         * @description GeoJSON FeatureCollection всех районов и городов ВКО, по названию; id — значение фильтра region_id. Граница — справочник, не ограничивается областью видимости.
+         */
+        get: operations["get_region_boundaries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/map/filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Значения фильтров карты и сводки
+         * @description Районы видимых школ, провайдеры и типы подключения видимых линий, по названию: роль видит только то, что входит в её область видимости.
+         */
+        get: operations["get_filter_options"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/schools": {
         parameters: {
             query?: never;
@@ -2878,6 +2918,30 @@ export interface components {
             password: string;
         };
         /**
+         * MapFilterOption
+         * @description One value of a filter: the id goes into the query, the name into the panel.
+         */
+        MapFilterOption: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+        };
+        /**
+         * MapFilterOptions
+         * @description Values of the filters of the map and the overview, limited to the user's scope (ADR-008).
+         *
+         *     Districts of the visible schools; providers and connection types of the visible lines.
+         */
+        MapFilterOptions: {
+            /** Regions */
+            regions: components["schemas"]["MapFilterOption"][];
+            /** Providers */
+            providers: components["schemas"]["MapFilterOption"][];
+            /** Connection Types */
+            connection_types: components["schemas"]["MapFilterOption"][];
+        };
+        /**
          * MeasurementAccepted
          * @description Measurement stored (201); the agent deletes it from the queue.
          */
@@ -3238,6 +3302,48 @@ export interface components {
             page: number;
             /** Page Size */
             page_size: number;
+        };
+        /**
+         * RegionMapFeature
+         * @description Boundary of one district or city; ``id`` is ``regions.id``, the value of ``region_id``.
+         */
+        RegionMapFeature: {
+            /**
+             * Type
+             * @constant
+             */
+            type: "Feature";
+            /** Id */
+            id: number;
+            /** @description null — граница не загружена */
+            geometry: components["schemas"]["GeoJsonMultiPolygon"] | null;
+            properties: components["schemas"]["RegionMapProperties"];
+        };
+        /**
+         * RegionMapFeatureCollection
+         * @description Every district and city of VKO: the boundaries are a reference, not a scoped record.
+         */
+        RegionMapFeatureCollection: {
+            /**
+             * Type
+             * @constant
+             */
+            type: "FeatureCollection";
+            /** Features */
+            features: components["schemas"]["RegionMapFeature"][];
+        };
+        /**
+         * RegionMapProperties
+         * @description District or city of VKO under its boundary.
+         */
+        RegionMapProperties: {
+            /** Code */
+            code: string;
+            /**
+             * Name
+             * @description Район/город
+             */
+            name: string;
         };
         /**
          * RegionUpdate
@@ -5009,6 +5115,64 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_region_boundaries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionMapFeatureCollection"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_filter_options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapFilterOptions"];
                 };
             };
             /** @description Ошибка (RFC 9457) */

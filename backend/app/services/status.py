@@ -9,16 +9,25 @@ of a school, where a silent agent overrides them: no heartbeat for longer than
 computer switched off for the night is not a broken line (ADR-014).
 """
 
-from collections.abc import Sequence
+from collections import defaultdict
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, cast
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
-from app.models import Device, Line, Measurement, MonitoringPoint, School, ThresholdProfile
+from app.models import (
+    Device,
+    Heartbeat,
+    Line,
+    Measurement,
+    MonitoringPoint,
+    School,
+    ThresholdProfile,
+)
 from app.schemas.agent import MeasurementCreate
 from app.schemas.schools import WorkingHours
 from app.schemas.statuses import ProfileScope, QualityStatus, SchoolStatus
@@ -194,37 +203,81 @@ def worst_of_the_majority(statuses: Sequence[str]) -> SchoolStatus:
     return SEVERITY[ranked[len(ranked) // 2]]
 
 
-async def school_status(session: AsyncSession, school_id: int, *, now: datetime) -> SchoolStatus:
-    """Status of the school at ``now``: «Нет данных» while nothing has been measured yet.
+async def school_statuses(
+    session: AsyncSession, school_ids: Collection[int], *, now: datetime
+) -> dict[int, SchoolStatus]:
+    """Status of every school of ``school_ids`` at ``now``, in two queries whatever their number.
 
-    Only the main line counts and only measurements that are not made over Wi-Fi: the reserve
-    line and the air are not what the school is judged by (ADR-004, ADR-012).
+    The map and the overview judge hundreds of schools at once (T-22), so the rule of
+    ``school_status`` is applied here to all of them together. The last signal of a device is
+    ``last_seen_at`` while it is not later than ``now``; a moment in the past is answered by the
+    heartbeats, which remember it. Measurements after ``now`` are not known at ``now``.
     """
+    if not school_ids:
+        return {}
     settings = await system_settings(session)
     hours = WorkingHours.model_validate(settings.default_working_hours)
-
-    last_seen = await session.scalar(
-        select(func.max(Device.last_seen_at))
-        .join(MonitoringPoint, MonitoringPoint.id == Device.monitoring_point_id)
-        .where(MonitoringPoint.school_id == school_id, Device.status == "active")
+    silent_status: SchoolStatus = (
+        "offline" if is_working_time(hours, settings.timezone, now) else "no_data"
     )
-    if last_seen is None or now - last_seen > timedelta(seconds=settings.offline_after_s):
-        return "offline" if is_working_time(hours, settings.timezone, now) else "no_data"
 
-    latest = await session.scalars(
-        select(Measurement.quality_status)
-        .join(Line, Line.id == Measurement.line_id)
+    heard = (
+        select(func.max(Heartbeat.ts))
+        .where(Heartbeat.device_id == Device.id, Heartbeat.ts <= now)
+        .scalar_subquery()
+    )
+    seen = func.coalesce(case((Device.last_seen_at <= now, Device.last_seen_at)), heard)
+    last_seen: dict[int, datetime | None] = {
+        school_id: moment
+        for school_id, moment in await session.execute(
+            select(MonitoringPoint.school_id, func.max(seen))
+            .join(Device, Device.monitoring_point_id == MonitoringPoint.id)
+            .where(MonitoringPoint.school_id.in_(school_ids), Device.status == "active")
+            .group_by(MonitoringPoint.school_id)
+        )
+    }
+
+    count = settings.school_status_measurements_count
+    # The last measurements of every main line: one index scan per line (line_id, measured_at).
+    latest = (
+        select(Measurement.measured_at, Measurement.quality_status)
         .where(
-            Line.school_id == school_id,
-            Line.status == "main",
+            Measurement.line_id == Line.id,
+            Measurement.measured_at <= now,
             Measurement.iface_type.is_distinct_from(WIFI),
             Measurement.quality_status.is_not(None),
         )
         .order_by(Measurement.measured_at.desc())
-        .limit(settings.school_status_measurements_count)
+        .limit(count)
+        .lateral("latest")
     )
-    # Measurements received before T-18 carry no status of their own and say nothing here.
-    statuses = [status for status in latest if status is not None]
-    if not statuses:
-        return "no_data"
-    return worst_of_the_majority(statuses)
+    series: dict[int, list[tuple[datetime, str]]] = defaultdict(list)
+    for school_id, measured_at, quality_status in await session.execute(
+        select(Line.school_id, latest.c.measured_at, latest.c.quality_status)
+        .join(latest, true())
+        .where(Line.school_id.in_(school_ids), Line.status == "main")
+    ):
+        series[school_id].append((measured_at, quality_status))
+
+    statuses: dict[int, SchoolStatus] = {}
+    for school_id in school_ids:
+        moment = last_seen.get(school_id)
+        if moment is None or now - moment > timedelta(seconds=settings.offline_after_s):
+            statuses[school_id] = silent_status
+            continue
+        # Several main lines of one school: the last ``count`` of all of them together.
+        newest = sorted(series[school_id], reverse=True)[:count]
+        statuses[school_id] = (
+            worst_of_the_majority([status for _, status in newest]) if newest else "no_data"
+        )
+    return statuses
+
+
+async def school_status(session: AsyncSession, school_id: int, *, now: datetime) -> SchoolStatus:
+    """Status of the school at ``now``: «Нет данных» while nothing has been measured yet.
+
+    Only the main line counts and only measurements that are not made over Wi-Fi: the reserve
+    line and the air are not what the school is judged by (ADR-004, ADR-012). Measurements
+    received before T-18 carry no status of their own and say nothing here.
+    """
+    return (await school_statuses(session, [school_id], now=now))[school_id]
