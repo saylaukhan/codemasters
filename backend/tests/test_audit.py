@@ -13,7 +13,7 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require
-from app.auth.audit import describe_action
+from app.auth.audit import describe_action, path_entity
 from app.core.db import get_session
 from app.core.errors import ApiError
 from app.main import create_app
@@ -154,3 +154,24 @@ async def test_audit_log_cannot_be_changed_or_deleted(
             async with session.begin_nested():
                 await session.execute(text(statement))
     assert len(await records(session)) == 1
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "expected"),
+    [
+        ("PATCH", "/api/schools/5/lines/7", ("update", "line", 7)),
+        ("POST", "/api/schools", ("create", "school", None)),
+        ("POST", "/api/devices/9/block", ("block", "device", 9)),
+        ("POST", "/api/devices/enrollment-codes", ("create", "enrollment_code", None)),
+        ("POST", "/api/incidents/3/status", ("status_change", "incident", 3)),
+        ("POST", "/api/incidents/3/comments", ("update", "incident", 3)),
+        ("POST", "/api/exports", ("export", "export", None)),
+        ("PATCH", "/api/admin/settings", ("update", "setting", None)),
+        ("PATCH", "/api/admin/users/4", ("update", "user", 4)),
+        ("POST", "/api/appeals/draft", None),
+    ],
+)
+def test_the_path_of_a_real_endpoint_names_the_entity(
+    method: str, path: str, expected: tuple[str, str, int | None] | None
+) -> None:
+    assert path_entity(path, method) == expected

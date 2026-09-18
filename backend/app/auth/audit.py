@@ -2,9 +2,11 @@
 
 ``AuditMiddleware`` (installed in ``app/main.py``) writes one record after a request is
 answered: a successful POST / PATCH / PUT / DELETE of a panel user, and a rejected request of
-an agent (``transfer_error``). What was touched is read from the route: ``PATCH
-/api/schools/{school_id}/lines/{line_id}`` is an ``update`` of ``line`` ``line_id``, a POST
-that creates a row takes the id from the response. An endpoint that knows more — a block, a
+an agent (``transfer_error``). What was touched is read from the path: ``PATCH
+/api/schools/5/lines/7`` is an ``update`` of ``line`` 7, a POST that creates a row takes the id
+from the response. Agent and sign-in requests are told apart by the module of the endpoint:
+FastAPI keeps nested routers unflattened, so the route object carries neither the ``/api``
+prefix nor the tags of the router it is included in. An endpoint that knows more — a block, a
 password reset, the changed fields — says so with ``describe_action``. Sign-ins are written by
 the login endpoint itself (``record_login``): it knows the typed e-mail and why it refused.
 
@@ -22,7 +24,6 @@ from ipaddress import IPv4Address, IPv6Address, ip_address
 from typing import Any
 
 from fastapi import Request
-from fastapi.routing import APIRoute
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -35,6 +36,12 @@ from app.schemas.audit import AuditAction, AuditEntityType
 logger = logging.getLogger(__name__)
 
 CHANGING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+# Endpoints of the agent (ADR-005) and of the panel sign-in (logged by the login itself).
+AGENT_MODULE = "app.api.agent"
+AUTH_MODULE = "app.api.auth"
+# Longest decimal that fits into bigint ids.
+MAX_ID_DIGITS = 18
 
 # Path segment of a resource → the entity type of its records.
 ENTITY_BY_SEGMENT: dict[str, AuditEntityType] = {
@@ -103,7 +110,7 @@ class AuditEntry:
 
 @dataclass
 class ActionDescription:
-    """What an endpoint adds to the record the middleware derives from its route."""
+    """What an endpoint adds to the record the middleware derives from its path."""
 
     action: AuditAction | None = None
     entity_id: int | None = None
@@ -161,20 +168,16 @@ def response_json(body: bytes) -> dict[str, Any]:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def route_entity(
-    route: APIRoute, path_params: dict[str, Any], method: str
-) -> tuple[AuditAction, AuditEntityType, int | None] | None:
-    """Action, entity type and id of a changing panel request, from the route template."""
-    segments = [segment for segment in route.path.split("/") if segment][1:]
+def path_entity(path: str, method: str) -> tuple[AuditAction, AuditEntityType, int | None] | None:
+    """Action, entity type and id of a changing panel request, from its path."""
     entity_type: AuditEntityType | None = None
     entity_id: int | None = None
     action: AuditAction | None = None
-    for segment in segments:
+    for segment in path.split("/"):
         if segment in NOT_CHANGING_SEGMENTS:
             return None
-        if segment.startswith("{"):
-            value = str(path_params.get(segment.strip("{}"), ""))
-            entity_id = int(value) if value.isdecimal() else None
+        if segment.isdecimal() and len(segment) <= MAX_ID_DIGITS:
+            entity_id = int(segment)
         elif segment in ENTITY_BY_SEGMENT:
             entity_type, entity_id = ENTITY_BY_SEGMENT[segment], None
         elif segment in ACTION_BY_SEGMENT:
@@ -193,11 +196,11 @@ def route_entity(
 
 def audit_entry(scope: Scope, status: int, body: bytes) -> AuditEntry | None:
     """Record of an answered request, or ``None`` when the request is not audited."""
-    route = scope.get("route")
-    if not isinstance(route, APIRoute) or "auth" in route.tags:
+    module = getattr(scope.get("endpoint"), "__module__", None)
+    if module is None or module == AUTH_MODULE:
         return None
     state = scope.get("state", {})
-    if "agent" in route.tags:
+    if module == AGENT_MODULE:
         if status not in TRANSFER_ERROR_STATUSES:
             return None
         return AuditEntry(
@@ -210,7 +213,7 @@ def audit_entry(scope: Scope, status: int, body: bytes) -> AuditEntry | None:
     user = state.get("user")
     if not isinstance(user, AuthUser) or not 200 <= status < 300:
         return None
-    derived = route_entity(route, scope.get("path_params", {}), scope["method"])
+    derived = path_entity(scope["path"], scope["method"])
     if derived is None:
         return None
     action, entity_type, entity_id = derived
