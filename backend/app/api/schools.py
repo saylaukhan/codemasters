@@ -1,8 +1,8 @@
-"""School API of the panel (plan.md §10 «Школы»): list, card, devices, lines, points, contacts.
+"""School API of the panel (plan.md §10 «Школы»): list, card, devices, lines, points, contacts,
+incidents.
 
-Endpoints of later tasks answer 501 until the task in ``not_implemented`` lands. There is no
-DELETE: a school is deactivated with ``is_active`` and keeps its history (ТЗ п. 20). Lists and
-cards are limited by the user's scope from T-20 (ADR-008); a school outside it is a 404.
+There is no DELETE: a school is deactivated with ``is_active`` and keeps its history (ТЗ п. 20).
+Lists and cards are limited by the user's scope from T-20 (ADR-008); a school outside it is a 404.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -16,7 +16,6 @@ from app.auth import AuthUser, current_user, require
 from app.auth.audit import describe_action
 from app.core.db import get_session
 from app.core.deps import PageParams, page_params
-from app.core.errors import not_implemented
 from app.schemas.devices import DeviceListItemPage
 from app.schemas.errors import Problem
 from app.schemas.incidents import IncidentListItemPage
@@ -41,6 +40,7 @@ from app.schemas.schools import (
 )
 from app.schemas.statuses import SchoolStatus
 from app.services import references, school_setup
+from app.services.incident_card import school_incidents
 from app.services.school_card import school_contacts, school_detail, school_devices, school_lines
 from app.services.schools import SchoolListFilters, school_list
 
@@ -344,6 +344,8 @@ async def update_school_contact(
     responses={404: SCHOOL_NOT_FOUND},
 )
 async def list_school_incidents(
-    school_id: int, params: Annotated[PageParams, Depends(page_params)]
+    school_id: int,
+    params: Annotated[PageParams, Depends(page_params)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> IncidentListItemPage:
-    raise not_implemented("T-41")
+    return await school_incidents(session, school_id, params)

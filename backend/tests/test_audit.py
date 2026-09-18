@@ -88,7 +88,7 @@ async def test_changing_panel_requests_are_logged_with_who_and_what(
     # Refused and failed requests change nothing and leave no record.
     forbidden = await client.patch("/api/test/schools/5", headers=bearer(school))
     failed = await client.post("/api/test/schools/5/fail", headers=bearer(admin))
-    read = await client.get("/api/schools/1/incidents", headers=bearer(admin))
+    read = await client.get("/api/appeals/1/pdf", headers=bearer(admin))
 
     assert [r.status_code for r in (updated, created, blocked, forbidden, failed, read)] == [
         200,

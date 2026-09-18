@@ -36,6 +36,11 @@ celery_app.conf.update(
             "task": "incidents.detect_all",
             "schedule": 5 * 60,
         },
+        # «Устранён» → «Закрыт» after 24 hours (T-41): a quarter of an hour late is on time.
+        "close-resolved-incidents": {
+            "task": "incidents.close_resolved",
+            "schedule": 15 * 60,
+        },
         # Files of exports live for days (T-33): an hour late is as good as on time.
         "purge-expired-exports": {
             "task": "exports.purge_expired",

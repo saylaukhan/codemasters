@@ -1,20 +1,24 @@
 """Incident API of the panel (plan.md §7, §10 «Инциденты»; ТЗ п. 19): list, card, manual
 creation, status changes and comments.
 
-Contract stubs: every endpoint answers 501 until T-41. "CRUD" has no DELETE: an incident and its
-``incident_events`` are the history of a problem (ТЗ п. 19, ADR-007), so status changes and
-comments only add events. Lists and cards are limited by the user's scope from T-20: a provider
-sees the incidents of its own lines (ADR-008, T-44). Incidents of a school card — ``schools.py``.
+"CRUD" has no DELETE: an incident and its ``incident_events`` are the history of a problem
+(ТЗ п. 19, ADR-007), so status changes and comments only add events; the transitions and the
+auto-close live in ``app/services/incident_card.py`` (T-41). Lists and cards are limited by the
+user's scope from T-20: a provider sees the incidents of its own lines (ADR-008, T-44).
+Incidents of a school card — ``schools.py``.
 """
 
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import AwareDatetime
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require
+from app.auth import AuthUser, current_user, require
+from app.auth.audit import describe_action
+from app.core.db import get_session
 from app.core.deps import PageParams, page_params
-from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.incidents import (
     IncidentCommentCreate,
@@ -26,6 +30,8 @@ from app.schemas.incidents import (
     IncidentUpdate,
 )
 from app.schemas.statuses import IncidentStatus
+from app.services import incident_card
+from app.services.incident_card import IncidentFilters
 
 router = APIRouter(
     prefix="/incidents", tags=["incidents"], dependencies=[Depends(require("incidents:read"))]
@@ -61,8 +67,13 @@ async def list_incidents(
     period_to: Annotated[
         AwareDatetime | None, Query(description="Конец периода по started_at, не включается")
     ] = None,
+    *,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> IncidentListItemPage:
-    raise not_implemented("T-41")
+    filters = IncidentFilters(
+        status, school_id, region_id, provider_id, line_id, q, period_from, period_to
+    )
+    return await incident_card.incident_list(session, filters, params)
 
 
 @router.post(
@@ -75,8 +86,13 @@ async def list_incidents(
         "школа и поставщик — по линии. Неизвестный line_id или responsible_user_id — 422."
     ),
 )
-async def create_incident(body: IncidentCreate) -> IncidentDetail:
-    raise not_implemented("T-41")
+async def create_incident(
+    body: IncidentCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[AuthUser, Depends(current_user)],
+) -> IncidentDetail:
+    incident_id = await incident_card.create_incident(session, body, user, now=datetime.now(UTC))
+    return await incident_card.incident_detail(session, incident_id)
 
 
 @router.get(
@@ -84,8 +100,10 @@ async def create_incident(body: IncidentCreate) -> IncidentDetail:
     summary="Карточка инцидента с историей событий",
     responses={404: INCIDENT_NOT_FOUND},
 )
-async def get_incident(incident_id: int) -> IncidentDetail:
-    raise not_implemented("T-41")
+async def get_incident(
+    incident_id: int, session: Annotated[AsyncSession, Depends(get_session)]
+) -> IncidentDetail:
+    return await incident_card.incident_detail(session, incident_id)
 
 
 @router.patch(
@@ -98,8 +116,15 @@ async def get_incident(incident_id: int) -> IncidentDetail:
     ),
     responses={404: INCIDENT_NOT_FOUND},
 )
-async def update_incident(incident_id: int, body: IncidentUpdate) -> IncidentDetail:
-    raise not_implemented("T-41")
+async def update_incident(
+    incident_id: int,
+    body: IncidentUpdate,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> IncidentDetail:
+    changes = await incident_card.update_incident(session, incident_id, body)
+    describe_action(request, changes=changes or None)
+    return await incident_card.incident_detail(session, incident_id)
 
 
 @router.post(
@@ -126,8 +151,18 @@ async def update_incident(incident_id: int, body: IncidentUpdate) -> IncidentDet
         },
     },
 )
-async def change_incident_status(incident_id: int, body: IncidentStatusChange) -> IncidentDetail:
-    raise not_implemented("T-41")
+async def change_incident_status(
+    incident_id: int,
+    body: IncidentStatusChange,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[AuthUser, Depends(current_user)],
+) -> IncidentDetail:
+    changes = await incident_card.change_status(
+        session, incident_id, body, user, now=datetime.now(UTC)
+    )
+    describe_action(request, changes=changes)
+    return await incident_card.incident_detail(session, incident_id)
 
 
 @router.post(
@@ -139,6 +174,11 @@ async def change_incident_status(incident_id: int, body: IncidentStatusChange) -
     responses={404: INCIDENT_NOT_FOUND},
 )
 async def create_incident_comment(
-    incident_id: int, body: IncidentCommentCreate
+    incident_id: int,
+    body: IncidentCommentCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[AuthUser, Depends(current_user)],
 ) -> IncidentEventDetail:
-    raise not_implemented("T-41")
+    return await incident_card.add_comment(
+        session, incident_id, body.comment, user, now=datetime.now(UTC)
+    )
