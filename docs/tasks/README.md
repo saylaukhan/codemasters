@@ -396,7 +396,7 @@ dev-пользователи в `make seed`: `admin@example.kz`, `oblast@example
 ## D. Панель (этап 2)
 
 ### T-21 · Панель: каркас приложения, тема из DESIGN.md, вход по JWT · M · MVP
-**Статус:** todo
+**Статус:** done (2026-09-18)
 **Зачем:** п. 4 и п. 13 (веб-панель), п. 16 (права применяются к панели); этап 2 плана;
 ADR-013 (Refine + Ant Design с темой из `DESIGN.md`), ADR-009 (сгенерированный клиент).
 **Где:** `web/src/app/` (providers, router, Refine, тема AntD), `web/src/styles/tokens.css` и

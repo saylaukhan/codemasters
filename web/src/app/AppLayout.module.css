@@ -1,0 +1,112 @@
+/* Application shell, DESIGN.md §2.2, §3.5, §3.6, §9.1. */
+.shell {
+  min-height: 100vh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: var(--border-width) solid var(--border);
+  line-height: normal;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--motion-duration) var(--motion-easing);
+}
+
+.profile:hover {
+  background: var(--bg-subtle);
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.profileMeta {
+  display: flex;
+  flex-direction: column;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.profileMeta strong {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.sider {
+  position: sticky;
+  top: var(--header-height);
+  height: calc(100vh - var(--header-height));
+}
+
+.sider :global(.ant-layout-sider-children) {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) 0;
+}
+
+.menu {
+  border-inline-end: none;
+}
+
+.bottom {
+  margin-top: auto;
+}
+
+.collapse {
+  display: flex;
+  padding: var(--space-2) var(--space-2) 0;
+}
+
+.content {
+  padding: var(--space-5) var(--content-padding);
+}
+
+.container {
+  max-width: var(--content-max);
+  margin: 0 auto;
+}

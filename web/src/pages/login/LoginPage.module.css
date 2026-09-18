@@ -1,0 +1,35 @@
+/* Sign-in page, DESIGN.md §3.26: 400px card centred on the page background. */
+.page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-4);
+  background: var(--bg-page);
+}
+
+.card {
+  width: 100%;
+  max-width: var(--login-card-width);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.title {
+  margin: 0 0 var(--space-5);
+  color: var(--text-primary);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+.error {
+  margin-bottom: var(--space-4);
+}
