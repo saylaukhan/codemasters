@@ -47,5 +47,7 @@ class SystemSettings(TimestampMixin, Base):
     # line below the contract speed over the window (ТЗ п. 14, T-29).
     contract_mismatch_threshold_pct: Mapped[float] = mapped_column(server_default=text("50"))
     contract_mismatch_window_days: Mapped[int] = mapped_column(server_default=text("7"))
+    # An export of more rows than this, and every PDF, is built in the background (T-33).
+    export_sync_max_rows: Mapped[int] = mapped_column(server_default=text("10000"))
     # Days a built export file is kept before it answers 404 (ТЗ п. 9, T-30, T-33).
     export_retention_days: Mapped[int] = mapped_column(server_default=text("7"))

@@ -10,7 +10,7 @@ A school of the selection without a measurement in the period is still a row, wi
 from datetime import timedelta
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Line, MDaily, School
@@ -25,18 +25,27 @@ def rounded(value: float | None) -> float | None:
     return None if value is None else round(float(value), 2)
 
 
-async def aggregate_records(session: AsyncSession, body: ExportCreate) -> list[dict[str, Any]]:
-    """Every aggregate column of every school of the selection, ordered by the school name."""
+def main_lines(body: ExportCreate) -> Select[Any]:
+    """Main lines of the schools of the selection: all chosen, or the active ones of the scope."""
     lines = (
         select(Line.id.label("line_id"), Line.school_id)
         .join(School, School.id == Line.school_id)
         .where(Line.status == "main")
     )
     if body.school_ids:
-        lines = lines.where(School.id.in_(body.school_ids))
-    else:
-        lines = lines.where(School.is_active)
-    selected = lines.subquery()
+        return lines.where(School.id.in_(body.school_ids))
+    return lines.where(School.is_active)
+
+
+async def aggregate_count(session: AsyncSession, body: ExportCreate) -> int:
+    """Rows the aggregates file of ``body`` would have: one per school with a main line."""
+    selected = main_lines(body).subquery()
+    return await session.scalar(select(func.count(func.distinct(selected.c.school_id)))) or 0
+
+
+async def aggregate_records(session: AsyncSession, body: ExportCreate) -> list[dict[str, Any]]:
+    """Every aggregate column of every school of the selection, ordered by the school name."""
+    selected = main_lines(body).subquery()
 
     measured = (
         select(

@@ -1,12 +1,13 @@
-"""Export API (plan.md §10 «Экспорт», ТЗ п. 9): create an export, then download its file.
+"""Export API (plan.md §10 «Экспорт», ТЗ п. 9): create an export, list them, download a file.
 
-Raw measurements (T-30), aggregates per school (T-31) and the PDF report of a school (T-32) are
-built within the POST. The same two endpoints serve background exports of T-33: the
-POST answers ``pending``, the GET answers 202 until the file is ready. Exports cover only the
-user's scope (ADR-008); the file is served only to the user who made it. The work is in
-``app/services/exports/``.
+Raw measurements (T-30) and aggregates per school (T-31) are built within the POST; a PDF
+report of a school (T-32) and an export of more rows than the settings allow go to the Celery
+worker (T-33): the POST answers ``pending``, the GET answers 202 until the file is ready.
+Exports cover only the user's scope (ADR-008); an export and its file are served only to the
+user who made it. The work is in ``app/services/exports/``.
 """
 
+import logging
 from datetime import UTC, datetime
 from typing import Annotated, cast
 
@@ -16,11 +17,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import AuthUser, current_user, require
 from app.core.db import get_session
+from app.core.deps import PageParams, page_params
 from app.core.errors import ApiError
 from app.schemas.errors import Problem
-from app.schemas.exports import ExportCreate, ExportFormat, ExportJob
+from app.schemas.exports import ExportCreate, ExportFormat, ExportJob, ExportJobPage
 from app.services.exports import create_export as build_export
-from app.services.exports import owned_export
+from app.services.exports import fail_export, owned_export, user_exports
 from app.services.exports.files import MEDIA_TYPES
 
 router = APIRouter(
@@ -28,6 +30,19 @@ router = APIRouter(
 )
 
 FILE_SCHEMA = {"schema": {"type": "string", "format": "binary"}}
+
+logger = logging.getLogger(__name__)
+
+QUEUE_UNAVAILABLE = "Очередь фоновых выгрузок недоступна, попробуйте позже"
+
+
+def enqueue_build(export_id: int) -> None:
+    """Hand a pending export to the Celery worker. The task is imported here: the Celery app
+    reads the settings when it is created, and the API imports without them (tests replace
+    this function)."""
+    from app.workers.tasks.exports import build_export_task
+
+    build_export_task.delay(export_id)
 
 
 @router.post(
@@ -43,13 +58,15 @@ FILE_SCHEMA = {"schema": {"type": "string", "format": "binary"}}
         "периодом, KPI основной линии без Wi‑Fi, графики по дням, число и суммарная "
         "длительность простоев из outages, таблица всех замеров школы со статусами по-русски "
         "(T-32). Другие сочетания — 422. Неизвестные "
-        "или вне области видимости school_ids и device_ids — 422 (ADR-008). До T-33 файл "
-        "формируется в запросе и выгрузка приходит ready или failed; с T-33 PDF и выгрузки "
-        "больше порога строк из settings (по умолчанию 10 000) приходят pending и формируются "
-        "в фоне. Файлы raw: в xlsx и csv — русские заголовки, статусы словами, дата "
-        "ДД.ММ.ГГГГ и время по settings.timezone (Asia/Almaty); csv — UTF-8 с BOM, "
-        "разделитель «;», десятичная запятая; в json — коды колонок и значений, дата и время "
-        "ISO. Строки — по названию школы, затем по времени замера."
+        "или вне области видимости school_ids и device_ids — 422 (ADR-008). Выгрузка до "
+        "settings.export_sync_max_rows строк (по умолчанию 10 000) формируется в запросе и "
+        "приходит ready; PDF и выгрузки больше порога приходят pending и формируются в фоне "
+        "(T-33), состояние — GET /api/exports/{id} и список GET /api/exports; очередь "
+        "недоступна — выгрузка приходит failed. Файлы raw: в xlsx и csv — русские "
+        "заголовки, статусы словами, дата ДД.ММ.ГГГГ и время по settings.timezone "
+        "(Asia/Almaty); csv — UTF-8 с BOM, разделитель «;», десятичная запятая; в json — коды "
+        "колонок и значений, дата и время ISO. Строки — по названию школы, затем по времени "
+        "замера."
     ),
 )
 async def create_export(
@@ -57,8 +74,33 @@ async def create_export(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[AuthUser, Depends(current_user)],
 ) -> ExportJob:
-    export = await build_export(session, user.id, body, now=datetime.now(UTC))
+    now = datetime.now(UTC)
+    export = await build_export(session, user.id, body, now=now)
+    if export.status == "pending":
+        try:
+            enqueue_build(export.id)
+        except Exception:
+            # Redis is down or refuses the task: no worker will ever build this file.
+            logger.exception("export %s: not handed to Celery", export.id)
+            await fail_export(session, export.id, QUEUE_UNAVAILABLE, now=now)
     return ExportJob.model_validate(export, from_attributes=True)
+
+
+@router.get(
+    "",
+    summary="Выгрузки пользователя со статусами, новые сверху",
+    description=(
+        "Только выгрузки текущего пользователя с неистёкшим expires_at: pending — файл "
+        "готовится в фоне, ready — файл по GET /api/exports/{id}, failed — причина в error. "
+        "Панель повторяет запрос, пока в списке есть pending (T-33)."
+    ),
+)
+async def list_exports(
+    params: Annotated[PageParams, Depends(page_params)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[AuthUser, Depends(current_user)],
+) -> ExportJobPage:
+    return await user_exports(session, user.id, params, now=datetime.now(UTC))
 
 
 @router.get(

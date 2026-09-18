@@ -7,13 +7,14 @@ of the pages mapped back to letters through the ToUnicode map of the embedded fo
 
 import re
 import zlib
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Device, MonitoringPoint, Outage
+from app.services.exports import build_pending_export
 from tests.factories import bearer, create_settings, create_user
 from tests.test_exports import PERIOD_FROM, download, measured_school, request_body
 
@@ -66,7 +67,7 @@ async def with_outages(session: AsyncSession, device: Device) -> None:
 
 
 async def test_the_report_names_the_school_and_counts_its_downtime(
-    session: AsyncSession, api_client: AsyncClient
+    session: AsyncSession, api_client: AsyncClient, export_queue: list[int]
 ) -> None:
     await create_settings(session)
     school, device = await measured_school(session, "VKO-PDF-001")
@@ -80,11 +81,15 @@ async def test_the_report_names_the_school_and_counts_its_downtime(
     )
     assert created.status_code == 201, created.text
     job = created.json()
+    # Every PDF is built by the Celery worker (T-33).
+    assert job["status"] == "pending"
+    assert export_queue == [job["id"]]
+    assert await build_pending_export(session, job["id"], now=datetime.now(UTC)) == "ready"
+    listed = (await api_client.get("/api/exports", headers=headers)).json()["items"]
     response = await download(api_client, headers, job["id"])
     text = pdf_text(response.content)
 
-    assert job["status"] == "ready"
-    assert job["rows_count"] == 3
+    assert listed[0]["rows_count"] == 3
     assert response.headers["content-type"] == "application/pdf"
     assert response.headers["content-disposition"] == (
         'attachment; filename="report_VKO-PDF-001_2026-09-14_2026-09-14.pdf"'
@@ -105,7 +110,7 @@ async def test_the_report_names_the_school_and_counts_its_downtime(
 
 
 async def test_a_school_outside_the_scope_gets_no_report(
-    session: AsyncSession, api_client: AsyncClient
+    session: AsyncSession, api_client: AsyncClient, export_queue: list[int]
 ) -> None:
     await create_settings(session)
     own, _ = await measured_school(session, "VKO-PDF-001")
@@ -126,6 +131,7 @@ async def test_a_school_outside_the_scope_gets_no_report(
     assert foreign.status_code == 422, foreign.text
     assert [error["field"] for error in foreign.json()["errors"]] == ["school_ids"]
     assert own_report.status_code == 201, own_report.text
+    await build_pending_export(session, own_report.json()["id"], now=datetime.now(UTC))
     text = pdf_text((await download(api_client, headers, own_report.json()["id"])).content)
     assert own.full_name in text
     assert other.full_name not in text

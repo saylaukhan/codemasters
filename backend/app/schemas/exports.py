@@ -11,6 +11,7 @@ from typing import Literal, Self
 
 from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
+from app.schemas.pagination import Page
 from app.schemas.statuses import QualityStatus
 
 # What is exported: measurements (T-30), one row per school (T-31), PDF report of a school (T-32).
@@ -19,7 +20,7 @@ type ExportMode = Literal["raw", "aggregates", "school_report"]
 # File format; json is an array of objects keyed by the column codes.
 type ExportFormat = Literal["xlsx", "csv", "json", "pdf"]
 
-# State of the file: built in the request until T-33, in the background from T-33.
+# State of the file: ``pending`` while Celery builds it (T-33), then ``ready`` or ``failed``.
 type ExportStatus = Literal["pending", "ready", "failed"]
 
 # Column of a raw export; ``date`` and ``time`` are the measured_at in Asia/Almaty.
@@ -120,6 +121,12 @@ class ExportJob(BaseModel):
     status: ExportStatus
     mode: ExportMode
     format: ExportFormat
+    period_from: datetime = Field(description="Начало периода запроса, включительно")
+    period_to: datetime = Field(description="Конец периода запроса, не включается")
+    file_name: str | None = Field(
+        examples=["measurements_2026-09-14_2026-09-20.xlsx"],
+        description="Имя файла; null — файл ещё не сформирован",
+    )
     rows_count: int | None = Field(
         ge=0,
         description="Строк в файле: замеров (raw, таблица school_report) или школ (aggregates); "
@@ -132,3 +139,7 @@ class ExportJob(BaseModel):
         "(по умолчанию 7 дней); null — файл ещё не сформирован",
     )
     error: str | None = Field(description="Причина для человека при status=failed")
+
+
+class ExportJobPage(Page[ExportJob]):
+    """Exports of the user, newest first; expired ones are gone (T-33)."""

@@ -780,11 +780,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Выгрузки пользователя со статусами, новые сверху
+         * @description Только выгрузки текущего пользователя с неистёкшим expires_at: pending — файл готовится в фоне, ready — файл по GET /api/exports/{id}, failed — причина в error. Панель повторяет запрос, пока в списке есть pending (T-33).
+         */
+        get: operations["list_exports"];
         put?: never;
         /**
          * Сформировать выгрузку: режим, формат, период, фильтры, колонки
-         * @description Сочетания режима и формата: `raw` — замеры в xlsx, csv или json, фильтры device_ids и statuses, выбор колонок (T-30); `aggregates` — строка на школу в xlsx, csv или json: school_code, school_name, measurements_count, avg_download_mbps, min_download_mbps, avg_upload_mbps, avg_ping_ms, problem_count, problem_pct — по основной линии без Wi‑Fi, как GET /api/analytics (T-31); `school_report` — PDF по одной школе: шапка с School ID и периодом, KPI основной линии без Wi‑Fi, графики по дням, число и суммарная длительность простоев из outages, таблица всех замеров школы со статусами по-русски (T-32). Другие сочетания — 422. Неизвестные или вне области видимости school_ids и device_ids — 422 (ADR-008). До T-33 файл формируется в запросе и выгрузка приходит ready или failed; с T-33 PDF и выгрузки больше порога строк из settings (по умолчанию 10 000) приходят pending и формируются в фоне. Файлы raw: в xlsx и csv — русские заголовки, статусы словами, дата ДД.ММ.ГГГГ и время по settings.timezone (Asia/Almaty); csv — UTF-8 с BOM, разделитель «;», десятичная запятая; в json — коды колонок и значений, дата и время ISO. Строки — по названию школы, затем по времени замера.
+         * @description Сочетания режима и формата: `raw` — замеры в xlsx, csv или json, фильтры device_ids и statuses, выбор колонок (T-30); `aggregates` — строка на школу в xlsx, csv или json: school_code, school_name, measurements_count, avg_download_mbps, min_download_mbps, avg_upload_mbps, avg_ping_ms, problem_count, problem_pct — по основной линии без Wi‑Fi, как GET /api/analytics (T-31); `school_report` — PDF по одной школе: шапка с School ID и периодом, KPI основной линии без Wi‑Fi, графики по дням, число и суммарная длительность простоев из outages, таблица всех замеров школы со статусами по-русски (T-32). Другие сочетания — 422. Неизвестные или вне области видимости school_ids и device_ids — 422 (ADR-008). Выгрузка до settings.export_sync_max_rows строк (по умолчанию 10 000) формируется в запросе и приходит ready; PDF и выгрузки больше порога приходят pending и формируются в фоне (T-33), состояние — GET /api/exports/{id} и список GET /api/exports; очередь недоступна — выгрузка приходит failed. Файлы raw: в xlsx и csv — русские заголовки, статусы словами, дата ДД.ММ.ГГГГ и время по settings.timezone (Asia/Almaty); csv — UTF-8 с BOM, разделитель «;», десятичная запятая; в json — коды колонок и значений, дата и время ISO. Строки — по названию школы, затем по времени замера.
          */
         post: operations["create_export"];
         delete?: never;
@@ -2246,6 +2250,24 @@ export interface components {
             mode: components["schemas"]["ExportMode"];
             format: components["schemas"]["ExportFormat"];
             /**
+             * Period From
+             * Format: date-time
+             * @description Начало периода запроса, включительно
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец периода запроса, не включается
+             */
+            period_to: string;
+            /**
+             * File Name
+             * @description Имя файла; null — файл ещё не сформирован
+             * @example measurements_2026-09-14_2026-09-20.xlsx
+             */
+            file_name: string | null;
+            /**
              * Rows Count
              * @description Строк в файле: замеров (raw, таблица school_report) или школ (aggregates); null — файл ещё не сформирован
              */
@@ -2266,6 +2288,20 @@ export interface components {
              * @description Причина для человека при status=failed
              */
             error: string | null;
+        };
+        /**
+         * ExportJobPage
+         * @description Exports of the user, newest first; expired ones are gone (T-33).
+         */
+        ExportJobPage: {
+            /** Items */
+            items: components["schemas"]["ExportJob"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
         };
         /** @enum {string} */
         ExportMode: "raw" | "aggregates" | "school_report";
@@ -6624,6 +6660,49 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_exports: {
+        parameters: {
+            query?: {
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJobPage"];
                 };
             };
             /** @description Ошибка валидации запроса */

@@ -14,7 +14,7 @@ celery_app = Celery(
     "vko_monitor",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["app.workers.tasks.contracts"],
+    include=["app.workers.tasks.contracts", "app.workers.tasks.exports"],
 )
 celery_app.conf.update(
     timezone=settings.tz,
@@ -25,6 +25,11 @@ celery_app.conf.update(
         "recompute-contract-compliance": {
             "task": "contracts.recompute_compliance",
             "schedule": 15 * 60,
+        },
+        # Files of exports live for days (T-33): an hour late is as good as on time.
+        "purge-expired-exports": {
+            "task": "exports.purge_expired",
+            "schedule": 60 * 60,
         },
     },
 )
