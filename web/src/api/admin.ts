@@ -1,6 +1,6 @@
 // References of the administration (T-34): districts and cities, providers, connection types; threshold
-// profiles, schedules and settings (T-37). Nothing is deleted: schools and lines refer to the references,
-// a profile or a schedule is switched off; a PATCH changes only the fields present.
+// profiles, schedules and settings (T-37); users (T-38). Nothing is deleted: schools and lines refer to the
+// references, a profile or a schedule is switched off, a user is blocked; a PATCH changes only the fields present.
 import { apiRequest, type QueryValue } from './client'
 import type { components } from './generated/schema'
 import type {
@@ -15,6 +15,8 @@ import type {
   SettingsUpdate,
   ThresholdProfileCreate,
   ThresholdProfileUpdate,
+  UserCreate,
+  UserUpdate,
 } from './types'
 
 type Schemas = components['schemas']
@@ -72,3 +74,12 @@ export const getSettings = (signal?: AbortSignal) =>
 
 export const updateSettings = (body: SettingsUpdate) =>
   apiRequest<Schemas['SettingsDetail']>('/admin/settings', { method: 'PATCH', body })
+
+export const getUsers = (query: Record<string, QueryValue>, signal?: AbortSignal) =>
+  apiRequest<Schemas['UserDetailPage']>('/admin/users', { query, signal })
+
+export const createUser = (body: UserCreate) =>
+  apiRequest<Schemas['UserDetail']>('/admin/users', { method: 'POST', body })
+
+export const updateUser = (userId: number, body: UserUpdate) =>
+  apiRequest<Schemas['UserDetail']>(`/admin/users/${userId}`, { method: 'PATCH', body })

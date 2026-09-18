@@ -152,7 +152,7 @@ async def test_tokens_of_the_wrong_kind_or_forged_are_unauthorized(
     problem(await api_client.get(ME), 401, "unauthorized")
 
 
-ADMIN_ONLY = ("GET", "/api/admin/users")
+ADMIN_ONLY = ("POST", "/api/admin/users")
 MONITORING_SETUP = ("POST", "/api/admin/thresholds")
 VIEW = ("GET", "/api/schools/1/incidents")
 INCIDENT_STATUS = ("POST", "/api/incidents/1/status")
