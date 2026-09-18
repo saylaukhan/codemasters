@@ -53,3 +53,6 @@ export const SECTIONS: readonly Section[] = [
 /** Hidden, not disabled: a role never sees a section it cannot use (ТЗ п. 16, ADR-008). */
 export const canOpenSection = (section: Section, granted: readonly string[] | undefined): boolean =>
   section.permissions.some((permission) => granted?.includes(permission))
+
+/** Card of one school (T-25): the popover of the map and the lists lead here. */
+export const schoolCardPath = (schoolId: number): string => `/schools/${schoolId}`

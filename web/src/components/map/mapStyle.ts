@@ -40,6 +40,7 @@ export const LAYERS = {
   regionSelected: 'region-selected',
   clusters: 'clusters',
   clusterCount: 'cluster-count',
+  selected: 'school-selected',
   schools: 'schools',
 } as const
 
@@ -47,9 +48,13 @@ export const LAYERS = {
 export const SEVERITY: Record<SchoolStatus, number> = { no_data: 0, normal: 1, unstable: 2, critical: 3, offline: 4 }
 const STATUSES = Object.keys(SEVERITY) as SchoolStatus[]
 
-// Marker 12px, 16px on hover; cluster 32–48px by the number of schools (DESIGN.md §3.13).
+// Marker 12px, 16px on hover and selected; cluster 32–48px by the number of schools (DESIGN.md §3.13).
 const MARKER_RADIUS = 6
 const MARKER_HOVER_RADIUS = 8
+// Selected marker: a 4px ring at 15% of the text colour around its 2px outline, readable in both themes.
+const MARKER_STROKE = 2
+const RING_RADIUS = MARKER_HOVER_RADIUS + MARKER_STROKE + 4
+const RING_OPACITY = 0.15
 const CLUSTER_RADII = [16, 10, 20, 50, 24] as const
 // Selected district: accent fill at 8% (DESIGN.md §2.5).
 const SELECTED_FILL_OPACITY = 0.08
@@ -115,6 +120,7 @@ export function dataLayers(regionId: number | undefined): AddLayerObject[] {
         'text-allow-overlap': true,
       },
     },
+    { id: LAYERS.selected, type: 'circle', source: SCHOOLS, filter: ['!', ['has', 'point_count']] },
     { id: LAYERS.schools, type: 'circle', source: SCHOOLS, filter: ['!', ['has', 'point_count']] },
   ]
 }
@@ -125,6 +131,7 @@ export function paintLayers(map: MapLibre, mode: ThemeMode): void {
     map.setPaintProperty(BASEMAP, property as PaintProperty, value)
   }
   const surface = token('--bg-surface')
+  const selected = ['boolean', ['feature-state', 'selected'], false]
   const paint: [string, PaintProperty, unknown][] = [
     [LAYERS.regionFill, 'fill-color', token('--accent')],
     [LAYERS.regionFill, 'fill-opacity', SELECTED_FILL_OPACITY],
@@ -137,13 +144,16 @@ export function paintLayers(map: MapLibre, mode: ThemeMode): void {
     [LAYERS.clusters, 'circle-stroke-color', worstColor()],
     [LAYERS.clusters, 'circle-radius', ['step', ['get', 'point_count'], ...CLUSTER_RADII]],
     [LAYERS.clusterCount, 'text-color', token('--text-primary')],
+    [LAYERS.selected, 'circle-color', token('--text-primary')],
+    [LAYERS.selected, 'circle-radius', RING_RADIUS],
+    [LAYERS.selected, 'circle-opacity', ['case', selected, RING_OPACITY, 0]],
     [LAYERS.schools, 'circle-color', statusColor()],
-    [LAYERS.schools, 'circle-stroke-width', 2],
+    [LAYERS.schools, 'circle-stroke-width', MARKER_STROKE],
     [LAYERS.schools, 'circle-stroke-color', surface],
     [
       LAYERS.schools,
       'circle-radius',
-      ['case', ['boolean', ['feature-state', 'hover'], false], MARKER_HOVER_RADIUS, MARKER_RADIUS],
+      ['case', ['any', ['boolean', ['feature-state', 'hover'], false], selected], MARKER_HOVER_RADIUS, MARKER_RADIUS],
     ],
   ]
   for (const [layer, property, value] of paint) map.setPaintProperty(layer, property, value as PaintValue)

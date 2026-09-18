@@ -76,6 +76,12 @@ export const MS_UNIT = 'мс'
 /** «45,3 Мбит/с». */
 export const formatSpeed = (mbps: number | null | undefined): string => withUnit(mbps, SPEED_UNIT, 1)
 
+/** «18,2 / 50 Мбит/с»: a speed next to the one it is compared with; without the second — «18,2 Мбит/с». */
+export function formatSpeedPair(value: number | null | undefined, reference: number | null | undefined): string {
+  if (reference === null || reference === undefined || !Number.isFinite(reference)) return formatSpeed(value)
+  return `${formatNumber(value, 1)} / ${formatSpeed(reference)}`
+}
+
 /** «18 мс». */
 export const formatMs = (ms: number | null | undefined): string => withUnit(ms, MS_UNIT, 0)
 
