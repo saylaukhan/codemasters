@@ -1,0 +1,74 @@
+/* Status badge, DESIGN.md §3.11: 22px, radius 4, 12/500, dot 6px for connection statuses. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--badge-height);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-chip);
+  background: var(--badge-bg);
+  color: var(--badge-text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.dot {
+  width: var(--badge-dot);
+  height: var(--badge-dot);
+  border-radius: 50%;
+  background: var(--badge-main);
+  flex: none;
+}
+
+.badge[data-status='normal'] {
+  --badge-main: var(--status-normal-main);
+  --badge-bg: var(--status-normal-bg);
+  --badge-text: var(--status-normal-text);
+}
+.badge[data-status='unstable'] {
+  --badge-main: var(--status-unstable-main);
+  --badge-bg: var(--status-unstable-bg);
+  --badge-text: var(--status-unstable-text);
+}
+.badge[data-status='critical'] {
+  --badge-main: var(--status-critical-main);
+  --badge-bg: var(--status-critical-bg);
+  --badge-text: var(--status-critical-text);
+}
+.badge[data-status='offline'] {
+  --badge-main: var(--status-offline-main);
+  --badge-bg: var(--status-offline-bg);
+  --badge-text: var(--status-offline-text);
+}
+.badge[data-status='no_data'] {
+  --badge-main: var(--status-no-data-main);
+  --badge-bg: var(--status-no-data-bg);
+  --badge-text: var(--status-no-data-text);
+}
+
+.badge[data-status='new'] {
+  --badge-bg: var(--incident-new-bg);
+  --badge-text: var(--incident-new-text);
+}
+.badge[data-status='sent_to_provider'] {
+  --badge-bg: var(--incident-sent-to-provider-bg);
+  --badge-text: var(--incident-sent-to-provider-text);
+}
+.badge[data-status='in_progress'] {
+  --badge-bg: var(--incident-in-progress-bg);
+  --badge-text: var(--incident-in-progress-text);
+}
+.badge[data-status='awaiting_info'] {
+  --badge-bg: var(--incident-awaiting-info-bg);
+  --badge-text: var(--incident-awaiting-info-text);
+}
+.badge[data-status='resolved'] {
+  --badge-bg: var(--incident-resolved-bg);
+  --badge-text: var(--incident-resolved-text);
+}
+.badge[data-status='closed'] {
+  --badge-bg: var(--incident-closed-bg);
+  --badge-text: var(--incident-closed-text);
+}

@@ -1,0 +1,30 @@
+/* Empty state, DESIGN.md §3.21: outline icon 48px, title 16/500, one-line hint. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+
+.icon {
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+}
+
+.description {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.action {
+  margin-top: var(--space-2);
+}

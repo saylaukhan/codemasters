@@ -1,0 +1,174 @@
+/*
+ * Design tokens of DESIGN.md (front matter: colors, radius, spacing, control-heights, shadow,
+ * motion). Besides theme.ts this is the only file in web/ with hex values and raw px:
+ * components use var(--…) only. The dark theme overrides the same names under
+ * :root[data-theme="dark"], so a component never knows which theme is on.
+ */
+
+:root {
+  /* colors.light */
+  --bg-page: #f5f6f7;
+  --bg-surface: #ffffff;
+  --bg-subtle: #eff1f3;
+  --bg-selected: #e6f7ee;
+  --border: #e3e5e8;
+  --border-strong: #c9cdd2;
+  --text-primary: #1f2328;
+  --text-secondary: #5f6670;
+  --text-muted: #9aa0a8;
+  --text-link: #1f6fd1;
+
+  /* colors.accent */
+  --accent: #1db866;
+  --accent-hover: #17a35a;
+  --accent-pressed: #128c4c;
+  --accent-soft: #e6f7ee;
+  --text-on-accent: #ffffff;
+
+  /* colors.status: main — marker, badge dot, cluster ring; bg and text — badge */
+  --status-normal-main: #1db866;
+  --status-normal-bg: #e6f7ee;
+  --status-normal-text: #117a42;
+  --status-unstable-main: #f5a300;
+  --status-unstable-bg: #fff4db;
+  --status-unstable-text: #8a5a00;
+  --status-critical-main: #e5484d;
+  --status-critical-bg: #fdecec;
+  --status-critical-text: #b4232a;
+  --status-offline-main: #8a9099;
+  --status-offline-bg: #eff1f3;
+  --status-offline-text: #4b525b;
+  --status-no-data-main: #c9cdd2;
+  --status-no-data-bg: #f5f6f7;
+  --status-no-data-text: #6b727b;
+
+  /* colors.incident: incidents and appeals, badge without a dot */
+  --incident-new-bg: #e8f1fc;
+  --incident-new-text: #1f5fb0;
+  --incident-sent-to-provider-bg: #f1eafb;
+  --incident-sent-to-provider-text: #6a3fb5;
+  --incident-in-progress-bg: #fff4db;
+  --incident-in-progress-text: #8a5a00;
+  --incident-awaiting-info-bg: #eff1f3;
+  --incident-awaiting-info-text: #4b525b;
+  --incident-resolved-bg: #e6f7ee;
+  --incident-resolved-text: #117a42;
+  --incident-closed-bg: #f5f6f7;
+  --incident-closed-text: #6b727b;
+
+  /* colors.chart: series strictly in this order */
+  --chart-series-1: #1db866;
+  --chart-series-2: #1f6fd1;
+  --chart-series-3: #f5a300;
+  --chart-series-4: #8e5cd9;
+  --chart-series-5: #13a8a8;
+  --chart-series-6: #e5484d;
+  --chart-threshold: #9aa0a8;
+  --chart-grid: #eff1f3;
+  --chart-below-threshold: rgba(229, 72, 77, 0.06);
+
+  /* typography */
+  --font-sans: Inter, Onest, Manrope, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 32px;
+  --font-size-kpi: 28px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* radius */
+  --radius-chip: 4px;
+  --radius-control: 6px;
+  --radius-dropdown: 8px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
+
+  /* spacing: multiples of 4 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* control-heights */
+  --control-height-s: 28px;
+  --control-height-m: 36px;
+  --control-height-l: 44px;
+
+  /* layout (DESIGN.md §2.2, §9.1) and fixed component sizes (§3) */
+  --header-height: 56px;
+  --sider-width: 240px;
+  --sider-collapsed-width: 56px;
+  --content-max: 1440px;
+  --content-padding: 24px;
+  --login-card-width: 400px;
+  --badge-height: 22px;
+  --badge-dot: 6px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
+  --icon-empty: 48px;
+  --avatar-size: 32px;
+  --border-width: 1px;
+  --focus-ring-width: 2px;
+
+  /* shadow and motion */
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --motion-duration: 150ms;
+  --motion-easing: ease-out;
+}
+
+/* colors.dark; values DESIGN.md left open are decided in T-21 there (contrast ≥ 4.5:1). */
+:root[data-theme='dark'] {
+  --bg-page: #141619;
+  --bg-surface: #1e2125;
+  --bg-subtle: #272b30;
+  --bg-selected: #173a28;
+  --border: #33383e;
+  --border-strong: #4a5057;
+  --text-primary: #edeff2;
+  --text-secondary: #a4abb3;
+  --text-muted: #6f767e;
+  --text-link: #4c9aff;
+
+  --accent: #2bc775;
+  --accent-hover: #4ad68b;
+  --accent-pressed: #5fe09b;
+  --accent-soft: #173a28;
+  --text-on-accent: #141619;
+
+  color-scheme: dark;
+}
+
+/* At 1024px and narrower the content padding shrinks (DESIGN.md §2.2, breakpoint inclusive). */
+@media (max-width: 1024px) {
+  :root {
+    --content-padding: 16px;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
+}
+
+/* The focus ring is always visible (DESIGN.md §6): 2px accent with a 1px offset. */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: var(--border-width);
+}
