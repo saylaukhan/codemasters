@@ -39,7 +39,7 @@
 ## Записи
 
 ### 2026-09-18 · T-26 · Панель: карточка ПК и история замеров
-Сделано: <merge>. Backend (`backend/app/services/device_card.py`): `GET /api/devices/{id}`
+Сделано: 3c08d2b (api), 164b7f7 (web). Backend (`backend/app/services/device_card.py`): `GET /api/devices/{id}`
 (поля ПК, кабинет и точка, линия, школа, ОС, версия агента, последняя связь, последний замер и
 текущий статус по тому же правилу, что в карточке школы) и `GET /api/devices/{id}/measurements`
 (новые сверху, пагинация, `period_from` / `period_to`). Сборка строк ПК вынесена из
