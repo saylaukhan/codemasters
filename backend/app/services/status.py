@@ -6,7 +6,9 @@ profile never rewrites history and a dispute with a provider is settled by the r
 (ТЗ п. 11, plan.md §6). The second folds the last measurements of the main line into the status
 of a school, where a silent agent overrides them: no heartbeat for longer than
 ``offline_after_s`` in working hours means «Нет соединения», outside them «Нет данных» — a
-computer switched off for the night is not a broken line (ADR-014).
+computer switched off for the night is not a broken line (ADR-014). The third, run
+periodically, folds the ``contract_ok`` of the main line over a window into the sustained
+mismatch of ТЗ п. 14 (T-29).
 """
 
 from collections import defaultdict
@@ -15,7 +17,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, cast
 
-from sqlalchemy import case, func, select, true
+from sqlalchemy import CursorResult, case, func, select, true, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
@@ -281,3 +283,54 @@ async def school_status(session: AsyncSession, school_id: int, *, now: datetime)
     received before T-18 carry no status of their own and say nothing here.
     """
     return (await school_statuses(session, [school_id], now=now))[school_id]
+
+
+async def recompute_contract_compliance(session: AsyncSession, *, now: datetime) -> int:
+    """Write the sustained mismatch of every main line at ``now`` onto ``lines`` (ТЗ п. 14).
+
+    The rule of «Решения по умолчанию»: more than ``contract_mismatch_threshold_pct`` of the
+    measurements of the main line over the last ``contract_mismatch_window_days`` below the
+    contract speed; both come from ``settings`` (T-29). Only measurements with ``contract_ok``
+    count: Wi-Fi, a lost connection and a line without contract speeds compare nothing
+    (``contract_kept``). A line with nothing to compare, and any line that is not main, is
+    cleared to NULL. Returns how many lines got a result; the caller commits.
+    """
+    settings = await system_settings(session)
+    window_days = settings.contract_mismatch_window_days
+    compared = func.count(Measurement.contract_ok)
+    below = func.count().filter(Measurement.contract_ok.is_(False))
+    shares = (
+        select(Measurement.line_id, (100.0 * below / compared).label("below_pct"))
+        .where(
+            Measurement.measured_at > now - timedelta(days=window_days),
+            Measurement.measured_at <= now,
+            Measurement.contract_ok.is_not(None),
+        )
+        .group_by(Measurement.line_id)
+        .subquery("shares")
+    )
+    # Recomputed values are not an edit of the line: ``updated_at`` keeps the last edit.
+    await session.execute(
+        update(Line)
+        .where(Line.compliance_checked_at.is_not(None))
+        .values(
+            compliance_below_pct=None,
+            compliance_sustained_mismatch=None,
+            compliance_window_days=None,
+            compliance_checked_at=None,
+            updated_at=Line.updated_at,
+        )
+    )
+    result = await session.execute(
+        update(Line)
+        .where(Line.id == shares.c.line_id, Line.status == "main")
+        .values(
+            compliance_below_pct=shares.c.below_pct,
+            compliance_sustained_mismatch=shares.c.below_pct
+            > settings.contract_mismatch_threshold_pct,
+            compliance_window_days=window_days,
+            compliance_checked_at=now,
+            updated_at=Line.updated_at,
+        )
+    )
+    return cast(CursorResult[Any], result).rowcount

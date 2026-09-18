@@ -43,3 +43,7 @@ class SystemSettings(TimestampMixin, Base):
     )
     # Availability of ТЗ п. 11 a school is expected to stay above.
     availability_min_pct: Mapped[float] = mapped_column(server_default=text("99"))
+    # Sustained mismatch with the contract: more than this share of the measurements of the main
+    # line below the contract speed over the window (ТЗ п. 14, T-29).
+    contract_mismatch_threshold_pct: Mapped[float] = mapped_column(server_default=text("50"))
+    contract_mismatch_window_days: Mapped[int] = mapped_column(server_default=text("7"))

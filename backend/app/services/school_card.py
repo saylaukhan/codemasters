@@ -281,8 +281,14 @@ async def school_lines(
                 "quality_status": worst_of_the_majority(series[line.id])
                 if series[line.id]
                 else None,
-                # The sustained mismatch of ТЗ п. 14 is computed by T-29.
-                "contract_compliance": None,
+                # Written by the periodic recompute of T-29; empty until it has something.
+                "contract_compliance": {
+                    "sustained_mismatch": line.compliance_sustained_mismatch,
+                    "below_contract_pct": line.compliance_below_pct,
+                    "window_days": line.compliance_window_days,
+                }
+                if line.compliance_checked_at is not None
+                else None,
             }
         )
 

@@ -140,6 +140,7 @@ async def analytics_report(
             or_(Line.contract_down_mbps.is_not(None), Line.contract_up_mbps.is_not(None)).label(
                 "has_contract"
             ),
+            Line.compliance_sustained_mismatch.label("sustained_mismatch"),
         )
         .join(School, School.id == Line.school_id)
         .where(Line.status == filters.line_status)
@@ -233,6 +234,20 @@ async def analytics_report(
             return None
         return 100 * (1 - sum(item.downtime_s for item in observed) / observed_s)
 
+    # Sustained mismatch is the current state of a line, not a number of the period (T-29):
+    # lines of the row with the flag set, empty while none of them has been recomputed.
+    mismatch = select(
+        func.count().filter(selected.c.sustained_mismatch).label("lines_count"),
+        func.count(selected.c.sustained_mismatch).label("rated_count"),
+    )
+    if key is not None:
+        mismatch = mismatch.add_columns(key.label("key")).group_by(key)
+    mismatch_rows = {getattr(row, "key", None): row for row in await session.execute(mismatch)}
+
+    def sustained_mismatch_lines_count(entity_id: int | None) -> int | None:
+        row = mismatch_rows.get(entity_id)
+        return int(row.lines_count) if row and row.rated_count else None
+
     rows = []
     for entity_id, name in entities:
         row = measured_rows.get(entity_id)
@@ -253,8 +268,7 @@ async def analytics_report(
                 below_contract_pct=percent(int(row.below_contract_count or 0), contract_count)
                 if row
                 else None,
-                # The recompute of T-29 has not landed yet.
-                sustained_mismatch_lines_count=None,
+                sustained_mismatch_lines_count=sustained_mismatch_lines_count(entity_id),
             )
         )
 
