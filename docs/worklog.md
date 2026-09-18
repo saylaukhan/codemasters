@@ -38,6 +38,28 @@
 
 ## Записи
 
+### 2026-09-18 · T-29 · Backend: сведения об устойчивом несоответствии договору
+Сделано: 9e92faf. Миграция `20260918_1700_contract_compliance`: в `settings` — правило
+`contract_mismatch_threshold_pct` (50) и `contract_mismatch_window_days` (7), в `lines` — результат
+пересчёта `compliance_below_pct`, `compliance_sustained_mismatch`, `compliance_window_days`,
+`compliance_checked_at`. `recompute_contract_compliance` в `services/status.py`: по основным линиям
+доля замеров с `contract_ok = false` среди сравнимых (Wi‑Fi, без связи и без договорных скоростей
+не считаются) за окно до текущего момента; признак — доля строго больше порога; остальные линии
+очищаются, `updated_at` линии не трогается. Celery-задача `contracts.recompute_compliance`
+(`app/workers/tasks/contracts.py`, первая в `workers/tasks/`), beat раз в 15 мин. Выдача:
+`contract_compliance` в `GET /api/schools/{id}/lines`, `sustained_mismatch_lines_count` в
+`GET /api/analytics` (null, пока ни одна линия строки не пересчитана). Контракт API не менялся:
+поля были с T-03. Тесты `test_contract_compliance.py`: 60 % → признак есть, 40 % → нет; порог 70 %
+и окно 3 дня из `settings` меняют результат; карточка и аналитика до и после пересчёта; задача в
+beat. Чек-лист: `make check` зелёный (go test ok, ruff/mypy чисто, pytest 140 passed, vitest 39
+passed, build ok); golangci-lint локально не установлен — шаг пропущен, в CI есть. `make db-reset`
+не запускали (нет `docker` CLI в PATH, и он стёр бы локальные данные): миграции с нуля и seed
+проверены pytest в testcontainers, на локальной БД — `make migrate` и один прогон задачи (0 линий:
+нет замеров с договором).
+Не сделано: панель признак не показывает; признак пуст до первого прогона beat — две строки (T-29)
+в docs/known-limitations.md. Правку порога и окна в админке даёт T-37.
+Потрачено / Застрял на: ~20 мин, без застреваний.
+
 ### 2026-09-18 · T-28 · Панель: тепловая карта час×день и блок сравнения с договором
 Сделано: 73ef9a0. Вкладка «Обзор» карточки школы: под графиком скорости — тепловая карта
 «Проблемные замеры по часам» (7 дней × 24 часа, Пн сверху, доля проблемных замеров из `heatmap`
