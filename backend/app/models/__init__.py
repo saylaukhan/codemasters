@@ -10,6 +10,7 @@ from app.models.base import Base
 from app.models.connection_type import ConnectionType
 from app.models.device import Device
 from app.models.enrollment_code import EnrollmentCode
+from app.models.export import Export
 from app.models.heartbeat import Heartbeat
 from app.models.line import Line
 from app.models.m_daily import MDaily
@@ -35,6 +36,7 @@ __all__ = [
     "ConnectionType",
     "Device",
     "EnrollmentCode",
+    "Export",
     "Heartbeat",
     "Line",
     "MDaily",
