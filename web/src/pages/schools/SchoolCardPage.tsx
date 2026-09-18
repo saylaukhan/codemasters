@@ -1,11 +1,12 @@
-import { usePermissions } from '@refinedev/core'
+import { useNotification, usePermissions } from '@refinedev/core'
 import { Alert, Segmented, Tabs } from 'antd'
-import { Construction, SearchX } from 'lucide-react'
+import { Construction, FileDown, SearchX } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useParams, useSearchParams } from 'react-router'
 
 import { ApiError } from '../../api/client'
 import type { AnalyticsPeriod } from '../../api/types'
+import { useBuildExport } from '../../components/exports/queries'
 import { ContactList } from '../../components/schools/ContactList'
 import { ContractFact } from '../../components/schools/ContractFact'
 import { DeviceTable } from '../../components/schools/DeviceTable'
@@ -18,9 +19,11 @@ import {
   useSchoolDevices,
   useSchoolLines,
 } from '../../components/schools/queries'
+import { schoolReportBody } from '../../components/schools/report'
 import styles from '../../components/schools/SchoolCard.module.css'
 import { SchoolKpis } from '../../components/schools/SchoolKpis'
 import { speedChart } from '../../components/schools/speedChart'
+import { Button } from '../../components/ui/Button'
 import { ChartCard } from '../../components/ui/Chart'
 import { ContentSkeleton } from '../../components/ui/ContentSkeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -82,6 +85,8 @@ export function SchoolCardPage() {
   const devices = useSchoolDevices(schoolId)
   const contacts = useSchoolContacts(schoolId)
   const { data: permissions } = usePermissions<string[]>({})
+  const report = useBuildExport()
+  const { open } = useNotification()
 
   if (school.isError) {
     if (school.error instanceof ApiError && school.error.status === 404) {
@@ -171,7 +176,28 @@ export function SchoolCardPage() {
             )}
           </span>
         }
-        actions={<ConnectionStatusBadge status={card.status} />}
+        actions={
+          <>
+            <ConnectionStatusBadge status={card.status} />
+            {/* «Создать обращение» becomes the Action of the card with appeals (T-45…T-48). */}
+            <Button
+              icon={<FileDown size={16} />}
+              loading={report.isPending}
+              onClick={() =>
+                report.mutate(schoolReportBody(schoolId, period), {
+                  onError: (error) =>
+                    open?.({
+                      type: 'error',
+                      message: 'Отчёт не сформирован',
+                      description: error instanceof ApiError ? (error.detail ?? error.title) : undefined,
+                    }),
+                })
+              }
+            >
+              Отчёт PDF
+            </Button>
+          </>
+        }
       />
       {!card.isActive && (
         <Alert className={styles.alert} type="info" showIcon message="Школа отключена от мониторинга, история сохранена" />
