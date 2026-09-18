@@ -1,6 +1,7 @@
 // The single dictionary of statuses and captions (ADR-013, DESIGN.md §3.11): the API returns
 // codes, Russian strings live only here. A status string inside a component is a bug.
 import type {
+  AnalyticsLevel,
   AnalyticsPeriod,
   DeviceStatus,
   IfaceType,
@@ -76,6 +77,17 @@ export const PERIOD_LABELS: Record<Exclude<AnalyticsPeriod, 'custom'>, string> =
   today: 'Сегодня',
   week: '7 дней',
   month: '30 дней',
+}
+
+/** Period with explicit bounds, next to the presets. */
+export const CUSTOM_PERIOD_LABEL = 'Свой период'
+
+/** Grouping of the analytics rows (ТЗ п. 13): per school, district or city, provider, the oblast. */
+export const ANALYTICS_LEVEL_LABELS: Record<AnalyticsLevel, string> = {
+  school: 'Школы',
+  district: 'Районы',
+  provider: 'Провайдеры',
+  region: 'Вся область',
 }
 
 /** Five roles of ТЗ п. 16 (ADR-008). */

@@ -18,6 +18,7 @@ export type LineStatus = Schemas['LineStatus']
 export type DeviceStatus = Schemas['DeviceStatus']
 export type IfaceType = Schemas['IfaceType']
 export type AnalyticsPeriod = Schemas['AnalyticsPeriod']
+export type AnalyticsLevel = Schemas['AnalyticsLevel']
 
 export type DashboardSummary = Schema<'DashboardSummary'>
 export type SchoolMapCollection = Schema<'SchoolMapFeatureCollection'>
@@ -36,3 +37,4 @@ export type MeasurementListItem = Schema<'MeasurementListItem'>
 export type LineDetail = Schema<'LineDetail'>
 export type SchoolContactDetail = Schema<'SchoolContactDetail'>
 export type AnalyticsReport = Schema<'AnalyticsReport'>
+export type AnalyticsRow = Schema<'AnalyticsRow'>

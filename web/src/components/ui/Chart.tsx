@@ -2,7 +2,7 @@
 // screens pass only the moments, the series and the threshold marks. Colors come from tokens.css,
 // so the chart follows the light and the dark theme.
 import { Dropdown } from 'antd'
-import { LineChart } from 'echarts/charts'
+import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
 import * as echarts from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -14,7 +14,7 @@ import { Button } from './Button'
 import styles from './Chart.module.css'
 import { buildOption, chartCsv, token, type TimeChartData } from './chartOption'
 
-echarts.use([LineChart, GridComponent, LegendComponent, MarkLineComponent, TooltipComponent, CanvasRenderer])
+echarts.use([BarChart, LineChart, GridComponent, LegendComponent, MarkLineComponent, TooltipComponent, CanvasRenderer])
 
 function save(href: string, fileName: string): void {
   const link = document.createElement('a')
@@ -35,7 +35,7 @@ interface ChartCardProps {
   height?: number
 }
 
-/** Card with a line chart over time: title, period control and «Экспорт» (PNG, CSV) in the header. */
+/** Card with a line or bar chart: title, period control and «Экспорт» (PNG, CSV) in the header. */
 export function ChartCard({ title, controls, fileName, data, placeholder, height = 320 }: ChartCardProps) {
   const element = useRef<HTMLDivElement>(null)
   const chart = useRef<echarts.ECharts | null>(null)

@@ -1,0 +1,82 @@
+/* Analytics screen (T-27), DESIGN.md §3.10, §3.12, §3.16. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+@media (max-width: 1280px) {
+  .kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .charts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.section {
+  margin: var(--space-5) 0 var(--space-3);
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.caption {
+  margin: 0 0 var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.number {
+  font-variant-numeric: tabular-nums;
+}
+
+.below {
+  color: var(--status-critical-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.stats {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.range {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.school {
+  width: calc(var(--sider-width) * 1.5);
+  max-width: 100%;
+}
+
+.compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (max-width: 1280px) {
+  .compare {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
