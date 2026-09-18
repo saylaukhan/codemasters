@@ -156,7 +156,7 @@ ADMIN_ONLY = ("GET", "/api/admin/users")
 MONITORING_SETUP = ("GET", "/api/admin/thresholds")
 VIEW = ("GET", "/api/schools/1/incidents")
 INCIDENT_STATUS = ("POST", "/api/incidents/1/status")
-SCHOOL_CHANGE = ("PATCH", "/api/schools/1")
+SCHOOL_CHANGE = ("POST", "/api/schools")
 
 # Who passes require(...) of each endpoint (plan.md §9); the others get 403.
 ALLOWED = {

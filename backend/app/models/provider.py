@@ -13,3 +13,5 @@ class Provider(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(Identity(), primary_key=True)
     name: Mapped[str] = mapped_column(unique=True)
+    # Service address of the company for appeals (T-48); not a personal e-mail.
+    appeals_email: Mapped[str | None]

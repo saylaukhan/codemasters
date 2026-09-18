@@ -1,16 +1,18 @@
 """Provider reference of the admin panel (plan.md §10 «Админка», ТЗ п. 14, п. 20).
 
-Contract stubs: every endpoint answers 501 until T-34. There is no DELETE: lines of schools
-refer to providers. References are edited by Область and Администратор (ADR-008), from T-20.
+There is no DELETE: lines of schools refer to providers. References are edited by Область and
+Администратор (ADR-008); every change goes to the audit log with its changed fields (T-34).
 """
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require
+from app.auth.audit import describe_action
+from app.core.db import get_session
 from app.core.deps import PageParams, page_params
-from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.references import (
     ProviderCreate,
@@ -18,6 +20,7 @@ from app.schemas.references import (
     ProviderDetailPage,
     ProviderUpdate,
 )
+from app.services import references
 
 router = APIRouter(
     prefix="/providers", tags=["admin"], dependencies=[Depends(require("references:manage"))]
@@ -35,8 +38,10 @@ async def list_providers(
     q: Annotated[
         str | None, Query(min_length=1, max_length=255, description="Часть названия")
     ] = None,
+    *,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ProviderDetailPage:
-    raise not_implemented("T-34")
+    return await references.provider_list(session, params, q)
 
 
 @router.post(
@@ -45,8 +50,10 @@ async def list_providers(
     summary="Добавить поставщика",
     responses={409: PROVIDER_NAME_TAKEN},
 )
-async def create_provider(body: ProviderCreate) -> ProviderDetail:
-    raise not_implemented("T-34")
+async def create_provider(
+    body: ProviderCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> ProviderDetail:
+    return await references.create_provider(session, body)
 
 
 @router.patch(
@@ -57,5 +64,12 @@ async def create_provider(body: ProviderCreate) -> ProviderDetail:
         409: PROVIDER_NAME_TAKEN,
     },
 )
-async def update_provider(provider_id: int, body: ProviderUpdate) -> ProviderDetail:
-    raise not_implemented("T-34")
+async def update_provider(
+    provider_id: int,
+    body: ProviderUpdate,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ProviderDetail:
+    provider, changes = await references.update_provider(session, provider_id, body)
+    describe_action(request, changes=changes or None)
+    return provider

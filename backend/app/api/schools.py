@@ -8,11 +8,12 @@ cards are limited by the user's scope from T-20 (ADR-008); a school outside it i
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import AwareDatetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import AuthUser, current_user, require
+from app.auth.audit import describe_action
 from app.core.db import get_session
 from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
@@ -35,6 +36,7 @@ from app.schemas.schools import (
     SchoolUpdate,
 )
 from app.schemas.statuses import SchoolStatus
+from app.services import references
 from app.services.school_card import school_contacts, school_detail, school_devices, school_lines
 from app.services.schools import SchoolListFilters, school_list
 
@@ -115,8 +117,11 @@ async def list_schools(
     description="Неизвестный region_id — 422.",
     responses={409: SCHOOL_CODE_TAKEN},
 )
-async def create_school(body: SchoolCreate) -> SchoolDetail:
-    raise not_implemented("T-34")
+async def create_school(
+    body: SchoolCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> SchoolDetail:
+    school_id = await references.create_school(session, body)
+    return await school_detail(session, school_id, now=datetime.now(UTC))
 
 
 @router.get(
@@ -137,8 +142,15 @@ async def get_school(
     description="Рабочие часы (working_hours) настраиваются в T-37. Неизвестный region_id — 422.",
     responses={404: SCHOOL_NOT_FOUND, 409: SCHOOL_CODE_TAKEN},
 )
-async def update_school(school_id: int, body: SchoolUpdate) -> SchoolDetail:
-    raise not_implemented("T-34")
+async def update_school(
+    school_id: int,
+    body: SchoolUpdate,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> SchoolDetail:
+    changes = await references.update_school(session, school_id, body)
+    describe_action(request, changes=changes or None)
+    return await school_detail(session, school_id, now=datetime.now(UTC))
 
 
 @router.get(
