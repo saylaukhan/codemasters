@@ -1,17 +1,19 @@
 """Incident rule admin API (plan.md §10 «Админка», ТЗ п. 18, п. 20): list, create, change.
 
-Contract stubs: every endpoint answers 501 until T-40. There is no DELETE: a rule is switched
-off with ``is_active`` and its incidents keep the reference (ADR-007). Rules are edited by the
-Oblast and Administrator roles (ADR-008 «Открыто»).
+There is no DELETE: a rule is switched off with ``is_active`` and its incidents keep the
+reference (ADR-007). The detection of T-40 applies a change from its next run. Rules are edited
+by the Oblast and Administrator roles (ADR-008 «Открыто»); every change goes to the audit log.
 """
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require
+from app.auth.audit import describe_action
+from app.core.db import get_session
 from app.core.deps import PageParams, page_params
-from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.incident_rules import (
     IncidentRuleCreate,
@@ -19,6 +21,7 @@ from app.schemas.incident_rules import (
     IncidentRuleDetailPage,
     IncidentRuleUpdate,
 )
+from app.services import incident_rules
 
 router = APIRouter(
     prefix="/incident-rules",
@@ -30,8 +33,9 @@ router = APIRouter(
 @router.get("", summary="Правила формирования инцидентов")
 async def list_incident_rules(
     params: Annotated[PageParams, Depends(page_params)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> IncidentRuleDetailPage:
-    raise not_implemented("T-40")
+    return await incident_rules.incident_rule_list(session, params)
 
 
 @router.post(
@@ -40,8 +44,10 @@ async def list_incident_rules(
     summary="Создать правило инцидентов",
     description="Без consecutive_violations и duration_min — 422.",
 )
-async def create_incident_rule(body: IncidentRuleCreate) -> IncidentRuleDetail:
-    raise not_implemented("T-40")
+async def create_incident_rule(
+    body: IncidentRuleCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> IncidentRuleDetail:
+    return await incident_rules.create_incident_rule(session, body)
 
 
 @router.patch(
@@ -53,5 +59,12 @@ async def create_incident_rule(body: IncidentRuleCreate) -> IncidentRuleDetail:
     ),
     responses={404: {"model": Problem, "description": "Правило не найдено"}},
 )
-async def update_incident_rule(rule_id: int, body: IncidentRuleUpdate) -> IncidentRuleDetail:
-    raise not_implemented("T-40")
+async def update_incident_rule(
+    rule_id: int,
+    body: IncidentRuleUpdate,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> IncidentRuleDetail:
+    rule, changes = await incident_rules.update_incident_rule(session, rule_id, body)
+    describe_action(request, changes=changes or None)
+    return rule
