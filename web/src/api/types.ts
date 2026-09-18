@@ -56,6 +56,7 @@ export type DeviceDetail = Schema<'DeviceDetail'>
 export type MeasurementListItem = Schema<'MeasurementListItem'>
 export type LineDetail = Schema<'LineDetail'>
 export type SchoolContactDetail = Schema<'SchoolContactDetail'>
+export type MonitoringPointDetail = Schema<'MonitoringPointDetail'>
 export type AnalyticsReport = Schema<'AnalyticsReport'>
 export type AnalyticsRow = Schema<'AnalyticsRow'>
 
@@ -76,3 +77,12 @@ export type ProviderUpdate = Schema<'ProviderUpdate'>
 export type ConnectionTypeDetail = Schema<'ConnectionTypeDetail'>
 export type ConnectionTypeCreate = Schema<'ConnectionTypeCreate'>
 export type ConnectionTypeUpdate = Schema<'ConnectionTypeUpdate'>
+
+// Lines, monitoring points and contacts of a school (T-35), edited from its card.
+/** The start of operation is not edited in the panel yet. */
+export type LineCreate = Omit<Schema<'LineCreate'>, 'startedAt'>
+export type LineUpdate = Omit<Schema<'LineUpdate'>, 'startedAt'>
+export type MonitoringPointCreate = Schema<'MonitoringPointCreate'>
+export type MonitoringPointUpdate = Schema<'MonitoringPointUpdate'>
+export type SchoolContactCreate = Schema<'SchoolContactCreate'>
+export type SchoolContactUpdate = Schema<'SchoolContactUpdate'>
