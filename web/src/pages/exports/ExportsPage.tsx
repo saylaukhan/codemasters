@@ -7,6 +7,7 @@ import type { ExportColumn, ExportFormat, ExportMode, QualityStatus } from '../.
 import styles from '../../components/exports/Exports.module.css'
 import { useBuildExport, useDeviceOptions, useSchoolOptions } from '../../components/exports/queries'
 import {
+  AGGREGATE_COLUMNS,
   ALL_COLUMNS,
   exportBody,
   MIN_COLUMNS,
@@ -19,6 +20,7 @@ import { ErrorState } from '../../components/ui/ErrorState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, formatNumber } from '../../lib/format'
 import {
+  EXPORT_AGGREGATE_COLUMN_LABELS,
   EXPORT_COLUMN_LABELS,
   EXPORT_FORMAT_LABELS,
   EXPORT_MODE_LABELS,
@@ -26,11 +28,11 @@ import {
   SECTION_LABELS,
 } from '../../lib/labels'
 
-// Aggregates (T-31) and the PDF report (T-32) are shown but not chosen yet.
+// The PDF report (T-32) is shown but not chosen yet.
 const MODE_OPTIONS = (Object.keys(EXPORT_MODE_LABELS) as ExportMode[]).map((mode) => ({
   value: mode,
   label: EXPORT_MODE_LABELS[mode],
-  disabled: mode !== 'raw',
+  disabled: mode === 'school_report',
 }))
 const FORMAT_OPTIONS = RAW_FORMATS.map((format) => ({ value: format, label: EXPORT_FORMAT_LABELS[format] }))
 const STATUS_OPTIONS = (Object.keys(QUALITY_STATUS_LABELS) as QualityStatus[]).map((status) => ({
@@ -40,6 +42,7 @@ const STATUS_OPTIONS = (Object.keys(QUALITY_STATUS_LABELS) as QualityStatus[]).m
 const EXTRA_COLUMNS = ALL_COLUMNS.filter((column) => !MIN_COLUMNS.includes(column))
 
 const initialDraft = (): ExportDraft => ({
+  mode: 'raw',
   format: 'xlsx',
   days: [dayjs().subtract(6, 'day'), dayjs()],
   deviceIds: [],
@@ -64,7 +67,10 @@ function Step({ number, title, children }: { number: number; title: string; chil
   )
 }
 
-/** Export constructor (ТЗ п. 9, DESIGN.md §3.24): raw measurements of the scope in XLSX, CSV or JSON. */
+/**
+ * Export constructor (ТЗ п. 9, DESIGN.md §3.24): raw measurements or the aggregates per school of
+ * the scope in XLSX, CSV or JSON.
+ */
 export function ExportsPage() {
   const [draft, setDraft] = useState(initialDraft)
   const [school, setSchool] = useState<Option>()
@@ -89,6 +95,7 @@ export function ExportsPage() {
   }))
   const extras = EXTRA_COLUMNS.filter((column) => draft.columns.includes(column))
   const columns = orderedColumns(draft.columns)
+  const raw = draft.mode === 'raw'
 
   const chooseSchool = (option: Option | undefined) => {
     setSchool(option)
@@ -110,8 +117,17 @@ export function ExportsPage() {
       <div className={styles.layout}>
         <div className={styles.steps}>
           <Step number={1} title="Тип данных">
-            <Segmented<ExportMode> aria-label="Тип данных" value="raw" options={MODE_OPTIONS} />
-            <p className={styles.caption}>Агрегаты по школе и PDF-отчёт появятся в следующих версиях.</p>
+            <Segmented<ExportMode>
+              aria-label="Тип данных"
+              value={draft.mode}
+              options={MODE_OPTIONS}
+              onChange={(mode) => mode !== 'school_report' && set({ mode })}
+            />
+            <p className={styles.caption}>
+              {raw
+                ? 'Каждый замер — отдельная строка. PDF-отчёт появится в следующих версиях.'
+                : 'Одна строка на школу: основная линия без Wi‑Fi, как в аналитике.'}
+            </p>
           </Step>
           <Step number={2} title="Фильтры">
             <div className={styles.filters}>
@@ -140,53 +156,74 @@ export function ExportsPage() {
                   showSearch
                 />
               </label>
-              <label className={styles.field}>
-                <span className={styles.label}>Компьютеры</span>
-                <Select<number[]>
-                  mode="multiple"
-                  placeholder={draft.schoolId === undefined ? 'Сначала выберите школу' : 'Все компьютеры школы'}
-                  value={draft.deviceIds}
-                  options={deviceOptions}
-                  onChange={(deviceIds) => set({ deviceIds })}
-                  disabled={draft.schoolId === undefined}
-                  loading={devices.isFetching}
-                  optionFilterProp="label"
-                  allowClear
-                />
-              </label>
-              <label className={styles.field}>
-                <span className={styles.label}>Статус замера</span>
-                <Select<QualityStatus[]>
-                  mode="multiple"
-                  placeholder="Все статусы"
-                  value={draft.statuses}
-                  options={STATUS_OPTIONS}
-                  onChange={(statuses) => set({ statuses })}
-                  allowClear
-                />
-              </label>
+              {raw && (
+                <>
+                  <label className={styles.field}>
+                    <span className={styles.label}>Компьютеры</span>
+                    <Select<number[]>
+                      mode="multiple"
+                      placeholder={draft.schoolId === undefined ? 'Сначала выберите школу' : 'Все компьютеры школы'}
+                      value={draft.deviceIds}
+                      options={deviceOptions}
+                      onChange={(deviceIds) => set({ deviceIds })}
+                      disabled={draft.schoolId === undefined}
+                      loading={devices.isFetching}
+                      optionFilterProp="label"
+                      allowClear
+                    />
+                  </label>
+                  <label className={styles.field}>
+                    <span className={styles.label}>Статус замера</span>
+                    <Select<QualityStatus[]>
+                      mode="multiple"
+                      placeholder="Все статусы"
+                      value={draft.statuses}
+                      options={STATUS_OPTIONS}
+                      onChange={(statuses) => set({ statuses })}
+                      allowClear
+                    />
+                  </label>
+                </>
+              )}
             </div>
           </Step>
           <Step number={3} title="Колонки">
-            <Checkbox
-              className={styles.all}
-              checked={extras.length === EXTRA_COLUMNS.length}
-              indeterminate={extras.length > 0 && extras.length < EXTRA_COLUMNS.length}
-              onChange={(event) => set({ columns: event.target.checked ? ALL_COLUMNS : [...MIN_COLUMNS] })}
-            >
-              Выбрать все
-            </Checkbox>
-            <Checkbox.Group<ExportColumn>
-              className={styles.columns}
-              value={columns}
-              onChange={(chosen) => set({ columns: chosen })}
-              options={ALL_COLUMNS.map((column) => ({
-                value: column,
-                label: EXPORT_COLUMN_LABELS[column],
-                disabled: MIN_COLUMNS.includes(column),
-              }))}
-            />
-            <p className={styles.caption}>Минимальный набор колонок выгружается всегда.</p>
+            {raw ? (
+              <>
+                <Checkbox
+                  className={styles.all}
+                  checked={extras.length === EXTRA_COLUMNS.length}
+                  indeterminate={extras.length > 0 && extras.length < EXTRA_COLUMNS.length}
+                  onChange={(event) => set({ columns: event.target.checked ? ALL_COLUMNS : [...MIN_COLUMNS] })}
+                >
+                  Выбрать все
+                </Checkbox>
+                <Checkbox.Group<ExportColumn>
+                  className={styles.columns}
+                  value={columns}
+                  onChange={(chosen) => set({ columns: chosen })}
+                  options={ALL_COLUMNS.map((column) => ({
+                    value: column,
+                    label: EXPORT_COLUMN_LABELS[column],
+                    disabled: MIN_COLUMNS.includes(column),
+                  }))}
+                />
+                <p className={styles.caption}>Минимальный набор колонок выгружается всегда.</p>
+              </>
+            ) : (
+              <>
+                <Checkbox.Group
+                  className={styles.columns}
+                  value={AGGREGATE_COLUMNS}
+                  options={AGGREGATE_COLUMNS.map((column) => ({
+                    value: column,
+                    label: EXPORT_AGGREGATE_COLUMN_LABELS[column],
+                  }))}
+                  disabled
+                />
+                <p className={styles.caption}>Состав колонок агрегатов задан ТЗ и не меняется.</p>
+              </>
+            )}
           </Step>
           <Step number={4} title="Формат">
             <Segmented<ExportFormat>
@@ -205,21 +242,27 @@ export function ExportsPage() {
           <h2 className={styles.title}>Сводка</h2>
           <dl className={styles.summary}>
             <dt>Тип данных</dt>
-            <dd>{EXPORT_MODE_LABELS.raw}</dd>
+            <dd>{EXPORT_MODE_LABELS[draft.mode]}</dd>
             <dt>Период</dt>
             <dd>
               {formatDate(draft.days[0].toDate())} — {formatDate(draft.days[1].toDate())}
             </dd>
             <dt>Школа</dt>
             <dd>{school?.label ?? 'Все в области видимости'}</dd>
-            <dt>Компьютеры</dt>
-            <dd>{draft.deviceIds.length ? formatNumber(draft.deviceIds.length, 0) : 'Все'}</dd>
-            <dt>Статусы</dt>
-            <dd>
-              {draft.statuses.length ? draft.statuses.map((status) => QUALITY_STATUS_LABELS[status]).join(', ') : 'Все'}
-            </dd>
+            {raw && (
+              <>
+                <dt>Компьютеры</dt>
+                <dd>{draft.deviceIds.length ? formatNumber(draft.deviceIds.length, 0) : 'Все'}</dd>
+                <dt>Статусы</dt>
+                <dd>
+                  {draft.statuses.length
+                    ? draft.statuses.map((status) => QUALITY_STATUS_LABELS[status]).join(', ')
+                    : 'Все'}
+                </dd>
+              </>
+            )}
             <dt>Колонок</dt>
-            <dd>{formatNumber(columns.length, 0)}</dd>
+            <dd>{formatNumber(raw ? columns.length : AGGREGATE_COLUMNS.length, 0)}</dd>
             <dt>Формат</dt>
             <dd>{EXPORT_FORMAT_LABELS[draft.format]}</dd>
           </dl>

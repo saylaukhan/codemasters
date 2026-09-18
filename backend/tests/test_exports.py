@@ -291,15 +291,18 @@ async def test_the_file_is_served_only_to_its_owner_until_it_expires(
     assert expired.status_code == 404
 
 
-async def test_aggregates_and_the_school_report_are_later_tasks(
+async def test_the_school_report_is_a_later_task(
     session: AsyncSession, api_client: AsyncClient
 ) -> None:
     await create_settings(session)
+    school, _ = await measured_school(session, "VKO-EX-001")
     headers = bearer(await create_user(session, "oblast"))
 
     response = await api_client.post(
-        "/api/exports", json=request_body(mode="aggregates"), headers=headers
+        "/api/exports",
+        json=request_body(mode="school_report", format="pdf", school_ids=[school.id]),
+        headers=headers,
     )
 
     assert response.status_code == 501
-    assert "T-31" in response.json()["detail"]
+    assert "T-32" in response.json()["detail"]

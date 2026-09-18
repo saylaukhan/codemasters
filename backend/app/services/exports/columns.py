@@ -1,14 +1,13 @@
-"""Columns of a raw export: Russian headers and values of XLSX and CSV (ТЗ п. 9, ADR-013).
+"""Columns of an export: Russian headers and values of XLSX and CSV (ТЗ п. 9, ADR-013).
 
 A file is a document for a person, not an API answer, so it carries the Russian words the panel
 shows. They repeat ``web/src/lib/labels.ts`` (``QUALITY_STATUS_LABELS``, ``LINE_STATUS_LABELS``,
-``IFACE_LABELS``, ``EXPORT_COLUMN_LABELS``): a change there is made here too. JSON keeps the
-codes and the column codes as keys.
+``IFACE_LABELS``, ``EXPORT_COLUMN_LABELS``, ``EXPORT_AGGREGATE_COLUMN_LABELS``): a change there
+is made here too. JSON keeps the codes and the column codes as keys.
 """
 
-from app.schemas.exports import ExportColumn
-
-COLUMN_TITLES: dict[ExportColumn, str] = {
+# Columns of a raw export (T-30), keyed by ``ExportColumn``.
+COLUMN_TITLES: dict[str, str] = {
     "school_name": "Школа",
     "hostname": "Компьютер",
     "room": "Кабинет",
@@ -31,8 +30,23 @@ COLUMN_TITLES: dict[ExportColumn, str] = {
     "agent_version": "Версия агента",
 }
 
+# Columns of the aggregates (T-31) in the order of the file: one row per school.
+AGGREGATE_COLUMN_TITLES: dict[str, str] = {
+    "school_code": "School ID",
+    "school_name": "Школа",
+    "measurements_count": "Замеров",
+    "avg_download_mbps": "Средний Download, Мбит/с",
+    "min_download_mbps": "Минимальный Download, Мбит/с",
+    "avg_upload_mbps": "Средний Upload, Мбит/с",
+    "avg_ping_ms": "Средний Ping, мс",
+    "problem_count": "Проблемных замеров",
+    "problem_pct": "Доля проблемных, %",
+}
+
+AGGREGATE_COLUMNS = tuple(AGGREGATE_COLUMN_TITLES)
+
 # Codes of a column turned into words; other values are written as they are.
-VALUE_LABELS: dict[ExportColumn, dict[str, str]] = {
+VALUE_LABELS: dict[str, dict[str, str]] = {
     "quality_status": {
         "normal": "Норма",
         "unstable": "Нестабильно",
