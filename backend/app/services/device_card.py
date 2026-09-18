@@ -5,9 +5,11 @@ outside it is «не найдено», not «запрещено» (ADR-008). The
 measurements only on its own lines.
 """
 
+from collections.abc import Sequence
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import PageParams
@@ -21,28 +23,42 @@ def device_not_found() -> ApiError:
     return ApiError(404, "not_found", "Устройство не найдено")
 
 
+def device_detail_rows() -> Select[Any]:
+    """Rows of ``device_rows`` with the school of the device, for ``device_details``."""
+    return (
+        device_rows()
+        .add_columns(School.school_code, School.full_name.label("school_name"))
+        .join(School, School.id == MonitoringPoint.school_id)
+    )
+
+
 async def device_detail(session: AsyncSession, device_id: int, *, now: datetime) -> DeviceDetail:
-    row = (
-        await session.execute(
-            device_rows()
-            .add_columns(School.school_code, School.full_name.label("school_name"))
-            .join(School, School.id == MonitoringPoint.school_id)
-            .where(Device.id == device_id)
-        )
-    ).one_or_none()
+    row = (await session.execute(device_detail_rows().where(Device.id == device_id))).one_or_none()
     if row is None:
         raise device_not_found()
-    [item] = await device_items(session, [row], now=now)
-    return DeviceDetail.model_validate(
-        {
-            **item.model_dump(),
-            "os": row.Device.os,
-            "school_id": row.MonitoringPoint.school_id,
-            "school_code": row.school_code,
-            "school_name": row.school_name,
-            "registered_at": row.Device.registered_at,
-        }
-    )
+    [detail] = await device_details(session, [row], now=now)
+    return detail
+
+
+async def device_details(
+    session: AsyncSession, rows: Sequence[Any], *, now: datetime
+) -> list[DeviceDetail]:
+    """Rows of ``device_detail_rows`` as cards; shared by the card and the admin list (T-36)."""
+    items = await device_items(session, rows, now=now)
+    return [
+        DeviceDetail.model_validate(
+            {
+                **item.model_dump(),
+                "os": row.Device.os,
+                "school_id": row.MonitoringPoint.school_id,
+                "school_code": row.school_code,
+                "school_name": row.school_name,
+                "registered_at": row.Device.registered_at,
+                "token_rotation_requested_at": row.Device.token_rotation_requested_at,
+            }
+        )
+        for item, row in zip(items, rows, strict=True)
+    ]
 
 
 async def device_measurements(

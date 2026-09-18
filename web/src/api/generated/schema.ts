@@ -96,6 +96,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/agent/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Заменить токен устройства
+         * @description Агент вызывает текущим токеном, когда в GET /api/agent/config пришёл token_rotation_required, сохраняет новый токен и дальше ходит только с ним: старый перестаёт работать сразу (T-36, ADR-005). Потерянный ответ не повторить — агент регистрируется заново новым кодом установки своей школы, история остаётся.
+         */
+        post: operations["rotate_device_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/agent/whoami": {
         parameters: {
             query?: never;
@@ -550,6 +570,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Список устройств с их школой, точкой и статусом
+         * @description q ищет по имени ПК, device_uid, названию школы и School ID.
+         */
+        get: operations["list_devices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/devices/enrollment-codes": {
         parameters: {
             query?: never;
@@ -561,7 +601,7 @@ export interface paths {
         put?: never;
         /**
          * Выдать одноразовый код установки агента для школы
-         * @description Неизвестный school_id — 422.
+         * @description Код показывается один раз, в БД — только его хэш; срок — enrollment_code_ttl_days системных настроек. Неизвестный school_id — 422.
          */
         post: operations["create_enrollment_code"];
         delete?: never;
@@ -584,7 +624,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Перепривязать устройство к другой точке мониторинга
+         * @description Школа и линия новых замеров берутся из новой точки; прежние замеры остаются со своей линией. Неизвестный monitoring_point_id — 422.
+         */
+        patch: operations["update_device"];
         trace?: never;
     };
     "/api/devices/{device_id}/measurements": {
@@ -632,6 +676,26 @@ export interface paths {
         put?: never;
         /** Разблокировать устройство */
         post: operations["unblock_device"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/devices/{device_id}/token-rotation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Запросить замену токена устройства
+         * @description Токен здесь не выдаётся: агент видит token_rotation_required в GET /api/agent/config, вызывает POST /api/agent/token текущим токеном и получает новый; старый сразу перестаёт работать. Пока агент не забрал токен, token_rotation_requested_at заполнен. Агент, потерявший ответ, регистрируется заново новым кодом установки своей школы.
+         */
+        post: operations["request_token_rotation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1297,6 +1361,12 @@ export interface components {
              * @example 0.2.0
              */
             latest_version?: string | null;
+            /**
+             * Token Rotation Required
+             * @description Администратор запросил новый токен: агент вызывает POST /api/agent/token текущим токеном и сохраняет выданный (T-36)
+             * @default false
+             */
+            token_rotation_required: boolean;
         };
         /**
          * AgentReleaseCreate
@@ -2101,6 +2171,25 @@ export interface components {
              * Format: date-time
              */
             registered_at: string;
+            /**
+             * Token Rotation Requested At
+             * @description Запрошена замена токена; пусто — агент уже получил новый или замены не было
+             */
+            token_rotation_requested_at: string | null;
+        };
+        /**
+         * DeviceDetailPage
+         * @description Page of the devices of the admin list.
+         */
+        DeviceDetailPage: {
+            /** Items */
+            items: components["schemas"]["DeviceDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
         };
         /**
          * DeviceListItem
@@ -2200,6 +2289,15 @@ export interface components {
         /** @enum {string} */
         DeviceStatus: "active" | "blocked";
         /**
+         * DeviceUpdate
+         * @description Rebinding of a device to another monitoring point (T-36): the school and the line of new
+         *     measurements follow the point, measurements already taken keep theirs (ADR-005).
+         */
+        DeviceUpdate: {
+            /** Monitoring Point Id */
+            monitoring_point_id: number;
+        };
+        /**
          * EnrollmentCodeCreate
          * @description Request for a one-time agent installation code for a school (plan.md §4.1).
          */
@@ -2223,7 +2321,7 @@ export interface components {
             /**
              * Expires At
              * Format: date-time
-             * @description Окончание срока действия; по умолчанию 7 дней с выдачи (ADR-005)
+             * @description Окончание срока действия: enrollment_code_ttl_days системных настроек, по умолчанию 7 дней с выдачи (ADR-005)
              * @example 2026-09-24T04:00:00Z
              */
             expires_at: string;
@@ -4730,6 +4828,53 @@ export interface operations {
             };
         };
     };
+    rotate_device_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceRegisterResponse"];
+                };
+            };
+            /** @description Токен устройства отсутствует или недействителен */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Устройство заблокировано */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     whoami: {
         parameters: {
             query?: never;
@@ -6185,6 +6330,52 @@ export interface operations {
             };
         };
     };
+    list_devices: {
+        parameters: {
+            query?: {
+                school_id?: number | null;
+                status?: components["schemas"]["DeviceStatus"] | null;
+                q?: string | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     create_enrollment_code: {
         parameters: {
             query?: never;
@@ -6237,6 +6428,59 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceDetail"];
+                };
+            };
+            /** @description Устройство не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_device: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceUpdate"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -6384,6 +6628,55 @@ export interface operations {
         };
     };
     unblock_device: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceDetail"];
+                };
+            };
+            /** @description Устройство не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    request_token_rotation: {
         parameters: {
             query?: never;
             header?: never;

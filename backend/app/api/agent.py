@@ -1,4 +1,5 @@
-"""Agent API (plan.md §10): registration, heartbeat, configuration, measurements, outages.
+"""Agent API (plan.md §10): registration, heartbeat, configuration, token rotation,
+measurements, outages.
 
 All endpoints except registration require ``Authorization: Device <token>``: ``current_device``
 answers 401 without a valid token and 403 for a blocked device (ADR-005). The school and the
@@ -45,6 +46,7 @@ from app.schemas.agent import (
     WhoAmIResponse,
 )
 from app.schemas.errors import Problem
+from app.services import device_admin
 from app.services.agent_config import agent_config, config_etag, etag_matches
 from app.services.settings import NOT_CONFIGURED_DETAIL
 from app.services.status import Evaluation, evaluate, line_rules
@@ -256,6 +258,25 @@ async def get_agent_config(
         raise ApiError(304, "not_modified", None, {"ETag": etag})
     response.headers["ETag"] = etag
     return config
+
+
+@device_router.post(
+    "/agent/token",
+    summary="Заменить токен устройства",
+    description=(
+        "Агент вызывает текущим токеном, когда в GET /api/agent/config пришёл "
+        "token_rotation_required, сохраняет новый токен и дальше ходит только с ним: старый "
+        "перестаёт работать сразу (T-36, ADR-005). Потерянный ответ не повторить — агент "
+        "регистрируется заново новым кодом установки своей школы, история остаётся."
+    ),
+)
+async def rotate_device_token(
+    device: Annotated[Device, Depends(current_device)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> DeviceRegisterResponse:
+    """New token of the device; the request of the admin panel is cleared with it."""
+    token = await device_admin.rotate_token(session, device)
+    return DeviceRegisterResponse(device_id=device.id, device_token=token)
 
 
 @device_router.get(

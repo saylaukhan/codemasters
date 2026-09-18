@@ -295,6 +295,63 @@
         }
       }
     },
+    "/api/agent/token": {
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Заменить токен устройства",
+        "description": "Агент вызывает текущим токеном, когда в GET /api/agent/config пришёл token_rotation_required, сохраняет новый токен и дальше ходит только с ним: старый перестаёт работать сразу (T-36, ADR-005). Потерянный ответ не повторить — агент регистрируется заново новым кодом установки своей школы, история остаётся.",
+        "operationId": "rotate_device_token",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRegisterResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Токен устройства отсутствует или недействителен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ]
+      }
+    },
     "/api/agent/whoami": {
       "get": {
         "tags": [
@@ -2691,13 +2748,137 @@
         }
       }
     },
+    "/api/devices": {
+      "get": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Список устройств с их школой, точкой и статусом",
+        "description": "q ищет по имени ПК, device_uid, названию школы и School ID.",
+        "operationId": "list_devices",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DeviceStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/devices/enrollment-codes": {
       "post": {
         "tags": [
           "devices"
         ],
         "summary": "Выдать одноразовый код установки агента для школы",
-        "description": "Неизвестный school_id — 422.",
+        "description": "Код показывается один раз, в БД — только его хэш; срок — enrollment_code_ttl_days системных настроек. Неизвестный school_id — 422.",
         "operationId": "create_enrollment_code",
         "requestBody": {
           "content": {
@@ -2771,6 +2952,82 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Перепривязать устройство к другой точке мониторинга",
+        "description": "Школа и линия новых замеров берутся из новой точки; прежние замеры остаются со своей линией. Неизвестный monitoring_point_id — 422.",
+        "operationId": "update_device",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3021,6 +3278,74 @@
         ],
         "summary": "Разблокировать устройство",
         "operationId": "unblock_device",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{device_id}/token-rotation": {
+      "post": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Запросить замену токена устройства",
+        "description": "Токен здесь не выдаётся: агент видит token_rotation_required в GET /api/agent/config, вызывает POST /api/agent/token текущим токеном и получает новый; старый сразу перестаёт работать. Пока агент не забрал токен, token_rotation_requested_at заполнен. Агент, потерявший ответ, регистрируется заново новым кодом установки своей школы.",
+        "operationId": "request_token_rotation",
         "security": [
           {
             "BearerAuth": []
@@ -6801,6 +7126,12 @@
             "examples": [
               "0.2.0"
             ]
+          },
+          "token_rotation_required": {
+            "type": "boolean",
+            "title": "Token Rotation Required",
+            "description": "Администратор запросил новый токен: агент вызывает POST /api/agent/token текущим токеном и сохраняет выданный (T-36)",
+            "default": false
           }
         },
         "type": "object",
@@ -8570,6 +8901,19 @@
             "type": "string",
             "format": "date-time",
             "title": "Registered At"
+          },
+          "token_rotation_requested_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Rotation Requested At",
+            "description": "Запрошена замена токена; пусто — агент уже получил новый или замены не было"
           }
         },
         "type": "object",
@@ -8591,10 +8935,46 @@
           "school_id",
           "school_code",
           "school_name",
-          "registered_at"
+          "registered_at",
+          "token_rotation_requested_at"
         ],
         "title": "DeviceDetail",
         "description": "Device card (ТЗ п. 4): the list row plus the school, the OS and the registration time."
+      },
+      "DeviceDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "DeviceDetailPage",
+        "description": "Page of the devices of the admin list."
       },
       "DeviceListItem": {
         "properties": {
@@ -8841,6 +9221,20 @@
           "blocked"
         ]
       },
+      "DeviceUpdate": {
+        "properties": {
+          "monitoring_point_id": {
+            "type": "integer",
+            "title": "Monitoring Point Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "monitoring_point_id"
+        ],
+        "title": "DeviceUpdate",
+        "description": "Rebinding of a device to another monitoring point (T-36): the school and the line of new\nmeasurements follow the point, measurements already taken keep theirs (ADR-005)."
+      },
       "EnrollmentCodeCreate": {
         "properties": {
           "school_id": {
@@ -8873,7 +9267,7 @@
             "type": "string",
             "format": "date-time",
             "title": "Expires At",
-            "description": "Окончание срока действия; по умолчанию 7 дней с выдачи (ADR-005)",
+            "description": "Окончание срока действия: enrollment_code_ttl_days системных настроек, по умолчанию 7 дней с выдачи (ADR-005)",
             "examples": [
               "2026-09-24T04:00:00Z"
             ]

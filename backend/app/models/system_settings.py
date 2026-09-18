@@ -51,3 +51,5 @@ class SystemSettings(TimestampMixin, Base):
     export_sync_max_rows: Mapped[int] = mapped_column(server_default=text("10000"))
     # Days a built export file is kept before it answers 404 (ТЗ п. 9, T-30, T-33).
     export_retention_days: Mapped[int] = mapped_column(server_default=text("7"))
+    # Days an agent installation code stays valid (ADR-005, T-36).
+    enrollment_code_ttl_days: Mapped[int] = mapped_column(server_default=text("7"))
