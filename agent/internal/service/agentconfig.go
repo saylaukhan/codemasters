@@ -113,6 +113,7 @@ func sameConfig(a, b api.AgentConfig) bool {
 // config_refresh_interval_s (ТЗ п. 11, п. 20). apply gets every configuration
 // that changed something, together with the schedule it describes; a
 // configuration the agent cannot work by is logged and the old one stays.
+// A configuration with token_rotation_required replaces the device token (T-36).
 func runConfig(ctx context.Context, client *api.Client, dataDir string, settings *Settings,
 	apply func(api.AgentConfig, scheduler.Schedule), logger *slog.Logger,
 ) {
@@ -164,6 +165,12 @@ func runConfig(ctx context.Context, client *api.Client, dataDir string, settings
 				apply(cfg, sched)
 			}
 			wait = configRetryWait(settings)
+		}
+		// A rotation that failed stays asked for: the cached configuration keeps the
+		// flag, and a 304 does not clear it. After a rotation the configuration is
+		// fetched without If-None-Match, so the cleared flag arrives with it.
+		if settings.Current().TokenRotationRequired && rotateToken(ctx, client, dataDir, logger) {
+			etag = ""
 		}
 
 		select {

@@ -40,6 +40,9 @@ type AgentConfig struct {
 	Speedtest              SpeedtestServers `json:"speedtest"`
 	// LatestVersion is the agent version the server expects (T-50); empty when none.
 	LatestVersion string `json:"latest_version,omitempty"`
+	// TokenRotationRequired asks the agent to exchange its token with
+	// POST /api/agent/token (T-36).
+	TokenRotationRequired bool `json:"token_rotation_required,omitempty"`
 }
 
 // Validate checks what the agent depends on. The slot times and the time zone

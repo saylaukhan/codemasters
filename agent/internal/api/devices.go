@@ -35,3 +35,18 @@ func (c *Client) Register(ctx context.Context, req RegisterRequest) (RegisterRes
 	}
 	return resp, nil
 }
+
+// RotateToken exchanges the current device token for a new one when the
+// configuration asks for it (token_rotation_required, T-36). The old token
+// stops working as soon as the server answers, so the caller saves the new
+// one before anything else; the client itself is not changed.
+func (c *Client) RotateToken(ctx context.Context) (RegisterResponse, error) {
+	var resp RegisterResponse
+	if err := c.do(ctx, http.MethodPost, "/agent/token", nil, &resp); err != nil {
+		return RegisterResponse{}, err
+	}
+	if resp.DeviceID == 0 || resp.DeviceToken == "" {
+		return RegisterResponse{}, errors.New("замена токена: сервер не вернул device_id или device_token")
+	}
+	return resp, nil
+}
