@@ -70,11 +70,14 @@ const withUnit = (value: number | null | undefined, unit: string, fractionDigits
   return number === NO_VALUE ? NO_VALUE : `${number}${NBSP}${unit}`
 }
 
+export const SPEED_UNIT = 'Мбит/с'
+export const MS_UNIT = 'мс'
+
 /** «45,3 Мбит/с». */
-export const formatSpeed = (mbps: number | null | undefined): string => withUnit(mbps, 'Мбит/с', 1)
+export const formatSpeed = (mbps: number | null | undefined): string => withUnit(mbps, SPEED_UNIT, 1)
 
 /** «18 мс». */
-export const formatMs = (ms: number | null | undefined): string => withUnit(ms, 'мс', 0)
+export const formatMs = (ms: number | null | undefined): string => withUnit(ms, MS_UNIT, 0)
 
 /** «62%», «0,4%». */
 export function formatPercent(value: number | null | undefined, fractionDigits = 1): string {

@@ -1,0 +1,37 @@
+/* Map, DESIGN.md §3.13: a card without a shadow; controls top right, legend bottom left. */
+.frame {
+  position: relative;
+  overflow: hidden;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-subtle);
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+.controls {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.controls :global(.ant-btn) {
+  background: var(--bg-surface);
+}
+
+/* Attribution of OSM and CARTO in the colours of the panel. */
+.frame :global(.maplibregl-ctrl-attrib) {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.frame :global(.maplibregl-ctrl-attrib a) {
+  color: var(--text-secondary);
+}
