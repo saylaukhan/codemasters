@@ -131,3 +131,14 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   if (response.status === 204) return undefined as Camelize<T>
   return camelize<T>(await response.json())
 }
+
+/** File of `/api{path}` with its name from Content-Disposition: exports are fetched with the token, not by a link. */
+export async function apiDownload(path: string, signal?: AbortSignal): Promise<{ blob: Blob; fileName: string | null }> {
+  let response = await send(path, { signal })
+  if (response.status === 401 && (await refreshAccessToken())) {
+    response = await send(path, { signal })
+  }
+  if (!response.ok) throw await toApiError(response)
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  return { blob: await response.blob(), fileName: /filename="([^"]+)"/.exec(disposition)?.[1] ?? null }
+}

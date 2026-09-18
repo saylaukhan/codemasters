@@ -20,6 +20,9 @@ export type IfaceType = Schemas['IfaceType']
 export type AnalyticsPeriod = Schemas['AnalyticsPeriod']
 export type AnalyticsLevel = Schemas['AnalyticsLevel']
 export type Weekday = Schemas['Weekday']
+export type ExportMode = Schemas['ExportMode']
+export type ExportFormat = Schemas['ExportFormat']
+export type ExportColumn = Schemas['ExportColumn']
 
 export type DashboardSummary = Schema<'DashboardSummary'>
 export type SchoolMapCollection = Schema<'SchoolMapFeatureCollection'>
@@ -39,3 +42,6 @@ export type LineDetail = Schema<'LineDetail'>
 export type SchoolContactDetail = Schema<'SchoolContactDetail'>
 export type AnalyticsReport = Schema<'AnalyticsReport'>
 export type AnalyticsRow = Schema<'AnalyticsRow'>
+
+export type ExportCreate = Schema<'ExportCreate'>
+export type ExportJob = Schema<'ExportJob'>
