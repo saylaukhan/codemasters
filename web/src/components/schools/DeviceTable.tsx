@@ -1,6 +1,8 @@
 import { Table, type TableProps } from 'antd'
+import { Link } from 'react-router'
 
 import type { DeviceListItem } from '../../api/types'
+import { deviceCardPath } from '../../app/sections'
 import { NO_VALUE, formatDateTime, formatMs, formatRelative, formatSpeed } from '../../lib/format'
 import { DEVICE_STATUS_LABELS, IFACE_LABELS, LINE_STATUS_LABELS } from '../../lib/labels'
 import { ConnectionStatusBadge } from '../ui/StatusBadge'
@@ -21,7 +23,7 @@ const columns: TableProps<DeviceListItem>['columns'] = [
     fixed: 'left',
     render: (_, item) => (
       <div className={styles.stack}>
-        <span>{item.hostname ?? item.deviceUid}</span>
+        <Link to={deviceCardPath(item.id)}>{item.hostname ?? item.deviceUid}</Link>
         <span className={styles.code}>{item.deviceUid}</span>
       </div>
     ),
