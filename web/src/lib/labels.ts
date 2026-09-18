@@ -71,6 +71,16 @@ export const DEVICE_STATUS_LABELS: Record<DeviceStatus, string> = {
   blocked: 'Заблокировано',
 }
 
+/** Filter of the devices in the administration by status (T-36). */
+export const DEVICE_STATUS_FILTER_LABELS = {
+  all: 'Все',
+  active: 'Активные',
+  blocked: 'Заблокированные',
+} as const
+
+/** A new token of a device is requested and its agent has not taken it yet (T-36, ADR-005). */
+export const TOKEN_ROTATION_PENDING_LABEL = 'Ждёт замены токена'
+
 /** Network interface of a measurement; Wi-Fi does not rate the line (ADR-012). */
 export const IFACE_LABELS: Record<IfaceType, string> = {
   ethernet: 'Ethernet',
@@ -201,6 +211,7 @@ export type SectionKey = keyof typeof SECTION_LABELS
 /** Tabs of «Администрирование» (T-34): the key is the path under /admin. */
 export const ADMIN_TAB_LABELS = {
   schools: 'Школы',
+  devices: 'Устройства',
   regions: 'Районы и города',
   providers: 'Поставщики',
   'connection-types': 'Типы подключения',

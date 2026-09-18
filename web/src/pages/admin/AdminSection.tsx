@@ -9,12 +9,14 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { SECTION_LABELS, type AdminTabKey } from '../../lib/labels'
 import { NotFoundPage } from '../section/NotFoundPage'
 import { ConnectionTypesPage } from './ConnectionTypesPage'
+import { DevicesAdminPage } from './DevicesAdminPage'
 import { ProvidersPage } from './ProvidersPage'
 import { RegionsPage } from './RegionsPage'
 import { SchoolsAdminPage } from './SchoolsAdminPage'
 
 const PAGES: Record<AdminTabKey, ComponentType> = {
   schools: SchoolsAdminPage,
+  devices: DevicesAdminPage,
   regions: RegionsPage,
   providers: ProvidersPage,
   'connection-types': ConnectionTypesPage,

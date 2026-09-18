@@ -1,6 +1,7 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import { Table, type TableColumnsType } from 'antd'
 import { SearchX } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import { PAGE_SIZES } from '../schools/useSchoolListView'
 import { Button } from '../ui/Button'
@@ -16,7 +17,10 @@ interface AdminTableProps<T extends { id: number }> {
   onChange: (view: AdminListView) => void
   /** Empty list without a search or a filter: what to do to fill it. */
   empty: { title: string; description: string }
-  onEdit: (item: T) => void
+  /** «Изменить» of a row: opens the drawer. */
+  onEdit?: (item: T) => void
+  /** Actions of a row in place of «Изменить», e.g. the «⋯» menu of a device (DESIGN.md §3.12). */
+  rowActions?: (item: T) => ReactNode
 }
 
 /**
@@ -30,6 +34,7 @@ export function AdminTable<T extends { id: number }>({
   onChange,
   empty,
   onEdit,
+  rowActions,
 }: AdminTableProps<T>) {
   if (query.isError) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />
   if (query.isPending) return <ContentSkeleton />
@@ -57,11 +62,13 @@ export function AdminTable<T extends { id: number }>({
         {
           key: 'edit',
           align: 'right',
-          render: (_, item) => (
-            <Button kind="flat" size="small" onClick={() => onEdit(item)}>
-              Изменить
-            </Button>
-          ),
+          render: (_, item) =>
+            rowActions?.(item) ??
+            (onEdit && (
+              <Button kind="flat" size="small" onClick={() => onEdit(item)}>
+                Изменить
+              </Button>
+            )),
         },
       ]}
       dataSource={query.data.items}

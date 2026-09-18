@@ -12,6 +12,14 @@ import {
   updateRegion,
 } from '../../api/admin'
 import {
+  blockDevice,
+  createEnrollmentCode,
+  getDevices,
+  requestTokenRotation,
+  unblockDevice,
+  updateDevice,
+} from '../../api/devices'
+import {
   createSchool,
   createSchoolContact,
   createSchoolLine,
@@ -31,6 +39,7 @@ import type {
   SchoolContactCreate,
   SchoolContactUpdate,
 } from '../../api/types'
+import { deviceStatusOf, schoolOption } from './devices'
 import type { AdminListView } from './useAdminListView'
 
 // Names of schools and references are shown across the panel: lists, cards, the map and its filters, KPIs, analytics.
@@ -149,3 +158,49 @@ export const useSaveContact = (schoolId: number) =>
     (body: SchoolContactCreate) => createSchoolContact(schoolId, body),
     (contactId: number, body: SchoolContactUpdate) => updateSchoolContact(schoolId, contactId, body),
   )
+
+// Devices (T-36): a change shows in the list, the card of the computer, the school card and the counts of the map.
+const invalidateDevices = (queryClient: QueryClient) =>
+  Promise.all([invalidateShown(queryClient), queryClient.invalidateQueries({ queryKey: ['devices'] })])
+
+/** Computers of the oblast with their school and point, filtered by status (GET /api/devices). */
+export const useAdminDevices = (view: AdminListView) =>
+  useQuery({
+    queryKey: ['admin', 'devices', view],
+    queryFn: ({ signal }) => getDevices({ ...listQuery(view), status: deviceStatusOf(view.isActive) }, signal),
+    placeholderData: keepPreviousData,
+  })
+
+const DEVICE_ACTIONS = { block: blockDevice, unblock: unblockDevice, rotate: requestTokenRotation } as const
+
+export type DeviceAction = keyof typeof DEVICE_ACTIONS
+
+/** Blocking, unblocking or a new token of a device, each after a confirmation. */
+export const useDeviceAction = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ action, deviceId }: { action: DeviceAction; deviceId: number }) => DEVICE_ACTIONS[action](deviceId),
+    onSuccess: () => invalidateDevices(queryClient),
+  })
+}
+
+export const useRebindDevice = (deviceId: number) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (monitoringPointId: number) => updateDevice(deviceId, { monitoringPointId }),
+    onSuccess: () => invalidateDevices(queryClient),
+  })
+}
+
+/** Schools for the select of the rebinding form: the first page of the search by School ID or name. */
+export const useSchoolOptions = (q: string) =>
+  useQuery({
+    queryKey: ['admin', 'schools', 'options', q.trim()],
+    queryFn: ({ signal }) => getSchools({ q: q.trim() || undefined, page: 1, pageSize: 20 }, signal),
+    select: (page) => page.items.map(schoolOption),
+    placeholderData: keepPreviousData,
+  })
+
+/** One-time installation code of a school: nothing to refresh, the code is shown once. */
+export const useIssueEnrollmentCode = () =>
+  useMutation({ mutationFn: (schoolId: number) => createEnrollmentCode({ schoolId }) })

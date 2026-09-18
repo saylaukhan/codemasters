@@ -1,5 +1,6 @@
-import type { ExportStatus, IncidentStatus, SchoolStatus } from '../../api/types'
+import type { DeviceStatus, ExportStatus, IncidentStatus, SchoolStatus } from '../../api/types'
 import {
+  DEVICE_STATUS_LABELS,
   EXPORT_STATUS_LABELS,
   INCIDENT_STATUS_LABELS,
   SCHOOL_ACTIVITY_LABELS,
@@ -42,6 +43,15 @@ export function SchoolActivityBadge({ active }: { active: boolean }) {
   return (
     <span className={styles.badge} data-activity={activity}>
       {SCHOOL_ACTIVITY_LABELS[activity]}
+    </span>
+  )
+}
+
+/** Status of a device in the administration (T-36): colours of an active or a disabled school, blocked is grey. */
+export function DeviceStatusBadge({ status }: { status: DeviceStatus }) {
+  return (
+    <span className={styles.badge} data-activity={status === 'active' ? 'active' : 'disabled'}>
+      {DEVICE_STATUS_LABELS[status]}
     </span>
   )
 }
