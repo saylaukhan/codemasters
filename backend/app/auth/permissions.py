@@ -43,14 +43,21 @@ ADMINISTRATION = frozenset(
     {"users:manage", "devices:manage", "agent_releases:manage", "audit:read"}
 )
 
+# Phone of a responsible person of a school (ТЗ п. 15): the provider gets the contacts without it.
+CONTACT_PHONE = frozenset({"contacts:phone"})
+
 ROLE_PERMISSIONS: dict[UserRole, frozenset[str]] = {
-    "school": VIEW | {"appeals:create"},
-    "district": VIEW | {"appeals:create", "appeals:update", "incidents:create", "incidents:update"},
+    "school": VIEW | CONTACT_PHONE | {"appeals:create"},
+    "district": VIEW
+    | CONTACT_PHONE
+    | {"appeals:create", "appeals:update", "incidents:create", "incidents:update"},
     "provider": VIEW | {"appeals:update", "incidents:update"},
     "oblast": VIEW
+    | CONTACT_PHONE
     | MONITORING_SETUP
     | {"appeals:create", "appeals:update", "incidents:create", "incidents:update"},
     "admin": VIEW
+    | CONTACT_PHONE
     | MONITORING_SETUP
     | ADMINISTRATION
     | {"appeals:create", "appeals:update", "incidents:create", "incidents:update"},
