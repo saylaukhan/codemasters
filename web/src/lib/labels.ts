@@ -1,6 +1,15 @@
 // The single dictionary of statuses and captions (ADR-013, DESIGN.md §3.11): the API returns
 // codes, Russian strings live only here. A status string inside a component is a bug.
-import type { IncidentStatus, QualityStatus, SchoolStatus, UserRole } from '../api/types'
+import type {
+  AnalyticsPeriod,
+  DeviceStatus,
+  IfaceType,
+  IncidentStatus,
+  LineStatus,
+  QualityStatus,
+  SchoolStatus,
+  UserRole,
+} from '../api/types'
 
 /** Status of a school on the map and in lists (ТЗ п. 13); «Нет данных» is display-only (ADR-004). */
 export const SCHOOL_STATUS_LABELS: Record<SchoolStatus, string> = {
@@ -41,6 +50,33 @@ export const INCIDENT_STATUS_ORDER: readonly IncidentStatus[] = [
 
 /** Appeals go through the same six statuses as incidents (ADR-011). */
 export const APPEAL_STATUS_LABELS: Record<IncidentStatus, string> = INCIDENT_STATUS_LABELS
+
+/** Role of a line at a school (ТЗ п. 10, ADR-003). */
+export const LINE_STATUS_LABELS: Record<LineStatus, string> = {
+  main: 'Основная',
+  reserve: 'Резервная',
+  disabled: 'Отключена',
+}
+
+/** Blocking of a device keeps its history (ADR-005). */
+export const DEVICE_STATUS_LABELS: Record<DeviceStatus, string> = {
+  active: 'Активно',
+  blocked: 'Заблокировано',
+}
+
+/** Network interface of a measurement; Wi-Fi does not rate the line (ADR-012). */
+export const IFACE_LABELS: Record<IfaceType, string> = {
+  ethernet: 'Ethernet',
+  wifi: 'Wi‑Fi',
+  other: 'Другое',
+}
+
+/** Period presets of charts and analytics (ТЗ п. 5); «Свой период» is a separate control. */
+export const PERIOD_LABELS: Record<Exclude<AnalyticsPeriod, 'custom'>, string> = {
+  today: 'Сегодня',
+  week: '7 дней',
+  month: '30 дней',
+}
 
 /** Five roles of ТЗ п. 16 (ADR-008). */
 export const ROLE_LABELS: Record<UserRole, string> = {

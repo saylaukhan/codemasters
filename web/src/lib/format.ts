@@ -15,6 +15,12 @@ const dateFormat = new Intl.DateTimeFormat(LOCALE, {
   year: 'numeric',
 })
 
+const dayMonthFormat = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: TIME_ZONE,
+  day: '2-digit',
+  month: '2-digit',
+})
+
 const timeFormat = new Intl.DateTimeFormat(LOCALE, {
   timeZone: TIME_ZONE,
   hour: '2-digit',
@@ -45,6 +51,12 @@ function toDate(value: DateInput): Date | null {
 export function formatDate(value: DateInput): string {
   const date = toDate(value)
   return date ? dateFormat.format(date) : NO_VALUE
+}
+
+/** «12.09» in Asia/Almaty: a day on a chart axis. */
+export function formatDayMonth(value: DateInput): string {
+  const date = toDate(value)
+  return date ? dayMonthFormat.format(date) : NO_VALUE
 }
 
 /** «14:05» in Asia/Almaty. */
