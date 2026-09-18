@@ -25,9 +25,12 @@ def most_specific(statement: Select[Any], scopes: list[str], scope_column: Any) 
 
 
 async def threshold_profile(
-    session: AsyncSession, *, line_id: int, region_id: int | None
+    session: AsyncSession, *, line_id: int | None, region_id: int | None
 ) -> ThresholdProfile | None:
     """Active profile of the line: its own, else its district's, else the global one.
+
+    Without a line the chain starts at the district, without a district at the global profile:
+    that is what a chart over several lines is marked with (T-27).
 
     ``None`` means the installation has no global profile, which the migration of T-17 creates:
     the caller answers 503, not 500 — the database is incomplete, the request is not bad.
