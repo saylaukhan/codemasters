@@ -23,7 +23,7 @@ describe('export request', () => {
 
   it('turns whole days into a period with an exclusive end and drops computers without a school', () => {
     const days: [dayjs.Dayjs, dayjs.Dayjs] = [dayjs('2026-09-14T15:00:00'), dayjs('2026-09-15T09:00:00')]
-    const body = exportBody({ format: 'csv', days, deviceIds: [7], statuses: ['critical'], columns: [] })
+    const body = exportBody({ mode: 'raw', format: 'csv', days, deviceIds: [7], statuses: ['critical'], columns: [] })
 
     expect(body).toEqual({
       mode: 'raw',
@@ -35,9 +35,32 @@ describe('export request', () => {
       statuses: ['critical'],
       columns: MIN_COLUMNS,
     })
-    expect(exportBody({ format: 'xlsx', days, schoolId: 3, deviceIds: [7], statuses: [], columns: [] })).toMatchObject({
+    expect(
+      exportBody({ mode: 'raw', format: 'xlsx', days, schoolId: 3, deviceIds: [7], statuses: [], columns: [] }),
+    ).toMatchObject({
       schoolIds: [3],
       deviceIds: [7],
+    })
+  })
+
+  it('sends the aggregates without the filters and the columns of raw measurements', () => {
+    const days: [dayjs.Dayjs, dayjs.Dayjs] = [dayjs('2026-09-14T15:00:00'), dayjs('2026-09-15T09:00:00')]
+    const body = exportBody({
+      mode: 'aggregates',
+      format: 'json',
+      days,
+      schoolId: 3,
+      deviceIds: [7],
+      statuses: ['critical'],
+      columns: [],
+    })
+
+    expect(body).toEqual({
+      mode: 'aggregates',
+      format: 'json',
+      periodFrom: dayjs('2026-09-14T00:00:00').toISOString(),
+      periodTo: dayjs('2026-09-16T00:00:00').toISOString(),
+      schoolIds: [3],
     })
   })
 })

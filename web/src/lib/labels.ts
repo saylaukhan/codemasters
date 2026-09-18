@@ -4,6 +4,7 @@ import type {
   AnalyticsLevel,
   AnalyticsPeriod,
   DeviceStatus,
+  ExportAggregateColumn,
   ExportColumn,
   ExportFormat,
   ExportMode,
@@ -156,6 +157,22 @@ export const EXPORT_COLUMN_LABELS: Record<ExportColumn, string> = {
   external_ip: 'Внешний IP',
   server: 'Сервер замера',
   agent_version: 'Версия агента',
+}
+
+/**
+ * Columns of the aggregates in the order of the file: one row per school (ТЗ п. 9, T-31).
+ * The headers of XLSX and CSV repeat them: backend/app/services/exports/columns.py.
+ */
+export const EXPORT_AGGREGATE_COLUMN_LABELS: Record<ExportAggregateColumn, string> = {
+  school_code: 'School ID',
+  school_name: 'Школа',
+  measurements_count: 'Замеров',
+  avg_download_mbps: 'Средний Download, Мбит/с',
+  min_download_mbps: 'Минимальный Download, Мбит/с',
+  avg_upload_mbps: 'Средний Upload, Мбит/с',
+  avg_ping_ms: 'Средний Ping, мс',
+  problem_count: 'Проблемных замеров',
+  problem_pct: 'Доля проблемных, %',
 }
 
 /** Sections of the side navigation (DESIGN.md §3.6). */
