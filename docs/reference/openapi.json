@@ -1687,7 +1687,7 @@
           "schools"
         ],
         "summary": "Изменить или деактивировать школу",
-        "description": "Рабочие часы (working_hours) настраиваются в T-37. Неизвестный region_id — 422.",
+        "description": "working_hours заменяются целиком; простой и «Нет соединения» считаются только в них (ADR-014). Неизвестный region_id — 422.",
         "operationId": "update_school",
         "security": [
           {

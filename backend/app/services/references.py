@@ -21,7 +21,7 @@ from sqlalchemy.orm import InstrumentedAttribute
 
 from app.core.deps import PageParams
 from app.core.errors import ApiError
-from app.models import ConnectionType, Provider, Region, School
+from app.models import ConnectionType, Provider, Region, School, SystemSettings
 from app.schemas.references import (
     ConnectionTypeCreate,
     ConnectionTypeDetail,
@@ -292,12 +292,15 @@ async def create_school(session: AsyncSession, body: SchoolCreate) -> int:
     await ensure_region(session, body.region_id)
     if await is_taken(session, School.school_code, body.school_code, None):
         raise school_code_taken()
+    # The default is copied, so a later change of it does not move this school (ADR-014).
+    settings = await session.get(SystemSettings, 1)
     school = School(
         school_code=body.school_code,
         full_name=body.full_name,
         region_id=body.region_id,
         address=body.address,
         geom=point_geom(body.location),
+        working_hours=settings.default_working_hours if settings else None,
     )
     session.add(school)
     await session.commit()
@@ -319,16 +322,13 @@ async def update_school(session: AsyncSession, school_id: int, body: SchoolUpdat
     school = await session.get(School, school_id)
     if school is None:
         raise school_not_found()
-    if body.working_hours is not None:
-        # Schools have no hours of their own yet: the admin defaults apply to all (T-37).
-        raise invalid_field("working_hours", "Рабочие часы школы настраиваются в T-37")
     if body.region_id is not None:
         await ensure_region(session, body.region_id)
     if body.school_code is not None and await is_taken(
         session, School.school_code, body.school_code, school_id
     ):
         raise school_code_taken()
-    updates = body.model_dump(exclude_unset=True, exclude={"location", "working_hours"})
+    updates = body.model_dump(mode="json", exclude_unset=True, exclude={"location"})
     changes = apply_changes(school, updates)
     if "location" in body.model_fields_set:
         old = await school_location(session, school_id)

@@ -408,7 +408,7 @@ export interface paths {
         head?: never;
         /**
          * Изменить или деактивировать школу
-         * @description Рабочие часы (working_hours) настраиваются в T-37. Неизвестный region_id — 422.
+         * @description working_hours заменяются целиком; простой и «Нет соединения» считаются только в них (ADR-014). Неизвестный region_id — 422.
          */
         patch: operations["update_school"];
         trace?: never;
