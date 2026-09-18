@@ -47,8 +47,8 @@ export type SchoolSort = Schemas['SchoolSort']
 
 export type SchoolDetail = Schema<'SchoolDetail'>
 export type SchoolCreate = Schema<'SchoolCreate'>
-/** Working hours are set in T-37: the administration of schools leaves them out. */
-export type SchoolUpdate = Omit<Schema<'SchoolUpdate'>, 'workingHours'>
+export type SchoolUpdate = Schema<'SchoolUpdate'>
+export type WorkingHours = Schema<'WorkingHours'>
 export type GeoPoint = Schema<'GeoPoint'>
 export type LatestMeasurement = Schema<'LatestMeasurement'>
 export type DeviceListItem = Schema<'DeviceListItem'>
@@ -91,3 +91,17 @@ export type SchoolContactUpdate = Schema<'SchoolContactUpdate'>
 export type DeviceUpdate = Schema<'DeviceUpdate'>
 export type EnrollmentCodeCreate = Schema<'EnrollmentCodeCreate'>
 export type EnrollmentCodeIssued = Schema<'EnrollmentCodeIssued'>
+
+// Thresholds, schedules and settings of the administration (T-37): nothing of it is in the code.
+export type ThresholdProfileScope = Schemas['ThresholdProfileScope']
+export type ThresholdValues = Schema<'ThresholdValues'>
+export type ThresholdProfileDetail = Schema<'ThresholdProfileDetail'>
+export type ThresholdProfileCreate = Schema<'ThresholdProfileCreate'>
+export type ThresholdProfileUpdate = Schema<'ThresholdProfileUpdate'>
+export type ScheduleScope = Schemas['ScheduleScope']
+export type ScheduleSlot = Schema<'ScheduleSlot'>
+export type ScheduleDetail = Schema<'ScheduleDetail'>
+export type ScheduleCreate = Schema<'ScheduleCreate'>
+export type ScheduleUpdate = Schema<'ScheduleUpdate'>
+export type SettingsDetail = Schema<'SettingsDetail'>
+export type SettingsUpdate = Schema<'SettingsUpdate'>

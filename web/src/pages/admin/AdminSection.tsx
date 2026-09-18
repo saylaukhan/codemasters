@@ -12,7 +12,10 @@ import { ConnectionTypesPage } from './ConnectionTypesPage'
 import { DevicesAdminPage } from './DevicesAdminPage'
 import { ProvidersPage } from './ProvidersPage'
 import { RegionsPage } from './RegionsPage'
+import { SchedulesPage } from './SchedulesPage'
 import { SchoolsAdminPage } from './SchoolsAdminPage'
+import { SettingsPage } from './SettingsPage'
+import { ThresholdsPage } from './ThresholdsPage'
 
 const PAGES: Record<AdminTabKey, ComponentType> = {
   schools: SchoolsAdminPage,
@@ -20,6 +23,9 @@ const PAGES: Record<AdminTabKey, ComponentType> = {
   regions: RegionsPage,
   providers: ProvidersPage,
   'connection-types': ConnectionTypesPage,
+  thresholds: ThresholdsPage,
+  schedules: SchedulesPage,
+  settings: SettingsPage,
 }
 
 /**

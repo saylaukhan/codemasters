@@ -13,7 +13,9 @@ import type {
   IncidentStatus,
   LineStatus,
   QualityStatus,
+  ScheduleScope,
   SchoolStatus,
+  ThresholdProfileScope,
   UserRole,
   Weekday,
 } from '../api/types'
@@ -215,9 +217,32 @@ export const ADMIN_TAB_LABELS = {
   regions: 'Районы и города',
   providers: 'Поставщики',
   'connection-types': 'Типы подключения',
+  thresholds: 'Пороги',
+  schedules: 'Расписания',
+  settings: 'Настройки',
 } as const
 
 export type AdminTabKey = keyof typeof ADMIN_TAB_LABELS
+
+/** Target of a threshold profile (ADR-004): the most specific active one judges a measurement. */
+export const PROFILE_SCOPE_LABELS: Record<ThresholdProfileScope, string> = {
+  global: 'Вся область',
+  district: 'Район или город',
+  line: 'Линия',
+}
+
+/** Target of a measurement schedule (T-17): the most specific active one reaches the agent. */
+export const SCHEDULE_SCOPE_LABELS: Record<ScheduleScope, string> = {
+  global: 'Вся область',
+  district: 'Район или город',
+  school: 'Школа',
+}
+
+/** A profile or a schedule is switched off, never deleted: the next one of its chain applies (T-37). */
+export const CONFIG_ACTIVITY_LABELS = {
+  active: 'Действует',
+  disabled: 'Отключено',
+} as const
 
 /** A school is deactivated, never deleted: its measurements and incidents stay (ТЗ п. 20). */
 export const SCHOOL_ACTIVITY_LABELS = {

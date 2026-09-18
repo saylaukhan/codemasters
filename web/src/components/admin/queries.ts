@@ -4,12 +4,20 @@ import {
   createConnectionType,
   createProvider,
   createRegion,
+  createSchedule,
+  createThresholdProfile,
   getConnectionTypes,
   getProviders,
   getRegions,
+  getSchedules,
+  getSettings,
+  getThresholdProfiles,
   updateConnectionType,
   updateProvider,
   updateRegion,
+  updateSchedule,
+  updateSettings,
+  updateThresholdProfile,
 } from '../../api/admin'
 import {
   blockDevice,
@@ -25,6 +33,7 @@ import {
   createSchoolLine,
   createSchoolPoint,
   getSchool,
+  getSchoolLines,
   getSchools,
   updateSchool,
   updateSchoolContact,
@@ -204,3 +213,41 @@ export const useSchoolOptions = (q: string) =>
 /** One-time installation code of a school: nothing to refresh, the code is shown once. */
 export const useIssueEnrollmentCode = () =>
   useMutation({ mutationFn: (schoolId: number) => createEnrollmentCode({ schoolId }) })
+
+// Thresholds, schedules and settings (T-37): statuses of new measurements and of schools follow them.
+const pageOnly = ({ page, pageSize }: AdminListView) => ({ page, pageSize })
+
+export const useThresholdProfiles = (view: AdminListView) =>
+  useQuery({
+    queryKey: ['admin', 'thresholds', view],
+    queryFn: ({ signal }) => getThresholdProfiles(pageOnly(view), signal),
+    placeholderData: keepPreviousData,
+  })
+
+export const useSaveThresholdProfile = () => useSave(createThresholdProfile, updateThresholdProfile)
+
+export const useSchedules = (view: AdminListView) =>
+  useQuery({
+    queryKey: ['admin', 'schedules', view],
+    queryFn: ({ signal }) => getSchedules(pageOnly(view), signal),
+    placeholderData: keepPreviousData,
+  })
+
+export const useSaveSchedule = () => useSave(createSchedule, updateSchedule)
+
+export const useSystemSettings = () =>
+  useQuery({ queryKey: ['admin', 'settings'], queryFn: ({ signal }) => getSettings(signal) })
+
+export const useSaveSettings = () => {
+  const queryClient = useQueryClient()
+  return useMutation({ mutationFn: updateSettings, onSuccess: () => invalidateShown(queryClient) })
+}
+
+/** Lines of the school chosen in the form of a line profile, for its select. */
+export const useSchoolLineOptions = (schoolId: number | undefined) =>
+  useQuery({
+    queryKey: ['schools', schoolId, 'lines'],
+    queryFn: ({ signal }) => getSchoolLines(schoolId as number, signal),
+    enabled: schoolId !== undefined,
+    select: (page) => page.items,
+  })
