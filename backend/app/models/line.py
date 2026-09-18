@@ -40,3 +40,11 @@ class Line(TimestampMixin, Base):
     ip_ranges: Mapped[list[IPv4Network | IPv6Network]] = mapped_column(
         ARRAY(CIDR), server_default=text("'{}'")
     )
+    # Sustained mismatch with the contract (ТЗ п. 14, T-29), written by the periodic recompute
+    # for main lines only: the share of measurements below the contract over the window, whether
+    # it is past the threshold of ``settings``, the window and the moment it was counted. NULL
+    # until the first recompute or while there is nothing to compare.
+    compliance_below_pct: Mapped[float | None]
+    compliance_sustained_mismatch: Mapped[bool | None]
+    compliance_window_days: Mapped[int | None]
+    compliance_checked_at: Mapped[datetime | None]
