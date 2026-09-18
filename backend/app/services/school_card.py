@@ -7,10 +7,11 @@ the list and the map show.
 """
 
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Any, cast
 
-from sqlalchemy import case, func, select, true
+from sqlalchemy import Select, case, func, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import PageParams
@@ -132,31 +133,16 @@ async def school_detail(session: AsyncSession, school_id: int, *, now: datetime)
     )
 
 
-async def school_devices(
-    session: AsyncSession, school_id: int, params: PageParams, *, now: datetime
-) -> DeviceListItemPage:
-    """Computers of the school with their last measurement and status (ТЗ п. 4)."""
-    await ensure_school(session, school_id)
+async def device_items(
+    session: AsyncSession, rows: Sequence[Any], *, now: datetime
+) -> list[DeviceListItem]:
+    """Rows of ``Device, MonitoringPoint, line_status`` with the last measurement and the
+    current status of each computer; shared by the school card and the device card (T-26)."""
     settings = await system_settings(session)
     hours = WorkingHours.model_validate(settings.default_working_hours)
     silent: SchoolStatus = (
         "offline" if is_working_time(hours, settings.timezone, now) else "no_data"
     )
-
-    query = (
-        select(Device, MonitoringPoint, Line.status.label("line_status"))
-        .join(MonitoringPoint, MonitoringPoint.id == Device.monitoring_point_id)
-        .join(Line, Line.id == MonitoringPoint.line_id)
-        .where(MonitoringPoint.school_id == school_id)
-    )
-    total = await session.scalar(select(func.count()).select_from(query.subquery())) or 0
-    rows = (
-        await session.execute(
-            query.order_by(MonitoringPoint.is_primary.desc(), MonitoringPoint.name, Device.id)
-            .offset(params.offset)
-            .limit(params.page_size)
-        )
-    ).all()
     latest: dict[int, Measurement] = {
         measurement.device_id: measurement
         for measurement in await session.scalars(
@@ -181,7 +167,7 @@ async def school_devices(
             return "no_data"
         return cast(SchoolStatus, measurement.quality_status)
 
-    items = [
+    return [
         DeviceListItem.model_validate(
             {
                 "id": row.Device.id,
@@ -201,8 +187,36 @@ async def school_devices(
         )
         for row in rows
     ]
+
+
+def device_rows() -> Select[Any]:
+    """Devices with their monitoring point and the status of its line."""
+    return (
+        select(Device, MonitoringPoint, Line.status.label("line_status"))
+        .join(MonitoringPoint, MonitoringPoint.id == Device.monitoring_point_id)
+        .join(Line, Line.id == MonitoringPoint.line_id)
+    )
+
+
+async def school_devices(
+    session: AsyncSession, school_id: int, params: PageParams, *, now: datetime
+) -> DeviceListItemPage:
+    """Computers of the school with their last measurement and status (ТЗ п. 4)."""
+    await ensure_school(session, school_id)
+    query = device_rows().where(MonitoringPoint.school_id == school_id)
+    total = await session.scalar(select(func.count()).select_from(query.subquery())) or 0
+    rows = (
+        await session.execute(
+            query.order_by(MonitoringPoint.is_primary.desc(), MonitoringPoint.name, Device.id)
+            .offset(params.offset)
+            .limit(params.page_size)
+        )
+    ).all()
     return DeviceListItemPage(
-        items=items, total=total, page=params.page, page_size=params.page_size
+        items=await device_items(session, rows, now=now),
+        total=total,
+        page=params.page,
+        page_size=params.page_size,
     )
 
 

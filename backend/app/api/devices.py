@@ -1,17 +1,21 @@
 """Device API of the panel (plan.md §10 «Устройства»): card, measurement history, blocking,
 installation codes.
 
-Contract stubs: every endpoint answers 501 until the task in ``not_implemented`` lands.
+Endpoints of later tasks answer 501 until the task in ``not_implemented`` lands. The card and
+the history are limited by the user's scope (ADR-008); a device outside it is a 404.
 Agent endpoints under ``/devices`` (register, heartbeat) live in ``agent.py``. Blocking keeps
 the device and its measurements (ADR-005).
 """
 
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import AwareDatetime
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require
+from app.core.db import get_session
 from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.devices import (
@@ -21,6 +25,7 @@ from app.schemas.devices import (
     MeasurementListItemPage,
 )
 from app.schemas.errors import Problem
+from app.services.device_card import device_detail, device_measurements
 
 router = APIRouter(
     prefix="/devices", tags=["devices"], dependencies=[Depends(require("devices:read"))]
@@ -45,8 +50,10 @@ async def create_enrollment_code(body: EnrollmentCodeCreate) -> EnrollmentCodeIs
     summary="Карточка устройства",
     responses={404: DEVICE_NOT_FOUND},
 )
-async def get_device(device_id: int) -> DeviceDetail:
-    raise not_implemented("T-26")
+async def get_device(
+    device_id: int, session: Annotated[AsyncSession, Depends(get_session)]
+) -> DeviceDetail:
+    return await device_detail(session, device_id, now=datetime.now(UTC))
 
 
 @router.get(
@@ -63,8 +70,12 @@ async def list_device_measurements(
     period_to: Annotated[
         AwareDatetime | None, Query(description="Конец периода по measured_at, не включается")
     ] = None,
+    *,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> MeasurementListItemPage:
-    raise not_implemented("T-26")
+    return await device_measurements(
+        session, device_id, params, period_from=period_from, period_to=period_to
+    )
 
 
 @router.post(

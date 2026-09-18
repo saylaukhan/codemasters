@@ -11,14 +11,14 @@ const above = (value: Metric, max: Metric): boolean => value != null && max != n
 interface SchoolKpisProps {
   /** Last measurement of the main line without Wi-Fi; red — worse than the thresholds it was judged by. */
   latest: LatestMeasurement | null | undefined
-  availabilityPct: Metric
-  availabilityMinPct: Metric
-  /** «7 дней» — the period the availability is counted over. */
-  periodLabel: string
+  availabilityPct?: Metric
+  availabilityMinPct?: Metric
+  /** «7 дней» — the period the availability is counted over; without it there is no availability card. */
+  periodLabel?: string
   loading: boolean
 }
 
-/** KPI row of the school card (DESIGN.md §3.15): current values and availability for the period. */
+/** KPI row of the school and device cards (DESIGN.md §3.15): current values and availability for the period. */
 export function SchoolKpis({ latest, availabilityPct, availabilityMinPct, periodLabel, loading }: SchoolKpisProps) {
   const limits = latest?.thresholdsSnapshot
   const cards = [
@@ -52,13 +52,15 @@ export function SchoolKpis({ latest, availabilityPct, availabilityMinPct, period
       unit: '%',
       alert: above(latest?.packetLossPct, limits?.packetLossMaxPct),
     },
-    {
+  ]
+  if (periodLabel) {
+    cards.push({
       label: `Доступность · ${periodLabel}`,
       value: formatNumber(availabilityPct),
       unit: '%',
       alert: below(availabilityPct, availabilityMinPct),
-    },
-  ]
+    })
+  }
   return (
     <div className={styles.kpis}>
       {cards.map((card) => (

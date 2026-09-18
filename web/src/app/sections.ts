@@ -56,3 +56,6 @@ export const canOpenSection = (section: Section, granted: readonly string[] | un
 
 /** Card of one school (T-25): the popover of the map and the lists lead here. */
 export const schoolCardPath = (schoolId: number): string => `/schools/${schoolId}`
+
+/** Card of one computer (T-26): the computers of the school card lead here. */
+export const deviceCardPath = (deviceId: number): string => `/devices/${deviceId}`
