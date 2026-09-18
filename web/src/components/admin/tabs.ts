@@ -16,6 +16,7 @@ export const ADMIN_TABS: readonly AdminTab[] = [
   { key: 'connection-types', permission: 'references:manage' },
   { key: 'thresholds', permission: 'thresholds:manage' },
   { key: 'schedules', permission: 'schedules:manage' },
+  { key: 'incident-rules', permission: 'incident_rules:manage' },
   { key: 'settings', permission: 'settings:manage' },
   { key: 'audit', permission: 'audit:read' },
   { key: 'events', permission: 'audit:read' },

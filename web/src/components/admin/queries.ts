@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 
 import {
   createConnectionType,
+  createIncidentRule,
   createProvider,
   createRegion,
   createSchedule,
@@ -9,6 +10,7 @@ import {
   createUser,
   getAuditLog,
   getConnectionTypes,
+  getIncidentRules,
   getProviders,
   getRegions,
   getSchedules,
@@ -16,6 +18,7 @@ import {
   getThresholdProfiles,
   getUsers,
   updateConnectionType,
+  updateIncidentRule,
   updateProvider,
   updateRegion,
   updateSchedule,
@@ -241,6 +244,16 @@ export const useSchedules = (view: AdminListView) =>
   })
 
 export const useSaveSchedule = () => useSave(createSchedule, updateSchedule)
+
+// Incident rules (T-40): the next detection takes the new values.
+export const useIncidentRules = (view: AdminListView) =>
+  useQuery({
+    queryKey: ['admin', 'incident-rules', view],
+    queryFn: ({ signal }) => getIncidentRules(pageOnly(view), signal),
+    placeholderData: keepPreviousData,
+  })
+
+export const useSaveIncidentRule = () => useSave(createIncidentRule, updateIncidentRule)
 
 export const useSystemSettings = () =>
   useQuery({ queryKey: ['admin', 'settings'], queryFn: ({ signal }) => getSettings(signal) })
