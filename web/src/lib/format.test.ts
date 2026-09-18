@@ -10,6 +10,7 @@ import {
   formatPercent,
   formatRelative,
   formatSpeed,
+  formatSpeedPair,
   formatTime,
 } from './format'
 
@@ -49,6 +50,13 @@ describe('numbers and units', () => {
     expect(formatMs(18.4)).toBe(`18${NBSP}мс`)
     expect(formatPercent(62)).toBe('62%')
     expect(formatSpeed(null)).toBe(NO_VALUE)
+  })
+
+  it('puts a speed next to the contract one', () => {
+    expect(formatSpeedPair(18.2, 50)).toBe(`18,2 / 50${NBSP}Мбит/с`)
+    expect(formatSpeedPair(null, 50)).toBe(`${NO_VALUE} / 50${NBSP}Мбит/с`)
+    expect(formatSpeedPair(18.2, null)).toBe(`18,2${NBSP}Мбит/с`)
+    expect(formatSpeedPair(null, null)).toBe(NO_VALUE)
   })
 })
 

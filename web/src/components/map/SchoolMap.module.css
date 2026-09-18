@@ -35,3 +35,16 @@
 .frame :global(.maplibregl-ctrl-attrib a) {
   color: var(--text-secondary);
 }
+
+/* Popover of a school (DESIGN.md §3.14): the MapLibre popup is the card, without the tip. */
+.frame :global(.maplibregl-popup-content) {
+  padding: var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-dropdown);
+  font: inherit;
+}
+
+.frame :global(.maplibregl-popup-tip) {
+  display: none;
+}

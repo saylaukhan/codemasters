@@ -1,9 +1,10 @@
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-import { Map as MapLibre, setWorkerUrl, type GeoJSONSource, type LngLatBoundsLike } from 'maplibre-gl'
+import { Map as MapLibre, Popup, setWorkerUrl, type GeoJSONSource, type LngLatBoundsLike } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { Minus, Plus, Scan } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 import type { RegionMapCollection, SchoolMapCollection, SchoolStatus } from '../../api/types'
 import { useThemeMode } from '../../app/themeMode'
@@ -23,6 +24,7 @@ import {
   selectRegion,
 } from './mapStyle'
 import styles from './SchoolMap.module.css'
+import { SchoolPopover } from './SchoolPopover'
 
 // MapLibre 6 runs its worker as a module: Vite bundles it with its shared chunk into one file.
 setWorkerUrl(workerUrl)
@@ -32,6 +34,16 @@ const CLUSTER_MAX_ZOOM = 10
 const CLUSTER_RADIUS = 48
 const FIT_PADDING = 48
 const FIT_MAX_ZOOM = 12
+// The popover stands clear of the selected marker and its ring, and of the edges of the map.
+const POPOVER_OFFSET = 16
+const POPOVER_MARGIN = 12
+
+/** Pixels to pan so that [start, end] fits into [min, max]; the start wins when it cannot fit. */
+function overflow(start: number, end: number, min: number, max: number): number {
+  if (start < min + POPOVER_MARGIN) return start - min - POPOVER_MARGIN
+  if (end > max - POPOVER_MARGIN) return Math.min(end - max + POPOVER_MARGIN, start - min - POPOVER_MARGIN)
+  return 0
+}
 
 interface SchoolMapProps {
   schools: SchoolMapCollection
@@ -41,11 +53,23 @@ interface SchoolMapProps {
   className?: string
 }
 
-/** Schools of VKO on the map (DESIGN.md §2.5, §3.13): markers in the colours of the statuses, clusters. */
+/**
+ * Schools of VKO on the map (DESIGN.md §2.5, §3.13): markers in the colours of the statuses, clusters;
+ * a click on a marker opens the popover of the school (§3.14).
+ */
 export function SchoolMap({ schools, regions, regionId, className }: SchoolMapProps) {
+  const frame = useRef<HTMLDivElement>(null)
   const container = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<MapLibre | null>(null)
   const [hidden, setHidden] = useState<SchoolStatus[]>([])
+  const [selectedId, setSelectedId] = useState<number>()
+  // MapLibre positions the popup; React renders the popover into it through a portal.
+  const [popoverNode] = useState(() => document.createElement('div'))
+  const [popup] = useState(() =>
+    new Popup({ closeButton: false, closeOnClick: false, maxWidth: 'none', offset: POPOVER_OFFSET }).setDOMContent(
+      popoverNode,
+    ),
+  )
   const { mode } = useThemeMode()
   // Values the map starts with; later changes reach it through the effects below.
   const initial = useRef({ schools, regions, regionId, mode })
@@ -80,6 +104,13 @@ export function SchoolMap({ schools, regions, regionId, className }: SchoolMapPr
       setMap(instance)
     })
 
+    // A click on a marker opens its popover, a click anywhere else on the map closes it; clicks inside
+    // the popover are not the map's.
+    instance.on('click', (event) => {
+      if (event.originalEvent.target !== instance.getCanvas()) return
+      const school = instance.queryRenderedFeatures(event.point, { layers: [LAYERS.schools] })[0]
+      setSelectedId(typeof school?.id === 'number' ? school.id : undefined)
+    })
     // A click on a cluster zooms in until it breaks up.
     instance.on('click', LAYERS.clusters, async (event) => {
       const cluster = event.features?.[0]
@@ -106,8 +137,11 @@ export function SchoolMap({ schools, regions, regionId, className }: SchoolMapPr
       instance.on('mouseleave', layer, () => (instance.getCanvas().style.cursor = ''))
     }
 
-    return () => instance.remove()
-  }, [])
+    return () => {
+      popup.remove()
+      instance.remove()
+    }
+  }, [popup])
 
   useEffect(() => {
     map?.getSource<GeoJSONSource>(SCHOOLS)?.setData(schoolPoints(schools, hidden))
@@ -125,6 +159,65 @@ export function SchoolMap({ schools, regions, regionId, className }: SchoolMapPr
     if (map) paintLayers(map, mode)
   }, [map, mode])
 
+  // The popover follows the fresh data of the school and closes when its marker is hidden or filtered out.
+  const selected = schools.features.find(
+    (school) => school.id === selectedId && school.geometry && !hidden.includes(school.properties.status),
+  )
+  const coordinates = selected?.geometry?.coordinates
+  const [lng, lat] = coordinates ?? []
+
+  useEffect(() => {
+    if (!map) return
+    if (lng === undefined || lat === undefined) {
+      popup.remove()
+      return
+    }
+    popup.setLngLat([lng, lat])
+    if (!popup.isOpen()) popup.addTo(map)
+  }, [map, popup, lng, lat])
+
+  // Ring of the selected marker; the previous one is cleared on the next change, not on unmount.
+  const marked = useRef<number | undefined>(undefined)
+  const selectedMarker = selected?.id
+  useEffect(() => {
+    if (!map) return
+    if (marked.current !== undefined) map.setFeatureState({ source: SCHOOLS, id: marked.current }, { selected: false })
+    if (selectedMarker !== undefined) map.setFeatureState({ source: SCHOOLS, id: selectedMarker }, { selected: true })
+    marked.current = selectedMarker
+  }, [map, selectedMarker])
+
+  // A popover that does not fit into the map on opening pans the map until it does.
+  useEffect(() => {
+    if (!map || selectedMarker === undefined) return
+    const frame = requestAnimationFrame(() => {
+      const box = popup.getElement()?.getBoundingClientRect()
+      if (!box) return
+      const view = map.getContainer().getBoundingClientRect()
+      const dx = overflow(box.left, box.right, view.left, view.right)
+      const dy = overflow(box.top, box.bottom, view.top, view.bottom)
+      if (dx || dy) map.panBy([dx, dy])
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [map, popup, selectedMarker])
+
+  // Esc or a click outside the map closes the popover (DESIGN.md §3.14).
+  useEffect(() => {
+    if (selectedMarker === undefined) return
+    const close = () => setSelectedId(undefined)
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close()
+    }
+    const onPointer = (event: PointerEvent) => {
+      if (!frame.current?.contains(event.target as Node)) close()
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointer)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointer)
+    }
+  }, [selectedMarker])
+
   const fit = () => {
     const bounds: LngLatBoundsLike | undefined = boundsOf(schoolPoints(schools, hidden), regionShapes(regions))
     if (bounds) map?.fitBounds(bounds, { padding: FIT_PADDING, maxZoom: FIT_MAX_ZOOM })
@@ -134,7 +227,7 @@ export function SchoolMap({ schools, regions, regionId, className }: SchoolMapPr
   const icon = { size: SIZES.iconMd, strokeWidth: SIZES.iconStroke }
 
   return (
-    <div className={className ? `${styles.frame} ${className}` : styles.frame}>
+    <div ref={frame} className={className ? `${styles.frame} ${className}` : styles.frame}>
       <div ref={container} className={styles.map} />
       <div className={styles.controls}>
         <Button kind="outlined" tooltip="Приблизить" icon={<Plus {...icon} />} onClick={() => map?.zoomIn()} />
@@ -142,6 +235,7 @@ export function SchoolMap({ schools, regions, regionId, className }: SchoolMapPr
         <Button kind="outlined" tooltip="Вписать область" icon={<Scan {...icon} />} onClick={fit} />
       </div>
       <MapLegend schools={schools} hidden={hidden} onToggle={toggle} />
+      {selected && createPortal(<SchoolPopover school={selected} />, popoverNode)}
     </div>
   )
 }

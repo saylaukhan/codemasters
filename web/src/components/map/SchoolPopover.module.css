@@ -1,0 +1,71 @@
+/* Popover of a school, DESIGN.md §3.14: 320px; the card itself is the frame of the MapLibre popup
+   (SchoolMap.module.css): surface, dropdown shadow, radius 12, padding 16. */
+.popover {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: var(--popover-width);
+  max-width: calc(100vw - 2 * var(--space-6));
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* 14/600, at most two lines. */
+.name {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.code {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+/* Key — value, 13px: caption secondary on the left, value primary on the right. */
+.table {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.row {
+  display: contents;
+}
+
+.row dt {
+  color: var(--text-secondary);
+}
+
+.row dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.row dd[data-alert] {
+  color: var(--status-critical-text);
+}
