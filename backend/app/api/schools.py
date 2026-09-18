@@ -5,12 +5,15 @@ There is no DELETE: a school is deactivated with ``is_active`` and keeps its his
 (ТЗ п. 20). Lists and cards are limited by the user's scope from T-20 (ADR-008).
 """
 
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import AwareDatetime
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require
+from app.core.db import get_session
 from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.devices import DeviceListItemPage
@@ -32,6 +35,7 @@ from app.schemas.schools import (
     SchoolUpdate,
 )
 from app.schemas.statuses import SchoolStatus
+from app.services.schools import SchoolListFilters, school_list
 
 router = APIRouter(
     prefix="/schools", tags=["schools"], dependencies=[Depends(require("schools:read"))]
@@ -83,8 +87,20 @@ async def list_schools(
             "no_data в конце; -status — сначала худшие"
         ),
     ] = None,
+    *,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> SchoolListItemPage:
-    raise not_implemented("T-24")
+    now = datetime.now(UTC)
+    period_to = period_to or now
+    return await school_list(
+        session,
+        SchoolListFilters(region_id, provider_id, connection_type_id, status, is_active, q),
+        period_from=period_from or period_to - timedelta(hours=24),
+        period_to=period_to,
+        sort=sort,
+        page=params.page,
+        page_size=params.page_size,
+    )
 
 
 @router.post(
