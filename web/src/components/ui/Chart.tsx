@@ -1,9 +1,16 @@
 // ECharts wrapper of DESIGN.md §2.4 / §3.16: the base configuration lives once in chartOption.ts,
-// screens pass only the moments, the series and the threshold marks. Colors come from tokens.css,
-// so the chart follows the light and the dark theme.
+// screens pass only the moments, the series and the threshold marks; the heatmap «час × день
+// недели» — its matrix (heatmapOption.ts). Colors come from tokens.css, so the chart follows the
+// light and the dark theme.
 import { Dropdown } from 'antd'
-import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, MarkLineComponent, TooltipComponent } from 'echarts/components'
+import { BarChart, HeatmapChart, LineChart } from 'echarts/charts'
+import {
+  GridComponent,
+  LegendComponent,
+  MarkLineComponent,
+  TooltipComponent,
+  VisualMapPiecewiseComponent,
+} from 'echarts/components'
 import * as echarts from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { Download } from 'lucide-react'
@@ -13,8 +20,25 @@ import { useThemeMode } from '../../app/themeMode'
 import { Button } from './Button'
 import styles from './Chart.module.css'
 import { buildOption, chartCsv, token, type TimeChartData } from './chartOption'
+import { buildHeatmapOption, heatmapCsv, type HeatmapChartData } from './heatmapOption'
 
-echarts.use([BarChart, LineChart, GridComponent, LegendComponent, MarkLineComponent, TooltipComponent, CanvasRenderer])
+echarts.use([
+  BarChart,
+  HeatmapChart,
+  LineChart,
+  GridComponent,
+  LegendComponent,
+  MarkLineComponent,
+  TooltipComponent,
+  VisualMapPiecewiseComponent,
+  CanvasRenderer,
+])
+
+export type ChartData = TimeChartData | HeatmapChartData
+
+const isHeatmap = (data: ChartData): data is HeatmapChartData => 'kind' in data && data.kind === 'heatmap'
+const optionOf = (data: ChartData) => (isHeatmap(data) ? buildHeatmapOption(data) : buildOption(data))
+const csvOf = (data: ChartData) => (isHeatmap(data) ? heatmapCsv(data) : chartCsv(data))
 
 function save(href: string, fileName: string): void {
   const link = document.createElement('a')
@@ -29,13 +53,13 @@ interface ChartCardProps {
   controls?: ReactNode
   /** Name of the exported files without an extension. */
   fileName: string
-  data: TimeChartData | undefined
+  data: ChartData | undefined
   /** Loading, empty or error state shown instead of the chart. */
   placeholder?: ReactNode
   height?: number
 }
 
-/** Card with a line or bar chart: title, period control and «Экспорт» (PNG, CSV) in the header. */
+/** Card with a line, bar or heatmap chart: title, period control and «Экспорт» (PNG, CSV) in the header. */
 export function ChartCard({ title, controls, fileName, data, placeholder, height = 320 }: ChartCardProps) {
   const element = useRef<HTMLDivElement>(null)
   const chart = useRef<echarts.ECharts | null>(null)
@@ -56,7 +80,7 @@ export function ChartCard({ title, controls, fileName, data, placeholder, height
   }, [showChart])
 
   useEffect(() => {
-    if (showChart && chart.current) chart.current.setOption(buildOption(data), true)
+    if (showChart && chart.current) chart.current.setOption(optionOf(data), true)
   }, [showChart, data, mode])
 
   const exportAs = (kind: string) => {
@@ -65,7 +89,7 @@ export function ChartCard({ title, controls, fileName, data, placeholder, height
       save(chart.current.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: token('--bg-surface') }), `${fileName}.png`)
     }
     if (kind === 'csv') {
-      const url = URL.createObjectURL(new Blob([chartCsv(data)], { type: 'text/csv;charset=utf-8' }))
+      const url = URL.createObjectURL(new Blob([csvOf(data)], { type: 'text/csv;charset=utf-8' }))
       save(url, `${fileName}.csv`)
       URL.revokeObjectURL(url)
     }

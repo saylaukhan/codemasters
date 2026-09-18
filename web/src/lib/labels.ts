@@ -10,6 +10,7 @@ import type {
   QualityStatus,
   SchoolStatus,
   UserRole,
+  Weekday,
 } from '../api/types'
 
 /** Status of a school on the map and in lists (ТЗ п. 13); «Нет данных» is display-only (ADR-004). */
@@ -89,6 +90,20 @@ export const ANALYTICS_LEVEL_LABELS: Record<AnalyticsLevel, string> = {
   provider: 'Провайдеры',
   region: 'Вся область',
 }
+
+/** Days of the week in Asia/Almaty (ADR-014): rows of the heatmap «час × день недели». */
+export const WEEKDAY_LABELS: Record<Weekday, string> = {
+  mon: 'Пн',
+  tue: 'Вт',
+  wed: 'Ср',
+  thu: 'Чт',
+  fri: 'Пт',
+  sat: 'Сб',
+  sun: 'Вс',
+}
+
+/** Monday first, as the week is read in Kazakhstan. */
+export const WEEKDAY_ORDER: readonly Weekday[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 /** Five roles of ТЗ п. 16 (ADR-008). */
 export const ROLE_LABELS: Record<UserRole, string> = {

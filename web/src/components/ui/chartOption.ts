@@ -18,6 +18,16 @@ const SERIES_TOKENS = [
 
 export const token = (name: string): string => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 
+/** Tooltip in the style of the card of §3.14: surface, border, radius 12, soft shadow. */
+export const tooltipFrame = () => ({
+  backgroundColor: token('--bg-surface'),
+  borderColor: token('--border'),
+  borderWidth: 1,
+  padding: [8, 12],
+  textStyle: { color: token('--text-primary'), fontSize: 13 },
+  extraCssText: 'border-radius: 12px; box-shadow: 0 4px 16px rgba(31, 35, 40, 0.12);',
+})
+
 export interface ChartAxis {
   unit: string
   /** Digits after the comma in labels and the tooltip. */
@@ -89,13 +99,8 @@ export function buildOption(data: TimeChartData): EChartsCoreOption {
       textStyle: { color: token('--text-secondary'), fontSize: 13 },
     },
     tooltip: {
+      ...tooltipFrame(),
       trigger: 'axis',
-      backgroundColor: token('--bg-surface'),
-      borderColor: token('--border'),
-      borderWidth: 1,
-      padding: [8, 12],
-      textStyle: { color: token('--text-primary'), fontSize: 13 },
-      extraCssText: 'border-radius: 12px; box-shadow: 0 4px 16px rgba(31, 35, 40, 0.12);',
       formatter: (items: TooltipItem[]) => {
         if (items.length === 0) return ''
         const rows = items.map((item) => {

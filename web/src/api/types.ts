@@ -19,6 +19,7 @@ export type DeviceStatus = Schemas['DeviceStatus']
 export type IfaceType = Schemas['IfaceType']
 export type AnalyticsPeriod = Schemas['AnalyticsPeriod']
 export type AnalyticsLevel = Schemas['AnalyticsLevel']
+export type Weekday = Schemas['Weekday']
 
 export type DashboardSummary = Schema<'DashboardSummary'>
 export type SchoolMapCollection = Schema<'SchoolMapFeatureCollection'>

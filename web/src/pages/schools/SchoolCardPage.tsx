@@ -7,7 +7,9 @@ import { useParams, useSearchParams } from 'react-router'
 import { ApiError } from '../../api/client'
 import type { AnalyticsPeriod } from '../../api/types'
 import { ContactList } from '../../components/schools/ContactList'
+import { ContractFact } from '../../components/schools/ContractFact'
 import { DeviceTable } from '../../components/schools/DeviceTable'
+import { problemHeatmap } from '../../components/schools/heatmap'
 import { LineTable } from '../../components/schools/LineTable'
 import {
   useSchool,
@@ -96,30 +98,59 @@ export function SchoolCardPage() {
   const row = analytics.data?.rows[0]
   const mainLine = lines.data?.items.find((line) => line.status === 'main')
   const chart = analytics.data ? speedChart(analytics.data, mainLine) : undefined
+  const heatmap = analytics.data ? problemHeatmap(analytics.data) : undefined
 
-  const chartPlaceholder = analytics.isError ? (
-    <ErrorState error={analytics.error} onRetry={() => void analytics.refetch()} />
-  ) : analytics.isPending ? (
-    <ContentSkeleton rows={6} />
-  ) : chart && chart.moments.length === 0 ? (
-    <EmptyState title="Замеров за период нет" description="Выберите другой период или проверьте агент на ПК школы." />
-  ) : undefined
+  const chartPlaceholder = (empty: boolean) =>
+    analytics.isError ? (
+      <ErrorState error={analytics.error} onRetry={() => void analytics.refetch()} />
+    ) : analytics.isPending ? (
+      <ContentSkeleton rows={6} />
+    ) : empty ? (
+      <EmptyState title="Замеров за период нет" description="Выберите другой период или проверьте агент на ПК школы." />
+    ) : undefined
+  // Both charts follow one period: the KPI of availability and the contract block use it too.
+  const periodControl = (
+    <Segmented<Period>
+      size="small"
+      value={period}
+      options={PERIODS.map((value) => ({ value, label: PERIOD_LABELS[value] }))}
+      onChange={(value) => setParam('period', value)}
+    />
+  )
 
   const overview = (
-    <ChartCard
-      title="Скорость и задержка"
-      fileName={`${card.schoolCode}-${period}`}
-      data={chart}
-      placeholder={chartPlaceholder}
-      controls={
-        <Segmented<Period>
-          size="small"
-          value={period}
-          options={PERIODS.map((value) => ({ value, label: PERIOD_LABELS[value] }))}
-          onChange={(value) => setParam('period', value)}
+    <>
+      <ChartCard
+        title="Скорость и задержка"
+        fileName={`${card.schoolCode}-${period}`}
+        data={chart}
+        placeholder={chartPlaceholder(analytics.data?.series.length === 0)}
+        controls={periodControl}
+      />
+      <div className={styles.charts}>
+        <ChartCard
+          title="Проблемные замеры по часам"
+          fileName={`${card.schoolCode}-${period}-hours`}
+          data={heatmap}
+          placeholder={chartPlaceholder(analytics.data?.heatmap.length === 0)}
+          controls={periodControl}
+          height={280}
         />
-      }
-    />
+        {lines.isError || analytics.isError ? (
+          <ErrorState
+            error={lines.error ?? analytics.error}
+            onRetry={() => {
+              void lines.refetch()
+              void analytics.refetch()
+            }}
+          />
+        ) : lines.isPending || analytics.isPending ? (
+          <ContentSkeleton rows={4} />
+        ) : (
+          <ContractFact line={mainLine} row={row} periodLabel={PERIOD_LABELS[period]} />
+        )}
+      </div>
+    </>
   )
 
   return (
