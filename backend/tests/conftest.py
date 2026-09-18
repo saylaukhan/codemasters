@@ -84,3 +84,12 @@ def export_queue(monkeypatch: pytest.MonkeyPatch) -> list[int]:
     queued: list[int] = []
     monkeypatch.setattr("app.api.exports.enqueue_build", queued.append)
     return queued
+
+
+@pytest.fixture(autouse=True)
+def detection_queue(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Lines the agent API hands to the incident detection (T-40), instead of Redis: a test
+    that needs the detection runs ``detect_line`` itself, as the worker would."""
+    queued: list[int] = []
+    monkeypatch.setattr("app.api.agent.enqueue_detection", queued.append)
+    return queued
