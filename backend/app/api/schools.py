@@ -1,8 +1,8 @@
 """School API of the panel (plan.md §10 «Школы»): list, card, devices, lines, contacts.
 
-Contract stubs: every endpoint answers 501 until the task in ``not_implemented`` lands.
-There is no DELETE: a school is deactivated with ``is_active`` and keeps its history
-(ТЗ п. 20). Lists and cards are limited by the user's scope from T-20 (ADR-008).
+Endpoints of later tasks answer 501 until the task in ``not_implemented`` lands. There is no
+DELETE: a school is deactivated with ``is_active`` and keeps its history (ТЗ п. 20). Lists and
+cards are limited by the user's scope from T-20 (ADR-008); a school outside it is a 404.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query, status
 from pydantic import AwareDatetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require
+from app.auth import AuthUser, current_user, require
 from app.core.db import get_session
 from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
@@ -35,11 +35,15 @@ from app.schemas.schools import (
     SchoolUpdate,
 )
 from app.schemas.statuses import SchoolStatus
+from app.services.school_card import school_contacts, school_detail, school_devices, school_lines
 from app.services.schools import SchoolListFilters, school_list
 
 router = APIRouter(
     prefix="/schools", tags=["schools"], dependencies=[Depends(require("schools:read"))]
 )
+
+# Right to see the phone of a responsible person (ТЗ п. 15); without it the phone is empty.
+PHONE_PERMISSION = "contacts:phone"
 
 SCHOOL_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Школа не найдена"}
 
@@ -120,8 +124,10 @@ async def create_school(body: SchoolCreate) -> SchoolDetail:
     summary="Карточка школы: статус и текущие показатели",
     responses={404: SCHOOL_NOT_FOUND},
 )
-async def get_school(school_id: int) -> SchoolDetail:
-    raise not_implemented("T-25")
+async def get_school(
+    school_id: int, session: Annotated[AsyncSession, Depends(get_session)]
+) -> SchoolDetail:
+    return await school_detail(session, school_id, now=datetime.now(UTC))
 
 
 @router.patch(
@@ -141,9 +147,11 @@ async def update_school(school_id: int, body: SchoolUpdate) -> SchoolDetail:
     responses={404: SCHOOL_NOT_FOUND},
 )
 async def list_school_devices(
-    school_id: int, params: Annotated[PageParams, Depends(page_params)]
+    school_id: int,
+    params: Annotated[PageParams, Depends(page_params)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> DeviceListItemPage:
-    raise not_implemented("T-25")
+    return await school_devices(session, school_id, params, now=datetime.now(UTC))
 
 
 @router.get(
@@ -152,9 +160,11 @@ async def list_school_devices(
     responses={404: SCHOOL_NOT_FOUND},
 )
 async def list_school_lines(
-    school_id: int, params: Annotated[PageParams, Depends(page_params)]
+    school_id: int,
+    params: Annotated[PageParams, Depends(page_params)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> LineDetailPage:
-    raise not_implemented("T-25")
+    return await school_lines(session, school_id, params, now=datetime.now(UTC))
 
 
 @router.post(
@@ -186,9 +196,14 @@ async def update_school_line(school_id: int, line_id: int, body: LineUpdate) -> 
     responses={404: SCHOOL_NOT_FOUND},
 )
 async def list_school_contacts(
-    school_id: int, params: Annotated[PageParams, Depends(page_params)]
+    school_id: int,
+    params: Annotated[PageParams, Depends(page_params)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[AuthUser, Depends(current_user)],
 ) -> SchoolContactDetailPage:
-    raise not_implemented("T-25")
+    return await school_contacts(
+        session, school_id, params, show_phone=PHONE_PERMISSION in user.permissions
+    )
 
 
 @router.post(

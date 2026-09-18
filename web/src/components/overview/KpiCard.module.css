@@ -32,6 +32,10 @@
   line-height: 1.2;
 }
 
+.alert {
+  color: var(--status-critical-text);
+}
+
 .unit {
   color: var(--text-secondary);
   font-size: var(--font-size-md);

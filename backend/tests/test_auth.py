@@ -154,7 +154,7 @@ async def test_tokens_of_the_wrong_kind_or_forged_are_unauthorized(
 
 ADMIN_ONLY = ("GET", "/api/admin/users")
 MONITORING_SETUP = ("GET", "/api/admin/thresholds")
-VIEW = ("GET", "/api/schools/1")
+VIEW = ("GET", "/api/schools/1/incidents")
 INCIDENT_STATUS = ("POST", "/api/incidents/1/status")
 SCHOOL_CHANGE = ("PATCH", "/api/schools/1")
 
@@ -203,10 +203,12 @@ async def test_stub_answers_not_implemented_after_the_permission_check(
     user = await create_user(session, "oblast")
 
     body = problem(
-        await api_client.get("/api/schools/1", headers=bearer(user)), 501, "not_implemented"
+        await api_client.get("/api/schools/1/incidents", headers=bearer(user)),
+        501,
+        "not_implemented",
     )
 
-    assert "T-25" in body["detail"]
+    assert "T-41" in body["detail"]
 
 
 def test_every_role_has_permissions_and_administration_is_the_admins() -> None:
