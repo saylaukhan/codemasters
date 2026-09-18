@@ -7,15 +7,15 @@ matches the filters at once for markers and clusters, so there is no pagination.
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Security
+from fastapi import APIRouter, Depends, Query
 from pydantic import AwareDatetime
 
-from app.core.deps import user_token
+from app.auth import require
 from app.core.errors import not_implemented
 from app.schemas.map import SchoolMapFeatureCollection
 from app.schemas.statuses import SchoolStatus
 
-router = APIRouter(prefix="/map", tags=["map"], dependencies=[Security(user_token)])
+router = APIRouter(prefix="/map", tags=["map"], dependencies=[Depends(require("map:read"))])
 
 
 @router.get(

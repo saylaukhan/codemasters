@@ -205,12 +205,12 @@ def test_unexpected_error_is_problem_json_without_internals(client: TestClient) 
     assert "hunter2" not in response.text
 
 
-def test_contract_stub_answers_not_implemented(client: TestClient) -> None:
-    # Registration of a device is implemented (T-14), so the stub checked here is a panel one.
+def test_panel_endpoint_without_a_token_is_unauthorized(client: TestClient) -> None:
+    # Panel stubs check the user before answering 501 (T-20); the 501 itself — tests/test_auth.py.
     response = client.get("/api/schools")
 
-    body = assert_problem(response, 501, "not_implemented")
-    assert "T-24" in body["detail"]
+    assert_problem(response, 401, "unauthorized")
+    assert response.headers["www-authenticate"] == "Bearer"
 
 
 def test_outage_cannot_end_before_it_starts() -> None:

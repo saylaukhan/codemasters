@@ -7,15 +7,16 @@ stays (ТЗ п. 16).
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Security, status
+from fastapi import APIRouter, Depends, Query, status
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.statuses import UserRole
 from app.schemas.users import UserCreate, UserDetail, UserDetailPage, UserUpdate
 
-router = APIRouter(prefix="/users", tags=["admin"], dependencies=[Security(user_token)])
+router = APIRouter(prefix="/users", tags=["admin"], dependencies=[Depends(require("users:manage"))])
 
 USER_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Пользователь не найден"}
 

@@ -7,9 +7,9 @@ a sent appeal and its history stay. Appeals are limited by the user's scope from
 
 from typing import Any
 
-from fastapi import APIRouter, Response, Security, status
+from fastapi import APIRouter, Depends, Response, status
 
-from app.core.deps import user_token
+from app.auth import require
 from app.core.errors import not_implemented
 from app.schemas.appeals import (
     AppealCreate,
@@ -20,13 +20,16 @@ from app.schemas.appeals import (
 )
 from app.schemas.errors import Problem
 
-router = APIRouter(prefix="/appeals", tags=["appeals"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/appeals", tags=["appeals"], dependencies=[Depends(require("appeals:read"))]
+)
 
 APPEAL_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Обращение не найдено"}
 
 
 @router.post(
     "/draft",
+    dependencies=[Depends(require("appeals:create"))],
     summary="AI-черновик обращения поставщику",
     description=(
         "Ничего не сохраняет и номер не присваивает. Контекст собирает сервер, в модель не "
@@ -41,6 +44,7 @@ async def generate_appeal_draft(body: AppealDraftRequest) -> AppealDraft:
 
 @router.post(
     "",
+    dependencies=[Depends(require("appeals:create"))],
     status_code=status.HTTP_201_CREATED,
     summary="Отправить обращение: номер, письмо поставщику, PDF",
     description=(
@@ -56,6 +60,7 @@ async def create_appeal(body: AppealCreate) -> AppealDetail:
 
 @router.patch(
     "/{appeal_id}",
+    dependencies=[Depends(require("appeals:update"))],
     summary="Сменить статус обращения или добавить комментарий",
     description="Переходы — как у инцидентов (T-41); каждое изменение — в appeal_events.",
     responses={

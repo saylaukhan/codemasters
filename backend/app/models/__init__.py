@@ -5,6 +5,7 @@ compares with the database (``alembic/env.py``).
 """
 
 from app.models.agent_release import AgentRelease
+from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.connection_type import ConnectionType
 from app.models.device import Device
@@ -18,14 +19,18 @@ from app.models.monitoring_point import MonitoringPoint
 from app.models.outage import Outage
 from app.models.provider import Provider
 from app.models.region import Region
+from app.models.role import Role
 from app.models.schedule import Schedule
 from app.models.school import School
 from app.models.school_contact import SchoolContact
 from app.models.system_settings import SystemSettings
 from app.models.threshold_profile import ThresholdProfile
+from app.models.user import User
+from app.models.user_scope import UserScope
 
 __all__ = [
     "AgentRelease",
+    "AuditLog",
     "Base",
     "ConnectionType",
     "Device",
@@ -39,9 +44,12 @@ __all__ = [
     "Outage",
     "Provider",
     "Region",
+    "Role",
     "Schedule",
     "School",
     "SchoolContact",
     "SystemSettings",
     "ThresholdProfile",
+    "User",
+    "UserScope",
 ]

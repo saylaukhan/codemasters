@@ -6,9 +6,10 @@ switched off with ``is_active``. Agents get the new slots with the configuration
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Security, status
+from fastapi import APIRouter, Depends, status
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.schedules import (
@@ -19,7 +20,9 @@ from app.schemas.schedules import (
     ScheduleUpdate,
 )
 
-router = APIRouter(prefix="/schedules", tags=["admin"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/schedules", tags=["admin"], dependencies=[Depends(require("schedules:manage"))]
+)
 
 SCHEDULE_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Расписание не найдено"}
 

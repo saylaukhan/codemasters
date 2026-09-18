@@ -8,10 +8,11 @@ the device and its measurements (ADR-005).
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Security, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import AwareDatetime
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.devices import (
     DeviceDetail,
@@ -21,13 +22,16 @@ from app.schemas.devices import (
 )
 from app.schemas.errors import Problem
 
-router = APIRouter(prefix="/devices", tags=["devices"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/devices", tags=["devices"], dependencies=[Depends(require("devices:read"))]
+)
 
 DEVICE_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Устройство не найдено"}
 
 
 @router.post(
     "/enrollment-codes",
+    dependencies=[Depends(require("devices:manage"))],
     status_code=status.HTTP_201_CREATED,
     summary="Выдать одноразовый код установки агента для школы",
     description="Неизвестный school_id — 422.",
@@ -65,6 +69,7 @@ async def list_device_measurements(
 
 @router.post(
     "/{device_id}/block",
+    dependencies=[Depends(require("devices:manage"))],
     summary="Заблокировать устройство: запросы агента отклоняются, история остаётся",
     responses={404: DEVICE_NOT_FOUND},
 )
@@ -74,6 +79,7 @@ async def block_device(device_id: int) -> DeviceDetail:
 
 @router.post(
     "/{device_id}/unblock",
+    dependencies=[Depends(require("devices:manage"))],
     summary="Разблокировать устройство",
     responses={404: DEVICE_NOT_FOUND},
 )

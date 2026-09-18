@@ -8,15 +8,17 @@ Rows stay within the user's scope (ADR-008).
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Security
+from fastapi import APIRouter, Depends, Query
 from pydantic import AwareDatetime
 
-from app.core.deps import user_token
+from app.auth import require
 from app.core.errors import not_implemented
 from app.schemas.analytics import AnalyticsLevel, AnalyticsPeriod, AnalyticsReport
 from app.schemas.statuses import LineStatus
 
-router = APIRouter(prefix="/analytics", tags=["analytics"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/analytics", tags=["analytics"], dependencies=[Depends(require("analytics:read"))]
+)
 
 
 @router.get(

@@ -6,9 +6,10 @@ refer to providers. References are edited by Область and Админист
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Security, status
+from fastapi import APIRouter, Depends, Query, status
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.references import (
@@ -18,7 +19,9 @@ from app.schemas.references import (
     ProviderUpdate,
 )
 
-router = APIRouter(prefix="/providers", tags=["admin"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/providers", tags=["admin"], dependencies=[Depends(require("references:manage"))]
+)
 
 PROVIDER_NAME_TAKEN: dict[str, Any] = {
     "model": Problem,

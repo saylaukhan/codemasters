@@ -6,8 +6,9 @@ monitoring point. Rows are upserted by natural keys (region code, provider name,
 type code, School ID), lines and points are created only for a school that has none, so a
 repeated run changes nothing. The row of ``settings`` gets the measurement server addresses from
 the environment (T-05) only when it does not exist: after that they change in the admin panel.
-Dev users arrive in T-20. Data files and their sources:
-``app/seed_data/README.md``.
+Dev users of the five roles (T-20) are created with the password ``Password1`` — the seed loads
+test data and is for local databases only; an existing user is left as is. Data files and their
+sources: ``app/seed_data/README.md``.
 """
 
 import asyncio
@@ -25,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import get_engine, get_session_factory
+from app.core.security import hash_password
 from app.models import (
     ConnectionType,
     Line,
@@ -33,6 +35,8 @@ from app.models import (
     Region,
     School,
     SystemSettings,
+    User,
+    UserScope,
 )
 
 DATA_DIR = Path(__file__).resolve().parent / "seed_data"
@@ -47,6 +51,19 @@ CONNECTION_TYPES = {
     "mobile": "Мобильная сеть",
 }
 POINT_NAME = "Кабинет информатики"
+
+# Dev users of AGENTS.md §7: one per role; Район/город, Школа and Провайдер are scoped to
+# Усть-Каменогорск, its first test school and the provider of that school.
+DEV_PASSWORD = "Password1"
+DEV_REGION_CODE = "UK"
+DEV_SCHOOL_CODE = "VKO-UK-001"
+DEV_USERS = {
+    "admin@example.kz": ("admin", "Администратор системы"),
+    "oblast@example.kz": ("oblast", "Специалист областного управления"),
+    "rayon@example.kz": ("district", "Специалист отдела образования Усть-Каменогорска"),
+    "school@example.kz": ("school", "Ответственный школы VKO-UK-001"),
+    "provider@example.kz": ("provider", "Служба поддержки провайдера"),
+}
 
 
 @dataclass(frozen=True)
@@ -181,25 +198,62 @@ async def seed_settings(session: AsyncSession, librespeed_url: str, ndt7_url: st
     return result.scalar_one_or_none() is not None
 
 
-async def run() -> tuple[SeedResult, bool]:
+async def seed_users(session: AsyncSession) -> int:
+    """Create the missing dev users with their scopes (no commit); returns how many were new.
+
+    Needs the test schools of ``seed``: the scopes point at them.
+    """
+    school_id, provider_id = (
+        await session.execute(
+            select(School.id, Line.provider_id)
+            .join(Line, (Line.school_id == School.id) & (Line.status == "main"))
+            .where(School.school_code == DEV_SCHOOL_CODE)
+        )
+    ).one()
+    region_id = await session.scalar(select(Region.id).where(Region.code == DEV_REGION_CODE))
+    scopes: dict[str, dict[str, int | None]] = {
+        "district": {"region_id": region_id},
+        "school": {"school_id": school_id},
+        "provider": {"provider_id": provider_id},
+    }
+    existing = set(await session.scalars(select(User.email).where(User.email.in_(DEV_USERS))))
+    created = 0
+    for email, (role, full_name) in DEV_USERS.items():
+        if email in existing:
+            continue
+        user = User(
+            email=email, full_name=full_name, role=role, password_hash=hash_password(DEV_PASSWORD)
+        )
+        session.add(user)
+        await session.flush()
+        if role in scopes:
+            session.add(UserScope(user_id=user.id, **scopes[role]))
+        created += 1
+    await session.flush()
+    return created
+
+
+async def run() -> tuple[SeedResult, bool, int]:
     """Seed the database from ``Settings.database_url`` in one transaction."""
     settings = get_settings()
     async with get_session_factory()() as session:
         result = await seed(session)
         settings_created = await seed_settings(session, settings.speedtest_url, settings.ndt7_url)
+        users_created = await seed_users(session)
         await session.commit()
     await get_engine().dispose()
-    return result, settings_created
+    return result, settings_created, users_created
 
 
 def main() -> int:
     """Run the seed and report what was loaded."""
-    result, settings_created = asyncio.run(run())
+    result, settings_created, users_created = asyncio.run(run())
     sys.stdout.write(
         f"seed: районов и городов — {result.regions}, провайдеров — {result.providers}, "
         f"типов подключения — {result.connection_types}, тестовых школ — {result.schools}; "
         f"создано линий — {result.lines_created}, точек мониторинга — {result.points_created}; "
-        f"системные настройки — {'созданы' if settings_created else 'уже есть, не изменены'}\n"
+        f"системные настройки — {'созданы' if settings_created else 'уже есть, не изменены'}; "
+        f"создано dev-пользователей — {users_created}\n"
     )
     return 0
 
