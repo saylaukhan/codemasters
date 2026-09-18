@@ -1,20 +1,23 @@
 """Panel analytics (plan.md §10, ТЗ п. 5, п. 13): school, district, provider and oblast levels.
 
-Contract stub: answers 501 until T-27. One report per request: rows of the level ordered by
-name, the time series and the hour × weekday heatmap of the selection; ranking and sorting
-happen in the panel. The school card reads it with ``level=school`` and ``school_id`` (T-28).
-Rows stay within the user's scope (ADR-008).
+One report per request: rows of the level ordered by name, the time series and the hour ×
+weekday heatmap of the selection; ranking and sorting happen in the panel. The school card
+reads it with ``level=school`` and ``school_id`` (T-25, T-28). Rows stay within the user's
+scope (ADR-008); the numbers are in ``app/services/analytics.py``.
 """
 
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import AwareDatetime
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require
-from app.core.errors import not_implemented
+from app.core.db import get_session
 from app.schemas.analytics import AnalyticsLevel, AnalyticsPeriod, AnalyticsReport
 from app.schemas.statuses import LineStatus
+from app.services.analytics import AnalyticsFilters, analytics_report
 
 router = APIRouter(
     prefix="/analytics", tags=["analytics"], dependencies=[Depends(require("analytics:read"))]
@@ -58,5 +61,15 @@ async def get_analytics(
         LineStatus,
         Query(description="Статус учитываемых линий; основные и резервные не смешиваются (п. 10)"),
     ] = "main",
+    *,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AnalyticsReport:
-    raise not_implemented("T-27")
+    return await analytics_report(
+        session,
+        level,
+        AnalyticsFilters(school_id, region_id, provider_id, connection_type_id, line_status),
+        period=period,
+        period_from=period_from,
+        period_to=period_to,
+        now=datetime.now(UTC),
+    )
