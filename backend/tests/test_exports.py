@@ -289,20 +289,3 @@ async def test_the_file_is_served_only_to_its_owner_until_it_expires(
     assert timedelta(days=6, hours=23) < expires_at - datetime.now(UTC) <= timedelta(days=7)
     assert foreign.status_code == 404
     assert expired.status_code == 404
-
-
-async def test_the_school_report_is_a_later_task(
-    session: AsyncSession, api_client: AsyncClient
-) -> None:
-    await create_settings(session)
-    school, _ = await measured_school(session, "VKO-EX-001")
-    headers = bearer(await create_user(session, "oblast"))
-
-    response = await api_client.post(
-        "/api/exports",
-        json=request_body(mode="school_report", format="pdf", school_ids=[school.id]),
-        headers=headers,
-    )
-
-    assert response.status_code == 501
-    assert "T-32" in response.json()["detail"]
