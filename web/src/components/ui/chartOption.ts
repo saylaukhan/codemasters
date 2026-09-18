@@ -30,6 +30,8 @@ export interface ChartSeries {
   axis: number
   /** One value per moment; `null` — nothing measured then. */
   values: readonly (number | null)[]
+  /** Bars suit categories such as the hours of a day; lines by default. */
+  kind?: 'line' | 'bar'
 }
 
 /** Dashed line of a threshold or a contract value, captioned at the right edge («Порог 20 Мбит/с»). */
@@ -40,19 +42,19 @@ export interface ChartMark {
 }
 
 export interface TimeChartData {
-  /** Start of every bucket, RFC 3339. */
+  /** Start of every bucket, RFC 3339; with `step: 'category'` — the captions as is. */
   moments: readonly string[]
   /** Bucket width: the axis shows «14:00» for hours and «12.09» for days. */
-  step: 'hour' | 'day'
+  step: 'hour' | 'day' | 'category'
   axes: readonly ChartAxis[]
   series: readonly ChartSeries[]
   marks: readonly ChartMark[]
 }
 
 const axisLabel = (data: TimeChartData, moment: string) =>
-  data.step === 'hour' ? formatTime(moment) : formatDayMonth(moment)
+  data.step === 'category' ? moment : data.step === 'hour' ? formatTime(moment) : formatDayMonth(moment)
 const tooltipTitle = (data: TimeChartData, moment: string) =>
-  data.step === 'hour' ? formatDateTime(moment) : formatDate(moment)
+  data.step === 'category' ? moment : data.step === 'hour' ? formatDateTime(moment) : formatDate(moment)
 
 interface TooltipItem {
   dataIndex: number
@@ -107,7 +109,7 @@ export function buildOption(data: TimeChartData): EChartsCoreOption {
     xAxis: {
       type: 'category',
       data: data.moments.map((moment) => axisLabel(data, moment)),
-      boundaryGap: false,
+      boundaryGap: data.series.some((series) => series.kind === 'bar'),
       axisTick: { show: false },
       axisLine: { lineStyle: { color: token('--border') } },
       axisLabel: textStyle,
@@ -125,13 +127,15 @@ export function buildOption(data: TimeChartData): EChartsCoreOption {
       // Marks of an axis hang on its first series: ECharts draws them per series.
       const first = data.series.findIndex((other) => other.axis === series.axis) === index
       const marks = first ? data.marks.filter((mark) => mark.axis === series.axis) : []
+      const shape =
+        series.kind === 'bar'
+          ? { type: 'bar', barMaxWidth: 24 }
+          : { type: 'line', showSymbol: false, lineStyle: { width: 2 } }
       return {
-        type: 'line',
+        ...shape,
         name: series.name,
         yAxisIndex: series.axis,
         data: series.values,
-        showSymbol: false,
-        lineStyle: { width: 2 },
         markLine: marks.length
           ? {
               ...markStyle,

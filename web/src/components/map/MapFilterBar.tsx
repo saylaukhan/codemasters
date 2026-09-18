@@ -20,7 +20,7 @@ interface OptionSelectProps {
 }
 
 /** Single choice; the active one shows the caption with its value: «Район: Усть-Каменогорск». */
-function OptionSelect({ caption, value, options, onChange }: OptionSelectProps) {
+export function OptionSelect({ caption, value, options, onChange }: OptionSelectProps) {
   return (
     <Select<number>
       className={value === undefined ? styles.filter : `${styles.filter} ${styles.active}`}
