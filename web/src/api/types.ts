@@ -86,3 +86,8 @@ export type MonitoringPointCreate = Schema<'MonitoringPointCreate'>
 export type MonitoringPointUpdate = Schema<'MonitoringPointUpdate'>
 export type SchoolContactCreate = Schema<'SchoolContactCreate'>
 export type SchoolContactUpdate = Schema<'SchoolContactUpdate'>
+
+// Devices of the administration (T-36): rebinding to a point, installation codes.
+export type DeviceUpdate = Schema<'DeviceUpdate'>
+export type EnrollmentCodeCreate = Schema<'EnrollmentCodeCreate'>
+export type EnrollmentCodeIssued = Schema<'EnrollmentCodeIssued'>

@@ -107,3 +107,40 @@ func TestWhoAmI(t *testing.T) {
 		t.Fatal("WhoAmI with an invalid external_ip: want error")
 	}
 }
+
+// TestRotateToken: the new token is asked for with the current one, and the
+// requests after SetToken carry only the new token (T-36).
+func TestRotateToken(t *testing.T) {
+	var auths []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auths = append(auths, r.Header.Get("Authorization"))
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/api/agent/token":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"device_id": 7, "device_token": "7.new"}`))
+		case r.Header.Get("Authorization") == "Device 7.new":
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			w.Header().Set("Content-Type", "application/problem+json")
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"type": "unauthorized", "status": 401}`))
+		}
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "7.old")
+	resp, err := c.RotateToken(context.Background())
+	if err != nil {
+		t.Fatalf("RotateToken: %v", err)
+	}
+	if resp.DeviceID != 7 || resp.DeviceToken != "7.new" {
+		t.Fatalf("RotateToken = %+v, want device 7 with 7.new", resp)
+	}
+	c.SetToken(resp.DeviceToken)
+	if err := c.do(context.Background(), http.MethodPost, "/devices/heartbeat", nil, nil); err != nil {
+		t.Fatalf("request with the new token: %v", err)
+	}
+	if c.Token() != "7.new" || len(auths) != 2 || auths[0] != "Device 7.old" || auths[1] != "Device 7.new" {
+		t.Fatalf("token %q, Authorization headers %q; want the old one for the rotation, then the new one", c.Token(), auths)
+	}
+}

@@ -7,6 +7,7 @@ import { useParams, useSearchParams } from 'react-router'
 import { ApiError } from '../../api/client'
 import type { AnalyticsPeriod, LineDetail, MonitoringPointDetail, SchoolContactDetail } from '../../api/types'
 import { ContactDrawer } from '../../components/admin/ContactDrawer'
+import { EnrollmentCodeButton } from '../../components/admin/EnrollmentCodeButton'
 import { LineDrawer } from '../../components/admin/LineDrawer'
 import { PointDrawer } from '../../components/admin/PointDrawer'
 import { useDrawer } from '../../components/admin/useDrawer'
@@ -107,6 +108,8 @@ export function SchoolCardPage() {
   const { data: permissions } = usePermissions<string[]>({})
   // Область and Администратор set up the lines, points and contacts right in the card (T-35).
   const canEdit = permissions?.includes('schools:write') ?? false
+  // Администратор issues installation codes of the agent (T-36, plan.md §4.1).
+  const canManageDevices = permissions?.includes('devices:manage') ?? false
   const lineDrawer = useDrawer<LineDetail>()
   const pointDrawer = useDrawer<MonitoringPointDetail>()
   const contactDrawer = useDrawer<SchoolContactDetail>()
@@ -305,16 +308,23 @@ export function SchoolCardPage() {
             key: 'devices',
             label: 'Устройства',
             children: (
-              <TabState
-                query={devices}
-                empty={(data) =>
-                  data.items.length ? null : (
-                    <EmptyState title="Компьютеров нет" description="Агент ещё не установлен ни на один ПК школы." />
-                  )
-                }
-              >
-                {(data) => <DeviceTable items={data.items} />}
-              </TabState>
+              <>
+                {canManageDevices && (
+                  <div className={styles.toolbar}>
+                    <EnrollmentCodeButton schoolId={schoolId} />
+                  </div>
+                )}
+                <TabState
+                  query={devices}
+                  empty={(data) =>
+                    data.items.length ? null : (
+                      <EmptyState title="Компьютеров нет" description="Агент ещё не установлен ни на один ПК школы." />
+                    )
+                  }
+                >
+                  {(data) => <DeviceTable items={data.items} />}
+                </TabState>
+              </>
             ),
           },
           { key: 'incidents', label: 'Инциденты', children: upcoming('Инциденты школы') },

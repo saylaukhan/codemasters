@@ -72,6 +72,20 @@ class DeviceDetail(DeviceListItem):
     school_code: str = Field(description="School ID")
     school_name: str
     registered_at: datetime
+    token_rotation_requested_at: datetime | None = Field(
+        description="Запрошена замена токена; пусто — агент уже получил новый или замены не было"
+    )
+
+
+class DeviceDetailPage(Page[DeviceDetail]):
+    """Page of the devices of the admin list."""
+
+
+class DeviceUpdate(BaseModel):
+    """Rebinding of a device to another monitoring point (T-36): the school and the line of new
+    measurements follow the point, measurements already taken keep theirs (ADR-005)."""
+
+    monitoring_point_id: int
 
 
 class MeasurementListItem(LatestMeasurement):
@@ -114,5 +128,6 @@ class EnrollmentCodeIssued(BaseModel):
     school_id: int
     expires_at: datetime = Field(
         examples=["2026-09-24T04:00:00Z"],
-        description="Окончание срока действия; по умолчанию 7 дней с выдачи (ADR-005)",
+        description="Окончание срока действия: enrollment_code_ttl_days системных настроек, "
+        "по умолчанию 7 дней с выдачи (ADR-005)",
     )

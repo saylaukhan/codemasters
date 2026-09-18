@@ -70,6 +70,11 @@ class AgentConfigResponse(BaseModel):
     speedtest: SpeedtestServers
     thresholds: ThresholdValues
     latest_version: str | None = Field(default=None, examples=["0.2.0"])
+    token_rotation_required: bool = Field(
+        default=False,
+        description="Администратор запросил новый токен: агент вызывает POST /api/agent/token "
+        "текущим токеном и сохраняет выданный (T-36)",
+    )
 
 
 class WhoAmIResponse(BaseModel):

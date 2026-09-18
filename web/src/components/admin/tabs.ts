@@ -6,9 +6,10 @@ export interface AdminTab {
   permission: string
 }
 
-/** Tabs of «Администрирование» in their order; lines, computers, thresholds, users and logs come with T-35…T-39. */
+/** Tabs of «Администрирование» in their order; thresholds, users and logs come with T-37…T-39. */
 export const ADMIN_TABS: readonly AdminTab[] = [
   { key: 'schools', permission: 'schools:write' },
+  { key: 'devices', permission: 'devices:manage' },
   { key: 'regions', permission: 'references:manage' },
   { key: 'providers', permission: 'references:manage' },
   { key: 'connection-types', permission: 'references:manage' },

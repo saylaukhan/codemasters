@@ -6,7 +6,7 @@ import { PAGE_SIZES } from '../schools/useSchoolListView'
 export interface AdminListView {
   /** Search as typed; the query trims it. */
   q: string
-  /** Schools only: true — active, false — disabled, undefined — all. */
+  /** Schools: true — active, false — disabled; devices: false — blocked (T-36); undefined — all. */
   isActive?: boolean
   page: number
   pageSize: number

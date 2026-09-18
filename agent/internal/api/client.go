@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/saylaukhan/codemasters/agent/internal/buildinfo"
@@ -24,20 +25,38 @@ const requestTimeout = 30 * time.Second
 // maxErrorBody limits how much of an error response is read.
 const maxErrorBody = 64 << 10
 
-// Client calls the monitoring API. Token is empty until the device is registered.
+// Client calls the monitoring API. The token is empty until the device is
+// registered and may be replaced while requests are running (T-36).
 type Client struct {
 	BaseURL string
-	Token   string
 	HTTP    *http.Client
+
+	mu    sync.RWMutex
+	token string
 }
 
 // New returns a client for the server at baseURL (config server_url).
 func New(baseURL, token string) *Client {
 	return &Client{
 		BaseURL: strings.TrimRight(baseURL, "/"),
-		Token:   token,
 		HTTP:    &http.Client{Timeout: requestTimeout},
+		token:   token,
 	}
+}
+
+// Token returns the device token the requests carry.
+func (c *Client) Token() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.token
+}
+
+// SetToken makes the following requests carry token: the heartbeat, the
+// queue and the configuration share one client.
+func (c *Client) SetToken(token string) {
+	c.mu.Lock()
+	c.token = token
+	c.mu.Unlock()
 }
 
 // ProblemError is an error response of the server (RFC 9457, ADR-009).
@@ -79,8 +98,8 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body io.Re
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "vko-agent/"+buildinfo.Version)
-	if c.Token != "" {
-		req.Header.Set("Authorization", "Device "+c.Token)
+	if token := c.Token(); token != "" {
+		req.Header.Set("Authorization", "Device "+token)
 	}
 	return req, nil
 }

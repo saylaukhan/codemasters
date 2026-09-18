@@ -26,3 +26,6 @@ class Device(TimestampMixin, Base):
     last_seen_at: Mapped[datetime | None]
     # Blocking keeps the device and its measurements (ТЗ п. 16, п. 20).
     status: Mapped[str] = mapped_column(server_default=text("'active'"))
+    # Set by the admin panel: the agent sees it in its configuration and exchanges its token
+    # with ``POST /api/agent/token``, which clears it (T-36).
+    token_rotation_requested_at: Mapped[datetime | None]

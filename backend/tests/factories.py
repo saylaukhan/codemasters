@@ -95,8 +95,8 @@ async def add_point(
 async def issue_enrollment_code(
     session: AsyncSession, school: School, *, expires_in: timedelta = ENROLLMENT_CODE_TTL
 ) -> str:
-    """One-time installation code of the school, as ``POST /api/devices/enrollment-codes`` will
-    issue it in T-36: the code is shown once, the row keeps only its hash."""
+    """One-time installation code of the school, as ``POST /api/devices/enrollment-codes``
+    issues it (T-36): the code is shown once, the row keeps only its hash."""
     secret = new_enrollment_secret()
     entry = EnrollmentCode(
         code_hash=hash_secret(secret),

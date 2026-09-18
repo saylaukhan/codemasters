@@ -75,6 +75,7 @@ async def agent_config(session: AsyncSession, device: Device) -> AgentConfigResp
             packet_loss_max_pct=profile.packet_loss_max_pct,
         ),
         latest_version=await latest_version(session),
+        token_rotation_required=device.token_rotation_requested_at is not None,
     )
 
 
