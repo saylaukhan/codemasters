@@ -2,6 +2,8 @@
 // codes, Russian strings live only here. A status string inside a component is a bug.
 import type {
   AnalyticsLevel,
+  AuditAction,
+  AuditEntityType,
   AnalyticsPeriod,
   DeviceStatus,
   ExportAggregateColumn,
@@ -232,6 +234,8 @@ export const ADMIN_TAB_LABELS = {
   thresholds: 'Пороги',
   schedules: 'Расписания',
   settings: 'Настройки',
+  audit: 'Аудит',
+  events: 'События',
 } as const
 
 export type AdminTabKey = keyof typeof ADMIN_TAB_LABELS
@@ -276,3 +280,84 @@ export const REGION_BOUNDARY_LABELS = {
   loaded: 'Загружена',
   missing: 'Нет',
 } as const
+
+/** What happened, in the audit log (T-39, ТЗ п. 12, п. 16). */
+export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
+  login_success: 'Вход',
+  login_failure: 'Неудачный вход',
+  create: 'Создание',
+  update: 'Изменение',
+  block: 'Блокировка',
+  unblock: 'Разблокировка',
+  password_reset: 'Сброс пароля',
+  status_change: 'Смена статуса',
+  export: 'Экспорт',
+  transfer_error: 'Ошибка передачи',
+}
+
+/** Kind of record an action of the audit log touched. */
+export const AUDIT_ENTITY_LABELS: Record<AuditEntityType, string> = {
+  user: 'Пользователь',
+  school: 'Школа',
+  line: 'Линия',
+  monitoring_point: 'Точка мониторинга',
+  school_contact: 'Ответственный',
+  device: 'Устройство',
+  enrollment_code: 'Код установки',
+  region: 'Район или город',
+  provider: 'Поставщик',
+  connection_type: 'Тип подключения',
+  threshold_profile: 'Профиль порогов',
+  schedule: 'Расписание',
+  setting: 'Настройки',
+  incident_rule: 'Правило инцидентов',
+  agent_release: 'Релиз агента',
+  incident: 'Инцидент',
+  appeal: 'Обращение',
+  export: 'Выгрузка',
+}
+
+/** Why a sign-in or an agent request was refused: `type` of the problem (ADR-009); another code is shown as is. */
+export const AUDIT_ERROR_LABELS: Record<string, string> = {
+  invalid_credentials: 'Неверный e-mail или пароль',
+  account_blocked: 'Учётная запись заблокирована',
+  unauthorized: 'Токен устройства отсутствует или недействителен',
+  device_blocked: 'Устройство заблокировано',
+  validation_error: 'Невалидные данные',
+  bad_request: 'Некорректный запрос',
+  payload_too_large: 'Слишком большой запрос',
+  unsupported_media_type: 'Неподдерживаемый формат запроса',
+}
+
+/** Changed fields in the audit log, by their camelCase key; another field is shown by its key. */
+export const AUDIT_FIELD_LABELS: Record<string, string> = {
+  name: 'Название',
+  fullName: 'ФИО',
+  email: 'E-mail',
+  phone: 'Телефон',
+  position: 'Должность',
+  role: 'Роль',
+  isActive: 'Активен',
+  status: 'Статус',
+  address: 'Адрес',
+  schoolCode: 'Код школы',
+  schoolId: 'Школа',
+  regionId: 'Район или город',
+  providerId: 'Поставщик',
+  connectionTypeId: 'Тип подключения',
+  lineId: 'Линия',
+  room: 'Кабинет',
+  contractNumber: 'Номер договора',
+  contractDownMbps: 'Download по договору',
+  contractUpMbps: 'Upload по договору',
+  thresholds: 'Пороги',
+  slots: 'Слоты',
+  workingHours: 'Рабочие часы',
+  speedtest: 'Сервер замеров',
+}
+
+/** Empty value of a changed field in the audit log. */
+export const AUDIT_EMPTY_VALUE_LABEL = 'пусто'
+
+/** Yes-or-no value of a changed field in the audit log. */
+export const AUDIT_BOOLEAN_LABELS = { true: 'да', false: 'нет' } as const

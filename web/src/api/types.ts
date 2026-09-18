@@ -110,3 +110,8 @@ export type SettingsUpdate = Schema<'SettingsUpdate'>
 export type UserDetail = Schema<'UserDetail'>
 export type UserCreate = Schema<'UserCreate'>
 export type UserUpdate = Schema<'UserUpdate'>
+
+// Audit log of the administration (T-39): sign-ins, changes, rejected agent requests; read-only.
+export type AuditLogListItem = Schema<'AuditLogListItem'>
+export type AuditAction = Schemas['AuditAction']
+export type AuditEntityType = Schemas['AuditEntityType']

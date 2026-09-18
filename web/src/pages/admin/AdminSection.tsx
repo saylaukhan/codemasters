@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { SECTION_LABELS, type AdminTabKey } from '../../lib/labels'
 import { NotFoundPage } from '../section/NotFoundPage'
+import { AuditLogPage, EventLogPage } from './AuditLogPage'
 import { ConnectionTypesPage } from './ConnectionTypesPage'
 import { DevicesAdminPage } from './DevicesAdminPage'
 import { ProvidersPage } from './ProvidersPage'
@@ -28,6 +29,8 @@ const PAGES: Record<AdminTabKey, ComponentType> = {
   thresholds: ThresholdsPage,
   schedules: SchedulesPage,
   settings: SettingsPage,
+  audit: AuditLogPage,
+  events: EventLogPage,
 }
 
 /**

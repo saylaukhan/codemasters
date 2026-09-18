@@ -160,3 +160,16 @@
   gap: var(--space-2);
   margin-bottom: var(--space-2);
 }
+
+/* Logs, T-39: the action filter beside the search; changed fields as «field: old → new» lines. */
+.logFilter {
+  min-width: var(--popover-width);
+}
+
+.changes {
+  max-width: calc(var(--popover-width) * 1.5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-wrap: anywhere;
+}

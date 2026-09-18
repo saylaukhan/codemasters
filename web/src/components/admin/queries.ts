@@ -7,6 +7,7 @@ import {
   createSchedule,
   createThresholdProfile,
   createUser,
+  getAuditLog,
   getConnectionTypes,
   getProviders,
   getRegions,
@@ -22,6 +23,7 @@ import {
   updateThresholdProfile,
   updateUser,
 } from '../../api/admin'
+import type { QueryValue } from '../../api/client'
 import {
   blockDevice,
   createEnrollmentCode,
@@ -274,3 +276,11 @@ export const useSaveUser = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }),
   })
 }
+
+/** A page of the audit log (T-39); any save of the administration refetches it with the rest of ['admin']. */
+export const useAuditLog = (query: Record<string, QueryValue>) =>
+  useQuery({
+    queryKey: ['admin', 'audit-log', query],
+    queryFn: ({ signal }) => getAuditLog(query, signal),
+    placeholderData: keepPreviousData,
+  })

@@ -6,7 +6,7 @@ export interface AdminTab {
   permission: string
 }
 
-/** Tabs of «Администрирование» in their order; logs come with T-39. */
+/** Tabs of «Администрирование» in their order; the logs are the Администратор's only (T-39). */
 export const ADMIN_TABS: readonly AdminTab[] = [
   { key: 'schools', permission: 'schools:write' },
   { key: 'devices', permission: 'devices:manage' },
@@ -17,6 +17,8 @@ export const ADMIN_TABS: readonly AdminTab[] = [
   { key: 'thresholds', permission: 'thresholds:manage' },
   { key: 'schedules', permission: 'schedules:manage' },
   { key: 'settings', permission: 'settings:manage' },
+  { key: 'audit', permission: 'audit:read' },
+  { key: 'events', permission: 'audit:read' },
 ]
 
 export const allowedTabs = (granted: readonly string[] | undefined): AdminTab[] =>
