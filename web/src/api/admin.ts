@@ -1,6 +1,7 @@
 // References of the administration (T-34): districts and cities, providers, connection types; threshold
 // profiles, schedules and settings (T-37); users (T-38). Nothing is deleted: schools and lines refer to the
 // references, a profile or a schedule is switched off, a user is blocked; a PATCH changes only the fields present.
+// The audit log is read-only (T-39).
 import { apiRequest, type QueryValue } from './client'
 import type { components } from './generated/schema'
 import type {
@@ -83,3 +84,6 @@ export const createUser = (body: UserCreate) =>
 
 export const updateUser = (userId: number, body: UserUpdate) =>
   apiRequest<Schemas['UserDetail']>(`/admin/users/${userId}`, { method: 'PATCH', body })
+
+export const getAuditLog = (query: Record<string, QueryValue>, signal?: AbortSignal) =>
+  apiRequest<Schemas['AuditLogListItemPage']>('/admin/audit-log', { query, signal })
