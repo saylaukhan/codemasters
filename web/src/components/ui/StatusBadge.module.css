@@ -86,3 +86,13 @@
   --badge-bg: var(--status-critical-bg);
   --badge-text: var(--status-critical-text);
 }
+
+/* Activity of a school (T-34): active in the colours of «Норма», disabled in the grey of «Нет данных». */
+.badge[data-activity='active'] {
+  --badge-bg: var(--status-normal-bg);
+  --badge-text: var(--status-normal-text);
+}
+.badge[data-activity='disabled'] {
+  --badge-bg: var(--status-no-data-bg);
+  --badge-text: var(--status-no-data-text);
+}

@@ -34,3 +34,6 @@ export const camelize = <T>(value: unknown): Camelize<T> => mapKeys(value, toCam
 export const snakeize = (value: unknown): unknown => mapKeys(value, toSnake)
 
 export const snakeKey = toSnake
+
+/** Field of the API → field of the panel: `school_code` → `schoolCode`. */
+export const camelKey = toCamel

@@ -46,6 +46,10 @@ export type SchoolListItem = Schema<'SchoolListItem'>
 export type SchoolSort = Schemas['SchoolSort']
 
 export type SchoolDetail = Schema<'SchoolDetail'>
+export type SchoolCreate = Schema<'SchoolCreate'>
+/** Working hours are set in T-37: the administration of schools leaves them out. */
+export type SchoolUpdate = Omit<Schema<'SchoolUpdate'>, 'workingHours'>
+export type GeoPoint = Schema<'GeoPoint'>
 export type LatestMeasurement = Schema<'LatestMeasurement'>
 export type DeviceListItem = Schema<'DeviceListItem'>
 export type DeviceDetail = Schema<'DeviceDetail'>
@@ -59,3 +63,16 @@ export type AnalyticsRow = Schema<'AnalyticsRow'>
 export type ExportCreate = Omit<Schema<'ExportCreate'>, 'columns'> & Partial<Pick<Schema<'ExportCreate'>, 'columns'>>
 export type ExportJob = Schema<'ExportJob'>
 export type ExportJobPage = Schema<'ExportJobPage'>
+
+// References of the administration (T-34): districts and cities, providers, connection types.
+export type RegionListItem = Schema<'RegionListItem'>
+export type RegionDetail = Schema<'RegionDetail'>
+/** The boundary is loaded from GeoJSON by the seed, not edited in the panel. */
+export type RegionCreate = Omit<Schema<'RegionCreate'>, 'boundary'>
+export type RegionUpdate = Omit<Schema<'RegionUpdate'>, 'boundary'>
+export type ProviderDetail = Schema<'ProviderDetail'>
+export type ProviderCreate = Schema<'ProviderCreate'>
+export type ProviderUpdate = Schema<'ProviderUpdate'>
+export type ConnectionTypeDetail = Schema<'ConnectionTypeDetail'>
+export type ConnectionTypeCreate = Schema<'ConnectionTypeCreate'>
+export type ConnectionTypeUpdate = Schema<'ConnectionTypeUpdate'>

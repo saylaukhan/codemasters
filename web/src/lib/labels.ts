@@ -197,3 +197,34 @@ export const SECTION_LABELS = {
 } as const
 
 export type SectionKey = keyof typeof SECTION_LABELS
+
+/** Tabs of «Администрирование» (T-34): the key is the path under /admin. */
+export const ADMIN_TAB_LABELS = {
+  schools: 'Школы',
+  regions: 'Районы и города',
+  providers: 'Поставщики',
+  'connection-types': 'Типы подключения',
+} as const
+
+export type AdminTabKey = keyof typeof ADMIN_TAB_LABELS
+
+/** A school is deactivated, never deleted: its measurements and incidents stay (ТЗ п. 20). */
+export const SCHOOL_ACTIVITY_LABELS = {
+  active: 'Активна',
+  disabled: 'Отключена',
+} as const
+
+export type SchoolActivity = keyof typeof SCHOOL_ACTIVITY_LABELS
+
+/** Filter of the schools in the administration by activity. */
+export const SCHOOL_ACTIVITY_FILTER_LABELS = {
+  all: 'Все',
+  active: 'Активные',
+  disabled: 'Отключённые',
+} as const
+
+/** Boundary of a district or city: loaded from GeoJSON by the seed, drawn on the map. */
+export const REGION_BOUNDARY_LABELS = {
+  loaded: 'Загружена',
+  missing: 'Нет',
+} as const

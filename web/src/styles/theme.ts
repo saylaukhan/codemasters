@@ -129,7 +129,7 @@ function buildTheme(palette: Palette, algorithm: ThemeConfig['algorithm']): Them
 export const lightTheme = buildTheme(lightPalette, theme.defaultAlgorithm)
 export const darkTheme = buildTheme(darkPalette, theme.darkAlgorithm)
 
-// Sizes that AntD and lucide take as numbers, not CSS (DESIGN.md §2.2, §3.0, §3.21).
+// Sizes that AntD and lucide take as numbers, not CSS (DESIGN.md §2.2, §3.0, §3.20, §3.21).
 export const SIZES = {
   siderWidth: 240,
   siderCollapsedWidth: 56,
@@ -137,6 +137,7 @@ export const SIZES = {
   iconMd: 20,
   iconEmpty: 48,
   iconStroke: 1.5,
+  drawerWidth: 480,
 } as const
 
 /** Width at which the side navigation collapses and the padding shrinks (inclusive). */
