@@ -2,9 +2,10 @@
 
 Until T-33 the file is built within ``POST /api/exports``, so an export is born ``ready``.
 Raw measurements come from ``raw.py``, aggregates per school from ``aggregates.py``, the files
-from ``files.py``; the PDF report of a school is T-32.
+from ``files.py``; the PDF report of a school from ``report.py`` and ``report_pdf.py`` (T-32).
 """
 
+import re
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -12,40 +13,51 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import undefer
 
-from app.core.errors import ApiError, not_implemented
+from app.core.errors import ApiError
 from app.models import Export
 from app.schemas.exports import ExportCreate
 from app.services.exports.aggregates import aggregate_records
 from app.services.exports.columns import AGGREGATE_COLUMN_TITLES, AGGREGATE_COLUMNS
 from app.services.exports.files import export_file
 from app.services.exports.raw import check_selection, raw_records
+from app.services.exports.report import school_report
+from app.services.exports.report_pdf import report_pdf
 from app.services.settings import system_settings
 
 __all__ = ["create_export", "owned_export"]
 
-MODE_TASKS = {"school_report": "T-32"}
+FILE_PREFIXES = {"raw": "measurements", "aggregates": "schools", "school_report": "report"}
 
-FILE_PREFIXES = {"raw": "measurements", "aggregates": "schools"}
+# A file name goes into Content-Disposition as Latin-1: whatever else a School ID has is «_».
+UNSAFE_NAME = re.compile(r"[^A-Za-z0-9_-]")
 
 
-def file_name(body: ExportCreate, zone: ZoneInfo) -> str:
-    """``measurements_<first day>_<last day>.<format>`` (``schools_…`` for aggregates): days of
-    the period in local time; the end of the period is exclusive."""
+def file_name(body: ExportCreate, zone: ZoneInfo, school_code: str | None = None) -> str:
+    """``measurements_<first day>_<last day>.<format>`` (``schools_…`` for aggregates,
+    ``report_<School ID>_…`` for the report): days of the period in local time; the end of the
+    period is exclusive."""
     first = body.period_from.astimezone(zone).date()
     last = (body.period_to - timedelta(microseconds=1)).astimezone(zone).date()
-    return f"{FILE_PREFIXES[body.mode]}_{first.isoformat()}_{last.isoformat()}.{body.format}"
+    prefix = FILE_PREFIXES[body.mode]
+    if school_code is not None:
+        prefix = f"{prefix}_{UNSAFE_NAME.sub('_', school_code)}"
+    return f"{prefix}_{first.isoformat()}_{last.isoformat()}.{body.format}"
 
 
 async def create_export(
     session: AsyncSession, user_id: int, body: ExportCreate, *, now: datetime
 ) -> Export:
     """Build the file of ``body`` under the user's scope and store it as a ready export."""
-    if body.mode in MODE_TASKS:
-        raise not_implemented(MODE_TASKS[body.mode])
     settings = await system_settings(session)
     zone = ZoneInfo(settings.timezone)
     await check_selection(session, body)
-    if body.mode == "aggregates":
+    name = file_name(body, zone)
+    if body.mode == "school_report":
+        report = await school_report(session, body, zone, settings.timezone, now=now)
+        records = report.measurements
+        content = report_pdf(report)
+        name = file_name(body, zone, report.school_code)
+    elif body.mode == "aggregates":
         records = await aggregate_records(session, body)
         content = export_file(
             body.format,
@@ -64,7 +76,7 @@ async def create_export(
         status="ready",
         params=body.model_dump(mode="json"),
         rows_count=len(records),
-        file_name=file_name(body, zone),
+        file_name=name,
         content=content,
         expires_at=now + timedelta(days=settings.export_retention_days),
     )

@@ -28,7 +28,7 @@ import {
   SECTION_LABELS,
 } from '../../lib/labels'
 
-// The PDF report (T-32) is shown but not chosen yet.
+// The PDF report of a school is built from its card (T-32): here it is shown but not chosen.
 const MODE_OPTIONS = (Object.keys(EXPORT_MODE_LABELS) as ExportMode[]).map((mode) => ({
   value: mode,
   label: EXPORT_MODE_LABELS[mode],
@@ -125,7 +125,7 @@ export function ExportsPage() {
             />
             <p className={styles.caption}>
               {raw
-                ? 'Каждый замер — отдельная строка. PDF-отчёт появится в следующих версиях.'
+                ? 'Каждый замер — отдельная строка. PDF-отчёт по школе — кнопка «Отчёт PDF» в её карточке.'
                 : 'Одна строка на школу: основная линия без Wi‑Fi, как в аналитике.'}
             </p>
           </Step>

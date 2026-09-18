@@ -1,7 +1,7 @@
 """Export API (plan.md §10 «Экспорт», ТЗ п. 9): create an export, then download its file.
 
-Raw measurements (T-30) and aggregates per school (T-31) are built within the POST; the PDF
-report (T-32) still answers 501. The same two endpoints serve background exports of T-33: the
+Raw measurements (T-30), aggregates per school (T-31) and the PDF report of a school (T-32) are
+built within the POST. The same two endpoints serve background exports of T-33: the
 POST answers ``pending``, the GET answers 202 until the file is ready. Exports cover only the
 user's scope (ADR-008); the file is served only to the user who made it. The work is in
 ``app/services/exports/``.
@@ -39,8 +39,10 @@ FILE_SCHEMA = {"schema": {"type": "string", "format": "binary"}}
         "statuses, выбор колонок (T-30); `aggregates` — строка на школу в xlsx, csv или json: "
         "school_code, school_name, measurements_count, avg_download_mbps, min_download_mbps, "
         "avg_upload_mbps, avg_ping_ms, problem_count, problem_pct — по основной линии без Wi‑Fi, "
-        "как GET /api/analytics (T-31); `school_report` — PDF по одной школе: KPI, графики, число "
-        "и длительность простоев, таблица замеров (T-32). Другие сочетания — 422. Неизвестные "
+        "как GET /api/analytics (T-31); `school_report` — PDF по одной школе: шапка с School ID и "
+        "периодом, KPI основной линии без Wi‑Fi, графики по дням, число и суммарная "
+        "длительность простоев из outages, таблица всех замеров школы со статусами по-русски "
+        "(T-32). Другие сочетания — 422. Неизвестные "
         "или вне области видимости school_ids и device_ids — 422 (ADR-008). До T-33 файл "
         "формируется в запросе и выгрузка приходит ready или failed; с T-33 PDF и выгрузки "
         "больше порога строк из settings (по умолчанию 10 000) приходят pending и формируются "
