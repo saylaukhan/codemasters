@@ -20,3 +20,6 @@ export type SchoolMapCollection = Schema<'SchoolMapFeatureCollection'>
 export type SchoolMapFeature = Schema<'SchoolMapFeature'>
 export type RegionMapCollection = Schema<'RegionMapFeatureCollection'>
 export type MapFilterOptions = Schema<'MapFilterOptions'>
+
+export type SchoolListItem = Schema<'SchoolListItem'>
+export type SchoolSort = Schemas['SchoolSort']
