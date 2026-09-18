@@ -38,6 +38,47 @@
 
 ## Записи
 
+### 2026-09-18 · T-20 · Backend: пользователи, роли, области видимости, permissions + RLS, аудит
+Сделано: миграции `20260918_1500_users_roles_audit` (таблицы `roles` с пятью ролями ТЗ п. 16,
+`users`, `user_scopes` с ровно одним из `region_id` / `provider_id` / `school_id`, `audit_log`
+только на добавление — триггер отклоняет UPDATE и DELETE) и `20260918_1510_row_level_security`
+(роль `vko_panel` с SELECT/INSERT/UPDATE без DELETE, RLS-политики по `app.user_scope` на
+`schools`, `school_contacts`, `enrollment_codes`, `lines`, `monitoring_points`, `devices`,
+`measurements`, `heartbeats`, `outages`). `backend/app/core/security.py` — пароли argon2 и JWT
+HS256 на стандартной библиотеке (новых зависимостей нет): access 15 мин, refresh 14 дней в
+httpOnly-cookie с `Path=/api/auth`. `/api/auth/login|refresh|logout|me` реализованы; вход с
+неверным паролем и с неизвестным e-mail отвечает одинаково, блокировка проверяется после
+пароля; `logout` поднимает `users.token_version` и гасит все токены пользователя.
+`backend/app/auth/`: `permissions.py` — матрица «роль → право» (решение по «Открыто» ADR-008,
+по plan.md §9: Область — настройка мониторинга и справочники, Администратор — плюс пользователи,
+устройства, релизы, журналы); `require(permission)` на всех панельных роутерах (чтение — на
+роутере, запись — на эндпоинте), он же переключает сессию запроса в `vko_panel` со scope
+пользователя (`rls.py`, `SET LOCAL`, повтор после commit через `after_begin`); `audit.py` —
+ASGI-middleware пишет успешные изменяющие запросы панели и отказы агенту (`transfer_error`,
+кроме 409), входы пишет сам login. `make seed` создаёт пять dev-пользователей (`Password1`).
+Тесты: `test_auth.py` (вход, cookie, me, блокировка, refresh/logout, `require` для пяти
+ролей, dev-пользователи сида), `test_rls.py` («чужой не видит» по всем девяти таблицам для
+школы, района, провайдера, области, пустого scope; запрос каждой из пяти ролей через
+`require`; запись вне области и DELETE отклоняются), `test_audit.py`. Слияние: 4f7c46e.
+Чек-лист: `make check` зелёный в CI на ветке (workflow_dispatch, run 35308360512): ruff, ruff
+format, mypy (97 файлов), 121 тест pytest на testcontainers с TimescaleDB + PostGIS; check-web
+и check-agent зелёные. Локально — ruff, mypy и тесты без БД: Docker и TimescaleDB на машине
+нет. Контракт не менялся: `docs/reference/openapi.json` совпадает с кодом (тест
+`test_openapi_file_matches_the_code`), `make openapi` не нужен. Diff 2247 строк при цели 400
+(из них ~720 — тесты): задача L по плану режется на три слияния, но сделана одним — по просьбе
+лида к демо; в ветке пять коммитов, строки known-limitations попали в коммит `fix(api)`.
+Тест `test_contract_stub_answers_not_implemented` заменён: без токена заглушка теперь 401, а
+501 после проверки прав — в `test_auth.py`.
+Не сделано: семь строк в docs/known-limitations.md — refresh без серверных сессий (logout на
+всех устройствах), RLS не действует на `m_hourly` / `m_daily`, запись роли с областью только
+под видимого родителя, справочники для фильтров закрыты `references:manage`, IP за Caddy,
+`changes` в аудите пуст до `describe_action`, пересоздание агрегатов при RLS не проверено.
+Пункт «Открыто» ADR-008 остался в тексте ADR: матрица записана здесь и в `permissions.py`,
+правку ADR решает лид.
+Потрачено / Застрял на: ~1 ч. Три прогона CI: `= ANY ((SELECT …))` Postgres читает как
+подзапрос — нужен `::bigint[]`; FastAPI 0.141 не разворачивает вложенные роутеры, у маршрута
+нет префикса `/api` и тегов родителя — аудит берёт путь запроса и модуль эндпоинта.
+
 ### 2026-09-18 · T-19 · Backend: continuous aggregates m_hourly / m_daily
 Сделано: миграции `20260918_0300_measurement_aggregates` и `20260918_0330_aggregates_below_contract`
 — continuous aggregates `m_hourly` и `m_daily` по паре «линия + устройство»: avg/min/max по пяти
