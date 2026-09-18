@@ -38,6 +38,36 @@
 
 ## Записи
 
+### 2026-09-18 · T-21 · Панель: каркас приложения, тема из DESIGN.md, вход по JWT
+Сделано: зависимости панели по ADR-013 (с согласия в сессии) — `antd` 5, `@refinedev/core` 5,
+`@refinedev/antd` 6, `@refinedev/react-router` 2 + `react-router` 7, `@tanstack/react-query`,
+`dayjs`, `lucide-react`. `web/src/styles/tokens.css` и `theme.ts` из шапки `DESIGN.md`, светлая
+и тёмная тема переключаются кнопкой в шапке (`data-theme` на `<html>` + `ConfigProvider`),
+выбор запоминается в `localStorage`, старт — `prefers-color-scheme`; недостающие токены тёмной
+темы решены и записаны в `DESIGN.md` с контрастом ≥ 4.5:1. `web/src/api/` — клиент к `/api`:
+access-токен в памяти, refresh через cookie с одним запросом на пачку 401, ошибки
+problem+json → `ApiError`, snake_case ↔ camelCase. Refine: auth / data / access-control
+провайдеры, девять разделов в `sections.ts` с правами из `GET /api/auth/me` — недоступные роли
+разделы скрыты в навигации и закрыты «Нет доступа» по прямой ссылке. Каркас по `DESIGN.md`
+§2.2: шапка 56px, сайдбар 240/56px (свёрнут при 1024px и уже), «Администрирование» внизу.
+Страница входа §3.26 с ошибкой над кнопкой. `labels.ts` — статусы школы/замера, шесть статусов
+инцидента/обращения в порядке п. 19, роли, разделы; `format.ts` + vitest (дата через полночь в
+Asia/Almaty, числа, длительности). Обёртки `components/ui/`: `Button`, статус-бейджи,
+`PageHeader`, `EmptyState`, `ContentSkeleton`, `ErrorState`. Vite проксирует `/api` на :8000.
+Слияние: fcf7564.
+Чек-лист: `make check` зелёный (agent ok, ruff/mypy чисто, pytest 121 passed, vitest 9 passed,
+build ok); golangci-lint локально не установлен — шаг пропущен, в CI есть. UI проверен в
+headless Chrome против локального API: вход admin и school, неверный пароль, выход,
+перезагрузка с refresh-cookie, 404; проверено в светлой и тёмной теме и на 1280 / 1024px,
+ошибок в консоли нет. Hex и px в компонентах нет. Diff больше 400 строк за счёт
+`package-lock.json`; код ≈ 1100 строк — один каркас, не резался ради скорости перед демо.
+Не сделано: шрифты Inter / JetBrains Mono не подключены; контраст белого текста на светлом
+акценте 2.6:1; нет глобального поиска и колокольчика в шапке, разделы — заглушки; бандл ~1 МБ
+одним чанком; `npm audit` — 3 high в `path-to-regexp` через `@refinedev/antd` — строки (T-21) в
+docs/known-limitations.md.
+Потрачено / Застрял на: ~1,5 ч. Локальная БД была на ревизиях до T-20 — `make migrate` и
+`make seed`; контейнер на :8000 — старый образ api без `/api/auth`, проверка шла на `make api` :8001.
+
 ### 2026-09-18 · T-20 · Backend: пользователи, роли, области видимости, permissions + RLS, аудит
 Сделано: миграции `20260918_1500_users_roles_audit` (таблицы `roles` с пятью ролями ТЗ п. 16,
 `users`, `user_scopes` с ровно одним из `region_id` / `provider_id` / `school_id`, `audit_log`
