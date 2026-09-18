@@ -23,6 +23,7 @@ export type Weekday = Schemas['Weekday']
 export type ExportMode = Schemas['ExportMode']
 export type ExportFormat = Schemas['ExportFormat']
 export type ExportColumn = Schemas['ExportColumn']
+export type ExportStatus = Schemas['ExportStatus']
 /** Column of an aggregates file (T-31): fixed, not chosen, so not in the contract. */
 export type ExportAggregateColumn =
   | 'school_code'
@@ -57,3 +58,4 @@ export type AnalyticsRow = Schema<'AnalyticsRow'>
 /** Body of POST /api/exports: `columns` has a default and is raw only, so it may be left out. */
 export type ExportCreate = Omit<Schema<'ExportCreate'>, 'columns'> & Partial<Pick<Schema<'ExportCreate'>, 'columns'>>
 export type ExportJob = Schema<'ExportJob'>
+export type ExportJobPage = Schema<'ExportJobPage'>

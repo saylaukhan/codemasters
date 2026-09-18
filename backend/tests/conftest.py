@@ -75,3 +75,12 @@ async def api_client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=application)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         yield client
+
+
+@pytest.fixture
+def export_queue(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Exports ``POST /api/exports`` hands to Celery (T-33), instead of Redis: the test builds
+    them itself with ``build_pending_export``, as the worker would."""
+    queued: list[int] = []
+    monkeypatch.setattr("app.api.exports.enqueue_build", queued.append)
+    return queued

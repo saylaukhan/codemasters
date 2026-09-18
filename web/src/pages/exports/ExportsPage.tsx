@@ -4,6 +4,7 @@ import dayjs from 'dayjs'
 import { useMemo, useState, type ReactNode } from 'react'
 
 import type { ExportColumn, ExportFormat, ExportMode, QualityStatus } from '../../api/types'
+import { ExportList } from '../../components/exports/ExportList'
 import styles from '../../components/exports/Exports.module.css'
 import { useBuildExport, useDeviceOptions, useSchoolOptions } from '../../components/exports/queries'
 import {
@@ -69,7 +70,7 @@ function Step({ number, title, children }: { number: number; title: string; chil
 
 /**
  * Export constructor (ТЗ п. 9, DESIGN.md §3.24): raw measurements or the aggregates per school of
- * the scope in XLSX, CSV or JSON.
+ * the scope in XLSX, CSV or JSON; big exports are built in the background and wait in the list below (T-33).
  */
 export function ExportsPage() {
   const [draft, setDraft] = useState(initialDraft)
@@ -103,12 +104,20 @@ export function ExportsPage() {
   }
   const submit = () =>
     build.mutate(exportBody(draft), {
-      onSuccess: (job) =>
-        open?.({
-          type: 'success',
-          message: 'Экспорт готов',
-          description: `Строк в файле: ${formatNumber(job.rowsCount, 0)}`,
-        }),
+      onSuccess: ({ job, saved }) =>
+        open?.(
+          saved
+            ? {
+                type: 'success',
+                message: 'Экспорт готов',
+                description: `Строк в файле: ${formatNumber(job.rowsCount, 0)}`,
+              }
+            : {
+                type: 'success',
+                message: 'Выгрузка готовится в фоне',
+                description: 'Она большая: файл появится в списке «Выгрузки» ниже со ссылкой «Скачать».',
+              },
+        ),
     })
 
   return (
@@ -275,6 +284,9 @@ export function ExportsPage() {
             Сформировать
           </Button>
         </aside>
+      </div>
+      <div className={styles.list}>
+        <ExportList />
       </div>
     </>
   )

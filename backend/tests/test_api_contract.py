@@ -290,7 +290,8 @@ def test_agent_endpoints_declare_the_device_token() -> None:
             assert operation.get("security") == [{"DeviceToken": []}], name
 
 
-# Endpoints of plan.md §10 plus /api/admin/connection-types (T-34) and /api/admin/settings (T-37).
+# Endpoints of plan.md §10 plus /api/admin/connection-types (T-34), /api/admin/settings (T-37)
+# and the list of exports (T-33).
 PLAN_ENDPOINTS = {
     "POST /api/devices/register",
     "POST /api/devices/heartbeat",
@@ -335,6 +336,7 @@ PLAN_ENDPOINTS = {
     "GET /api/admin/thresholds",
     "GET /api/admin/users",
     "GET /api/appeals/{appeal_id}/pdf",
+    "GET /api/exports",
     "GET /api/exports/{export_id}",
     "GET /api/incidents",
     "GET /api/incidents/{incident_id}",

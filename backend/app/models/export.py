@@ -5,7 +5,7 @@ database, not a disk. An export belongs to the user who made it and is served on
 rows inside it were read under his scope (ADR-008).
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import CheckConstraint, ForeignKey, Identity, LargeBinary
@@ -37,3 +37,12 @@ class Export(TimestampMixin, Base):
     content: Mapped[bytes | None] = deferred(mapped_column(LargeBinary))
     error: Mapped[str | None]
     expires_at: Mapped[datetime | None] = mapped_column(index=True)
+
+    # The period of the request in UTC, as the API gives every time; the list shows it (T-33).
+    @property
+    def period_from(self) -> datetime:
+        return datetime.fromisoformat(self.params["period_from"]).astimezone(UTC)
+
+    @property
+    def period_to(self) -> datetime:
+        return datetime.fromisoformat(self.params["period_to"]).astimezone(UTC)

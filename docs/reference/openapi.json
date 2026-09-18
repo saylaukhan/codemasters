@@ -3847,17 +3847,22 @@
           "exports"
         ],
         "summary": "Сформировать выгрузку: режим, формат, период, фильтры, колонки",
-        "description": "Сочетания режима и формата: `raw` — замеры в xlsx, csv или json, фильтры device_ids и statuses, выбор колонок (T-30); `aggregates` — строка на школу в xlsx, csv или json: school_code, school_name, measurements_count, avg_download_mbps, min_download_mbps, avg_upload_mbps, avg_ping_ms, problem_count, problem_pct — по основной линии без Wi‑Fi, как GET /api/analytics (T-31); `school_report` — PDF по одной школе: шапка с School ID и периодом, KPI основной линии без Wi‑Fi, графики по дням, число и суммарная длительность простоев из outages, таблица всех замеров школы со статусами по-русски (T-32). Другие сочетания — 422. Неизвестные или вне области видимости school_ids и device_ids — 422 (ADR-008). До T-33 файл формируется в запросе и выгрузка приходит ready или failed; с T-33 PDF и выгрузки больше порога строк из settings (по умолчанию 10 000) приходят pending и формируются в фоне. Файлы raw: в xlsx и csv — русские заголовки, статусы словами, дата ДД.ММ.ГГГГ и время по settings.timezone (Asia/Almaty); csv — UTF-8 с BOM, разделитель «;», десятичная запятая; в json — коды колонок и значений, дата и время ISO. Строки — по названию школы, затем по времени замера.",
+        "description": "Сочетания режима и формата: `raw` — замеры в xlsx, csv или json, фильтры device_ids и statuses, выбор колонок (T-30); `aggregates` — строка на школу в xlsx, csv или json: school_code, school_name, measurements_count, avg_download_mbps, min_download_mbps, avg_upload_mbps, avg_ping_ms, problem_count, problem_pct — по основной линии без Wi‑Fi, как GET /api/analytics (T-31); `school_report` — PDF по одной школе: шапка с School ID и периодом, KPI основной линии без Wi‑Fi, графики по дням, число и суммарная длительность простоев из outages, таблица всех замеров школы со статусами по-русски (T-32). Другие сочетания — 422. Неизвестные или вне области видимости school_ids и device_ids — 422 (ADR-008). Выгрузка до settings.export_sync_max_rows строк (по умолчанию 10 000) формируется в запросе и приходит ready; PDF и выгрузки больше порога приходят pending и формируются в фоне (T-33), состояние — GET /api/exports/{id} и список GET /api/exports; очередь недоступна — выгрузка приходит failed. Файлы raw: в xlsx и csv — русские заголовки, статусы словами, дата ДД.ММ.ГГГГ и время по settings.timezone (Asia/Almaty); csv — UTF-8 с BOM, разделитель «;», десятичная запятая; в json — коды колонок и значений, дата и время ISO. Строки — по названию школы, затем по времени замера.",
         "operationId": "create_export",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ExportCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -3890,12 +3895,81 @@
               }
             }
           }
-        },
+        }
+      },
+      "get": {
+        "tags": [
+          "exports"
+        ],
+        "summary": "Выгрузки пользователя со статусами, новые сверху",
+        "description": "Только выгрузки текущего пользователя с неистёкшим expires_at: pending — файл готовится в фоне, ready — файл по GET /api/exports/{id}, failed — причина в error. Панель повторяет запрос, пока в списке есть pending (T-33).",
+        "operationId": "list_exports",
         "security": [
           {
             "BearerAuth": []
           }
-        ]
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJobPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/exports/{export_id}": {
@@ -8660,6 +8734,33 @@
           "format": {
             "$ref": "#/components/schemas/ExportFormat"
           },
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From",
+            "description": "Начало периода запроса, включительно"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To",
+            "description": "Конец периода запроса, не включается"
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Name",
+            "description": "Имя файла; null — файл ещё не сформирован",
+            "examples": [
+              "measurements_2026-09-14_2026-09-20.xlsx"
+            ]
+          },
           "rows_count": {
             "anyOf": [
               {
@@ -8713,6 +8814,9 @@
           "status",
           "mode",
           "format",
+          "period_from",
+          "period_to",
+          "file_name",
           "rows_count",
           "created_at",
           "expires_at",
@@ -8720,6 +8824,41 @@
         ],
         "title": "ExportJob",
         "description": "Export and the state of its file; the file itself is ``GET /api/exports/{id}``."
+      },
+      "ExportJobPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExportJob"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "ExportJobPage",
+        "description": "Exports of the user, newest first; expired ones are gone (T-33)."
       },
       "ExportMode": {
         "type": "string",

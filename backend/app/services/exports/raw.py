@@ -12,7 +12,7 @@ from datetime import tzinfo
 from typing import Any
 
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Device, Line, Measurement, MonitoringPoint, School
@@ -47,11 +47,8 @@ async def check_selection(session: AsyncSession, body: ExportCreate) -> None:
             raise invalid_ids("device_ids", "Компьютеры", missing)
 
 
-async def raw_records(
-    session: AsyncSession, body: ExportCreate, zone: tzinfo
-) -> list[dict[str, Any]]:
-    """Every column of every measurement of the selection, keyed by the column codes, as JSON
-    has them: codes, ISO date and time; ordered by school, then time."""
+def raw_query(body: ExportCreate) -> Select[Any]:
+    """Measurements of the selection with their school, computer and room, in file order."""
     query = (
         select(
             School.full_name,
@@ -91,9 +88,22 @@ async def raw_records(
         query = query.where(Measurement.device_id.in_(body.device_ids))
     if body.statuses:
         query = query.where(Measurement.quality_status.in_(body.statuses))
+    return query
 
+
+async def raw_count(session: AsyncSession, body: ExportCreate) -> int:
+    """Rows the raw file of ``body`` would have: what decides between the request and Celery."""
+    rows = raw_query(body).order_by(None).subquery()
+    return await session.scalar(select(func.count()).select_from(rows)) or 0
+
+
+async def raw_records(
+    session: AsyncSession, body: ExportCreate, zone: tzinfo
+) -> list[dict[str, Any]]:
+    """Every column of every measurement of the selection, keyed by the column codes, as JSON
+    has them: codes, ISO date and time; ordered by school, then time."""
     records = []
-    for row in await session.execute(query):
+    for row in await session.execute(raw_query(body)):
         local = row.measured_at.astimezone(zone)
         records.append(
             {

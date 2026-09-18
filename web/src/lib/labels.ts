@@ -8,6 +8,7 @@ import type {
   ExportColumn,
   ExportFormat,
   ExportMode,
+  ExportStatus,
   IfaceType,
   IncidentStatus,
   LineStatus,
@@ -123,6 +124,13 @@ export const EXPORT_MODE_LABELS: Record<ExportMode, string> = {
   raw: 'Сырые данные',
   aggregates: 'Агрегаты по школе',
   school_report: 'PDF-отчёт',
+}
+
+/** State of an export's file (T-33): PDF and big exports are built in the background. */
+export const EXPORT_STATUS_LABELS: Record<ExportStatus, string> = {
+  pending: 'Готовится',
+  ready: 'Готова',
+  failed: 'Ошибка',
 }
 
 export const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
