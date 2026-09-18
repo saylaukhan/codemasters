@@ -114,3 +114,26 @@ aside.card {
 .error {
   margin-bottom: var(--space-3);
 }
+
+/* List of exports under the constructor (T-33). */
+.list {
+  margin-top: var(--space-4);
+}
+
+.number {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.reason {
+  max-width: calc(var(--sider-width) * 1.5);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}

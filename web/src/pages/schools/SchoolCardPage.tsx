@@ -85,7 +85,8 @@ export function SchoolCardPage() {
   const devices = useSchoolDevices(schoolId)
   const contacts = useSchoolContacts(schoolId)
   const { data: permissions } = usePermissions<string[]>({})
-  const report = useBuildExport()
+  // The PDF is built by the worker (T-33): the card waits for it for a minute, then it is in «Экспорт».
+  const report = useBuildExport(60_000)
   const { open } = useNotification()
 
   if (school.isError) {
@@ -185,11 +186,18 @@ export function SchoolCardPage() {
               loading={report.isPending}
               onClick={() =>
                 report.mutate(schoolReportBody(schoolId, period), {
+                  onSuccess: ({ saved }) =>
+                    !saved &&
+                    open?.({
+                      type: 'success',
+                      message: 'Отчёт ещё готовится',
+                      description: 'Скачайте его в разделе «Экспорт», когда он будет готов.',
+                    }),
                   onError: (error) =>
                     open?.({
                       type: 'error',
                       message: 'Отчёт не сформирован',
-                      description: error instanceof ApiError ? (error.detail ?? error.title) : undefined,
+                      description: error instanceof ApiError ? (error.detail ?? error.title) : error.message,
                     }),
                 })
               }
