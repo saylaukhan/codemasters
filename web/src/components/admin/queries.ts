@@ -6,18 +6,21 @@ import {
   createRegion,
   createSchedule,
   createThresholdProfile,
+  createUser,
   getConnectionTypes,
   getProviders,
   getRegions,
   getSchedules,
   getSettings,
   getThresholdProfiles,
+  getUsers,
   updateConnectionType,
   updateProvider,
   updateRegion,
   updateSchedule,
   updateSettings,
   updateThresholdProfile,
+  updateUser,
 } from '../../api/admin'
 import {
   blockDevice,
@@ -47,6 +50,8 @@ import type {
   MonitoringPointUpdate,
   SchoolContactCreate,
   SchoolContactUpdate,
+  UserCreate,
+  UserUpdate,
 } from '../../api/types'
 import { deviceStatusOf, schoolOption } from './devices'
 import type { AdminListView } from './useAdminListView'
@@ -251,3 +256,21 @@ export const useSchoolLineOptions = (schoolId: number | undefined) =>
     enabled: schoolId !== undefined,
     select: (page) => page.items,
   })
+
+// Users (T-38): only the list of the administration shows them.
+export const useUsers = (view: AdminListView) =>
+  useQuery({
+    queryKey: ['admin', 'users', view],
+    queryFn: ({ signal }) => getUsers({ ...listQuery(view), isActive: view.isActive }, signal),
+    placeholderData: keepPreviousData,
+  })
+
+/** New user, a change of one, a block or an unblock, a new password: each is a POST or a PATCH. */
+export const useSaveUser = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (save: Save<UserCreate, UserUpdate>) =>
+      save.id === undefined ? createUser(save.body) : updateUser(save.id, save.body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }),
+  })
+}

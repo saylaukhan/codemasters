@@ -26,6 +26,7 @@ const CONFLICTS: Record<string, { field: string; message: string }> = {
   region_code_taken: { field: 'code', message: 'Район или город с таким кодом уже есть' },
   connection_type_code_taken: { field: 'code', message: 'Тип подключения с таким кодом уже есть' },
   main_line_exists: { field: 'status', message: 'У школы уже есть основная линия' },
+  email_taken: { field: 'email', message: 'Этот e-mail уже занят другим пользователем' },
 }
 
 /** Field of the form for a field path of the API: `school_code` → `schoolCode`, `location.lat` → `lat`. */

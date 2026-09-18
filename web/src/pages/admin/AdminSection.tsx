@@ -16,10 +16,12 @@ import { SchedulesPage } from './SchedulesPage'
 import { SchoolsAdminPage } from './SchoolsAdminPage'
 import { SettingsPage } from './SettingsPage'
 import { ThresholdsPage } from './ThresholdsPage'
+import { UsersPage } from './UsersPage'
 
 const PAGES: Record<AdminTabKey, ComponentType> = {
   schools: SchoolsAdminPage,
   devices: DevicesAdminPage,
+  users: UsersPage,
   regions: RegionsPage,
   providers: ProvidersPage,
   'connection-types': ConnectionTypesPage,

@@ -5,6 +5,7 @@ import {
   INCIDENT_STATUS_LABELS,
   SCHOOL_ACTIVITY_LABELS,
   SCHOOL_STATUS_LABELS,
+  USER_STATUS_LABELS,
   type SchoolActivity,
 } from '../../lib/labels'
 import styles from './StatusBadge.module.css'
@@ -52,6 +53,15 @@ export function DeviceStatusBadge({ status }: { status: DeviceStatus }) {
   return (
     <span className={styles.badge} data-activity={status === 'active' ? 'active' : 'disabled'}>
       {DEVICE_STATUS_LABELS[status]}
+    </span>
+  )
+}
+
+/** Status of a panel user (T-38): colours of an active or a disabled school, blocked is grey. */
+export function UserStatusBadge({ active }: { active: boolean }) {
+  return (
+    <span className={styles.badge} data-activity={active ? 'active' : 'disabled'}>
+      {USER_STATUS_LABELS[active ? 'active' : 'blocked']}
     </span>
   )
 }

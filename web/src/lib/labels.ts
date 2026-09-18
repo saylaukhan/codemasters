@@ -73,7 +73,18 @@ export const DEVICE_STATUS_LABELS: Record<DeviceStatus, string> = {
   blocked: 'Заблокировано',
 }
 
-/** Filter of the devices in the administration by status (T-36). */
+/** A user is blocked, never deleted: his actions stay in the audit log (ТЗ п. 16, T-38). */
+export const USER_STATUS_LABELS = {
+  active: 'Активен',
+  blocked: 'Заблокирован',
+} as const
+
+export type UserStatus = keyof typeof USER_STATUS_LABELS
+
+/** Scope of Область and Администратор: no district, provider or school of their own (ADR-008). */
+export const WHOLE_OBLAST_SCOPE_LABEL = 'Вся область'
+
+/** Filter of the devices and of the users in the administration by status (T-36, T-38). */
 export const DEVICE_STATUS_FILTER_LABELS = {
   all: 'Все',
   active: 'Активные',
@@ -214,6 +225,7 @@ export type SectionKey = keyof typeof SECTION_LABELS
 export const ADMIN_TAB_LABELS = {
   schools: 'Школы',
   devices: 'Устройства',
+  users: 'Пользователи',
   regions: 'Районы и города',
   providers: 'Поставщики',
   'connection-types': 'Типы подключения',

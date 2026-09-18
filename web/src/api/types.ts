@@ -105,3 +105,8 @@ export type ScheduleCreate = Schema<'ScheduleCreate'>
 export type ScheduleUpdate = Schema<'ScheduleUpdate'>
 export type SettingsDetail = Schema<'SettingsDetail'>
 export type SettingsUpdate = Schema<'SettingsUpdate'>
+
+// Users of the administration (T-38): a role with its scope, blocked instead of deleted.
+export type UserDetail = Schema<'UserDetail'>
+export type UserCreate = Schema<'UserCreate'>
+export type UserUpdate = Schema<'UserUpdate'>
