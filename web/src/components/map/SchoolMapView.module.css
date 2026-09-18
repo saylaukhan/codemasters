@@ -1,0 +1,11 @@
+/* Loading block of the map (DESIGN.md §3.21): the shape of the map in --bg-subtle, no spinner. */
+.skeleton {
+  border-radius: var(--radius-card);
+  background: var(--bg-subtle);
+}
+
+.empty {
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+}

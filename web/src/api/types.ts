@@ -14,3 +14,9 @@ export type SchoolStatus = Schemas['SchoolStatus']
 export type QualityStatus = Schemas['QualityStatus']
 export type IncidentStatus = Schemas['IncidentStatus']
 export type UserRole = Schemas['UserRole']
+
+export type DashboardSummary = Schema<'DashboardSummary'>
+export type SchoolMapCollection = Schema<'SchoolMapFeatureCollection'>
+export type SchoolMapFeature = Schema<'SchoolMapFeature'>
+export type RegionMapCollection = Schema<'RegionMapFeatureCollection'>
+export type MapFilterOptions = Schema<'MapFilterOptions'>

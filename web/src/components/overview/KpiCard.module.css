@@ -1,0 +1,42 @@
+/* KPI card, DESIGN.md §3.10: surface, 1px border, radius 12, padding 16, no shadow. */
+.card {
+  min-width: 0;
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+}
+
+.label {
+  margin: 0 0 var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.number {
+  color: var(--text-primary);
+  font-size: var(--font-size-kpi);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.unit {
+  color: var(--text-secondary);
+  font-size: var(--font-size-md);
+}
+
+.skeleton {
+  height: calc(var(--font-size-kpi) * 1.2);
+}

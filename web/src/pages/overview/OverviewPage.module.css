@@ -1,0 +1,7 @@
+.map {
+  height: 60vh;
+}
+
+.error {
+  margin-bottom: var(--space-4);
+}

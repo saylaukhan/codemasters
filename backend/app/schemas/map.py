@@ -1,4 +1,4 @@
-"""Schools on the VKO map: a GeoJSON FeatureCollection (RFC 7946, ТЗ п. 13, T-22, T-23).
+"""Schools and district boundaries on the VKO map as GeoJSON (RFC 7946, ТЗ п. 13, T-22, T-23).
 
 ``properties`` are flat, in the order of the popover fields of ТЗ п. 13: MapLibre turns nested
 objects of feature properties into strings. No personal data here (ADR-003).
@@ -9,6 +9,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.references import GeoJsonMultiPolygon
 from app.schemas.statuses import SchoolStatus
 
 
@@ -60,3 +61,44 @@ class SchoolMapFeatureCollection(BaseModel):
 
     type: Literal["FeatureCollection"]
     features: list[SchoolMapFeature]
+
+
+class RegionMapProperties(BaseModel):
+    """District or city of VKO under its boundary."""
+
+    code: str
+    name: str = Field(description="Район/город")
+
+
+class RegionMapFeature(BaseModel):
+    """Boundary of one district or city; ``id`` is ``regions.id``, the value of ``region_id``."""
+
+    type: Literal["Feature"]
+    id: int
+    geometry: GeoJsonMultiPolygon | None = Field(description="null — граница не загружена")
+    properties: RegionMapProperties
+
+
+class RegionMapFeatureCollection(BaseModel):
+    """Every district and city of VKO: the boundaries are a reference, not a scoped record."""
+
+    type: Literal["FeatureCollection"]
+    features: list[RegionMapFeature]
+
+
+class MapFilterOption(BaseModel):
+    """One value of a filter: the id goes into the query, the name into the panel."""
+
+    id: int
+    name: str
+
+
+class MapFilterOptions(BaseModel):
+    """Values of the filters of the map and the overview, limited to the user's scope (ADR-008).
+
+    Districts of the visible schools; providers and connection types of the visible lines.
+    """
+
+    regions: list[MapFilterOption]
+    providers: list[MapFilterOption]
+    connection_types: list[MapFilterOption]

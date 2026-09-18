@@ -1183,6 +1183,80 @@
         }
       }
     },
+    "/api/map/regions": {
+      "get": {
+        "tags": [
+          "map"
+        ],
+        "summary": "Границы районов и городов ВКО: GeoJSON",
+        "description": "GeoJSON FeatureCollection всех районов и городов ВКО, по названию; id — значение фильтра region_id. Граница — справочник, не ограничивается областью видимости.",
+        "operationId": "get_region_boundaries",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionMapFeatureCollection"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/map/filters": {
+      "get": {
+        "tags": [
+          "map"
+        ],
+        "summary": "Значения фильтров карты и сводки",
+        "description": "Районы видимых школ, провайдеры и типы подключения видимых линий, по названию: роль видит только то, что входит в её область видимости.",
+        "operationId": "get_filter_options",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapFilterOptions"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/schools": {
       "get": {
         "tags": [
@@ -10324,6 +10398,58 @@
         "title": "LoginRequest",
         "description": "Panel sign-in; the password never shows up in logs or reprs (``SecretStr``)."
       },
+      "MapFilterOption": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "MapFilterOption",
+        "description": "One value of a filter: the id goes into the query, the name into the panel."
+      },
+      "MapFilterOptions": {
+        "properties": {
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/MapFilterOption"
+            },
+            "type": "array",
+            "title": "Regions"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/MapFilterOption"
+            },
+            "type": "array",
+            "title": "Providers"
+          },
+          "connection_types": {
+            "items": {
+              "$ref": "#/components/schemas/MapFilterOption"
+            },
+            "type": "array",
+            "title": "Connection Types"
+          }
+        },
+        "type": "object",
+        "required": [
+          "regions",
+          "providers",
+          "connection_types"
+        ],
+        "title": "MapFilterOptions",
+        "description": "Values of the filters of the map and the overview, limited to the user's scope (ADR-008).\n\nDistricts of the visible schools; providers and connection types of the visible lines."
+      },
       "MeasurementAccepted": {
         "properties": {
           "measurement_uuid": {
@@ -11177,6 +11303,85 @@
         ],
         "title": "RegionListItemPage",
         "description": "Page of the regions, by name."
+      },
+      "RegionMapFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "geometry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeoJsonMultiPolygon"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null — граница не загружена"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/RegionMapProperties"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "geometry",
+          "properties"
+        ],
+        "title": "RegionMapFeature",
+        "description": "Boundary of one district or city; ``id`` is ``regions.id``, the value of ``region_id``."
+      },
+      "RegionMapFeatureCollection": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/RegionMapFeature"
+            },
+            "type": "array",
+            "title": "Features"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "features"
+        ],
+        "title": "RegionMapFeatureCollection",
+        "description": "Every district and city of VKO: the boundaries are a reference, not a scoped record."
+      },
+      "RegionMapProperties": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Район/город"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "RegionMapProperties",
+        "description": "District or city of VKO under its boundary."
       },
       "RegionUpdate": {
         "properties": {

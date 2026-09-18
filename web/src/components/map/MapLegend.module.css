@@ -1,0 +1,70 @@
+/* Legend, DESIGN.md §3.13: a card at the bottom left, 12px text, dot + caption + count. */
+.legend {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2);
+  list-style: none;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--control-height-s);
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background var(--motion-duration) var(--motion-easing);
+}
+
+.item:hover {
+  background: var(--bg-subtle);
+}
+
+/* A hidden status stays in the legend, greyed out, so it can be switched back on. */
+.item[aria-pressed='false'] {
+  color: var(--text-muted);
+}
+
+.item[aria-pressed='false'] .dot {
+  opacity: 0.4;
+}
+
+.dot {
+  flex: none;
+  width: var(--badge-dot);
+  height: var(--badge-dot);
+  border-radius: 50%;
+  background: var(--legend-main);
+}
+
+.item[data-status='normal'] {
+  --legend-main: var(--status-normal-main);
+}
+.item[data-status='unstable'] {
+  --legend-main: var(--status-unstable-main);
+}
+.item[data-status='critical'] {
+  --legend-main: var(--status-critical-main);
+}
+.item[data-status='offline'] {
+  --legend-main: var(--status-offline-main);
+}
+.item[data-status='no_data'] {
+  --legend-main: var(--status-no-data-main);
+}

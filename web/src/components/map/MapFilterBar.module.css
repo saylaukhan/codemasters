@@ -1,0 +1,28 @@
+/* Filter bar, DESIGN.md §3.9: selects of size M in a row, 8px apart, «Сбросить» on the right. */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.filter {
+  min-width: calc(var(--sider-width) * 0.7);
+  max-width: var(--sider-width);
+}
+
+/* The active filter is highlighted: --bg-selected with --accent-pressed text. */
+.bar .filter.active:global(.ant-picker),
+.bar .filter.active :global(.ant-select-selector) {
+  background: var(--bg-selected);
+}
+
+.bar .filter.active :global(.ant-select-selection-item),
+.bar .filter.active :global(.ant-picker-input > input) {
+  color: var(--accent-pressed);
+}
+
+.reset {
+  margin-left: auto;
+}
