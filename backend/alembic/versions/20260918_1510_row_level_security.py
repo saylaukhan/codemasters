@@ -8,7 +8,7 @@ points, devices and measurements, and the schools those lines serve (ТЗ п. 16
 
 The id lists are computed by SECURITY DEFINER functions: they read ``schools`` and ``lines``
 as the owner, so a policy never recurses into another policy. Policies call them through a
-sub-select, which PostgreSQL evaluates once per query, not once per row.
+sub-select, which PostgreSQL evaluates once per query (an InitPlan), not once per row.
 
 ``vko_panel`` gets SELECT, INSERT and UPDATE, never DELETE: the panel blocks and deactivates,
 it does not delete (ТЗ п. 16, п. 20). The role is cluster-wide, so it is created only once.
@@ -32,9 +32,10 @@ depends_on: str | Sequence[str] | None = None
 PANEL_ROLE = "vko_panel"
 
 # Visible when the scope is the whole oblast or the column is in the list of the scope.
-SCHOOLS = "(SELECT rls_school_ids())"
-LINES = "(SELECT rls_line_ids())"
-DEVICES = "(SELECT rls_device_ids())"
+# The cast makes the sub-select an array expression: bare, ANY would read it as a sub-query.
+SCHOOLS = "(SELECT rls_school_ids())::bigint[]"
+LINES = "(SELECT rls_line_ids())::bigint[]"
+DEVICES = "(SELECT rls_device_ids())::bigint[]"
 POLICIES = {
     "schools": ("id", SCHOOLS),
     "school_contacts": ("school_id", SCHOOLS),
@@ -81,7 +82,9 @@ FUNCTIONS = (
         SELECT CASE split_part(rls_scope(), ':', 1)
             WHEN 'provider' THEN ARRAY(
                 SELECT id FROM lines WHERE provider_id = rls_scope_id('provider'))
-            ELSE ARRAY(SELECT id FROM lines WHERE school_id = ANY (rls_school_ids()))
+            ELSE ARRAY(
+                SELECT id FROM lines
+                WHERE school_id = ANY ((SELECT rls_school_ids())::bigint[]))
         END
     $$
     """,
@@ -91,7 +94,7 @@ FUNCTIONS = (
         SELECT ARRAY(
             SELECT d.id FROM devices d
             JOIN monitoring_points p ON p.id = d.monitoring_point_id
-            WHERE p.line_id = ANY (rls_line_ids()))
+            WHERE p.line_id = ANY ((SELECT rls_line_ids())::bigint[]))
     $$
     """,
 )
