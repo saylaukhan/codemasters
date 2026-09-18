@@ -12,6 +12,9 @@ import { LineDrawer } from '../../components/admin/LineDrawer'
 import { PointDrawer } from '../../components/admin/PointDrawer'
 import { useDrawer } from '../../components/admin/useDrawer'
 import { useBuildExport } from '../../components/exports/queries'
+import { IncidentCreateDrawer } from '../../components/incidents/IncidentCreateDrawer'
+import { SchoolIncidents } from '../../components/incidents/SchoolIncidents'
+import { CREATE_PERMISSION } from '../../components/incidents/transitions'
 import { ContactList } from '../../components/schools/ContactList'
 import { ContractFact } from '../../components/schools/ContractFact'
 import { DeviceTable } from '../../components/schools/DeviceTable'
@@ -110,9 +113,12 @@ export function SchoolCardPage() {
   const canEdit = permissions?.includes('schools:write') ?? false
   // Администратор issues installation codes of the agent (T-36, plan.md §4.1).
   const canManageDevices = permissions?.includes('devices:manage') ?? false
+  // Район/город, Область and Администратор open an incident by hand when people notice a problem (T-41).
+  const canCreateIncident = permissions?.includes(CREATE_PERMISSION) ?? false
   const lineDrawer = useDrawer<LineDetail>()
   const pointDrawer = useDrawer<MonitoringPointDetail>()
   const contactDrawer = useDrawer<SchoolContactDetail>()
+  const incidentDrawer = useDrawer()
   // The PDF is built by the worker (T-33): the card waits for it for a minute, then it is in «Экспорт».
   const report = useBuildExport(60_000)
   const { open } = useNotification()
@@ -327,7 +333,24 @@ export function SchoolCardPage() {
               </>
             ),
           },
-          { key: 'incidents', label: 'Инциденты', children: upcoming('Инциденты школы') },
+          {
+            key: 'incidents',
+            label: 'Инциденты',
+            children: (
+              <>
+                {canCreateIncident && (
+                  <div className={styles.toolbar}>
+                    {addButton(
+                      'Создать инцидент',
+                      () => incidentDrawer.show(),
+                      !lines.data?.items.some((line) => line.status !== 'disabled'),
+                    )}
+                  </div>
+                )}
+                <SchoolIncidents schoolId={schoolId} />
+              </>
+            ),
+          },
           { key: 'appeals', label: 'Обращения', children: upcoming('Обращения школы') },
           {
             key: 'contacts',
@@ -358,6 +381,14 @@ export function SchoolCardPage() {
           },
         ]}
       />
+      {canCreateIncident && (
+        <IncidentCreateDrawer
+          key={`incident-${incidentDrawer.key}`}
+          open={incidentDrawer.open}
+          lines={lines.data?.items ?? []}
+          onClose={incidentDrawer.close}
+        />
+      )}
       {canEdit && (
         <>
           <LineDrawer

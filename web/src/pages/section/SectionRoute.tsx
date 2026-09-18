@@ -17,6 +17,7 @@ const PAGES: Partial<Record<SectionKey, ComponentType>> = {
   schools: lazy(() => import('../schools/SchoolsSection').then((page) => ({ default: page.SchoolsSection }))),
   devices: lazy(() => import('../devices/DevicesSection').then((page) => ({ default: page.DevicesSection }))),
   analytics: lazy(() => import('../analytics/AnalyticsPage').then((page) => ({ default: page.AnalyticsPage }))),
+  incidents: lazy(() => import('../incidents/IncidentsSection').then((page) => ({ default: page.IncidentsSection }))),
   exports: lazy(() => import('../exports/ExportsPage').then((page) => ({ default: page.ExportsPage }))),
   admin: lazy(() => import('../admin/AdminSection').then((page) => ({ default: page.AdminSection }))),
 }

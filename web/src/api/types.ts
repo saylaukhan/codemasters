@@ -112,6 +112,17 @@ export type IncidentRuleDetail = Schema<'IncidentRuleDetail'>
 export type IncidentRuleCreate = Schema<'IncidentRuleCreate'>
 export type IncidentRuleUpdate = Schema<'IncidentRuleUpdate'>
 
+// Incidents (T-41): the list, the card with its history, manual creation from the school card, status changes.
+export type IncidentListItem = Schema<'IncidentListItem'>
+export type IncidentDetail = Schema<'IncidentDetail'>
+export type IncidentBasisMetric = Schema<'IncidentBasisMetric'>
+export type IncidentEventDetail = Schema<'IncidentEventDetail'>
+export type IncidentEventKind = Schemas['IncidentEventKind']
+export type IncidentCreate = Schema<'IncidentCreate'>
+export type IncidentUpdate = Schema<'IncidentUpdate'>
+export type IncidentStatusChange = Schema<'IncidentStatusChange'>
+export type IncidentCommentCreate = Schema<'IncidentCommentCreate'>
+
 // Users of the administration (T-38): a role with its scope, blocked instead of deleted.
 export type UserDetail = Schema<'UserDetail'>
 export type UserCreate = Schema<'UserCreate'>
