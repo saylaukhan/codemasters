@@ -60,5 +60,8 @@ export const schoolCardPath = (schoolId: number): string => `/schools/${schoolId
 /** Card of one computer (T-26): the computers of the school card lead here. */
 export const deviceCardPath = (deviceId: number): string => `/devices/${deviceId}`
 
+/** Card of one incident (T-41): the list, the school card and notifications lead here. */
+export const incidentCardPath = (incidentId: number): string => `/incidents/${incidentId}`
+
 /** Tab of «Администрирование» (T-34): schools and the references, each at its own address. */
 export const adminTabPath = (tab: AdminTabKey): string => `/admin/${tab}`

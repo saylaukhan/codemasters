@@ -1,11 +1,13 @@
-"""Incident detection (T-40, ADR-007): after each measurement of a line and every 5 minutes.
+"""Incident detection (T-40, ADR-007): after each measurement of a line and every 5 minutes;
+the auto-close of resolved incidents (T-41) every 15 minutes.
 
 The rules and the hysteresis live in ``app/services/incidents.py``; the tasks only run them and
 commit. ``incidents.detect_line`` is queued by the agent API once new measurements of a line are
 stored; beat runs ``incidents.detect_all`` over every watched line, which also catches the
 silence of the heartbeat and any measurement whose task was lost. Each line is committed on its
-own: a failure on one line does not hold back the others. Celery runs as the owner of the
-tables, outside any scope (ADR-008).
+own: a failure on one line does not hold back the others. ``incidents.close_resolved`` closes
+the incidents «Устранён» for 24 hours (``app/services/incident_card.py``). Celery runs as the
+owner of the tables, outside any scope (ADR-008).
 """
 
 import asyncio
@@ -16,11 +18,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
+from app.services.incident_card import close_resolved
 from app.services.incidents import Detection, detect_line, detection_line_ids
 from app.workers.celery_app import celery_app
 
 DETECT_LINE = "incidents.detect_line"
 DETECT_ALL = "incidents.detect_all"
+CLOSE_RESOLVED = "incidents.close_resolved"
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +61,17 @@ async def detect_every() -> Detection:
         await engine.dispose()
 
 
+async def close_every() -> list[int]:
+    engine = create_async_engine(get_settings().database_url, poolclass=NullPool)
+    try:
+        async with AsyncSession(engine) as session:
+            closed = await close_resolved(session, now=datetime.now(UTC))
+            await session.commit()
+            return closed
+    finally:
+        await engine.dispose()
+
+
 def summary(detection: Detection) -> dict[str, int]:
     return {
         "opened": len(detection.opened),
@@ -75,3 +90,9 @@ def detect_line_task(line_id: int) -> dict[str, int]:
 def detect_all_task() -> dict[str, int]:
     """How many incidents of all lines were opened, moved on and restored."""
     return summary(asyncio.run(detect_every()))
+
+
+@celery_app.task(name=CLOSE_RESOLVED)
+def close_resolved_task() -> dict[str, int]:
+    """How many incidents «Устранён» for 24 hours were closed."""
+    return {"closed": len(asyncio.run(close_every()))}

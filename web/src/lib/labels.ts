@@ -12,6 +12,7 @@ import type {
   ExportMode,
   ExportStatus,
   IfaceType,
+  IncidentEventKind,
   IncidentMetric,
   IncidentStatus,
   LineStatus,
@@ -59,6 +60,17 @@ export const INCIDENT_STATUS_ORDER: readonly IncidentStatus[] = [
   'resolved',
   'closed',
 ]
+
+/** Entry of the incident history (`incident_events`, ADR-007); a status change is written «Статус: A → B». */
+export const INCIDENT_EVENT_LABELS: Record<IncidentEventKind, string> = {
+  created: 'Инцидент создан',
+  status_change: 'Статус',
+  comment: 'Комментарий',
+  restored: 'Показатели восстановлены',
+}
+
+/** Author of an entry without a person: the detection of T-40 or the automatic closing after 24 h. */
+export const SYSTEM_AUTHOR_LABEL = 'Система'
 
 /** Appeals go through the same six statuses as incidents (ADR-011). */
 export const APPEAL_STATUS_LABELS: Record<IncidentStatus, string> = INCIDENT_STATUS_LABELS
