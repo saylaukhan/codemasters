@@ -220,25 +220,21 @@ async def school_devices(
     )
 
 
-async def school_lines(
-    session: AsyncSession, school_id: int, params: PageParams, *, now: datetime
-) -> LineDetailPage:
-    """Lines of the school with their provider, contract and current quality (ТЗ п. 10, п. 14)."""
-    await ensure_school(session, school_id)
-    settings = await system_settings(session)
-    query = (
+def line_rows() -> Select[Any]:
+    """Rows of ``Line, provider_name, type_name`` for ``line_details``."""
+    return (
         select(Line, Provider.name.label("provider_name"), ConnectionType.name.label("type_name"))
         .join(Provider, Provider.id == Line.provider_id)
         .outerjoin(ConnectionType, ConnectionType.id == Line.connection_type_id)
-        .where(Line.school_id == school_id)
     )
-    total = await session.scalar(select(func.count()).select_from(query.subquery())) or 0
-    rows = (
-        await session.execute(
-            query.order_by(LINE_ORDER, Line.id).offset(params.offset).limit(params.page_size)
-        )
-    ).all()
 
+
+async def line_details(
+    session: AsyncSession, rows: Sequence[Any], *, now: datetime
+) -> list[LineDetail]:
+    """Rows of ``line_rows`` with the current quality of each line; shared by the card and the
+    administration of lines (T-35)."""
+    settings = await system_settings(session)
     # Quality of a line: the rule of the school status over its last Ethernet measurements.
     latest = (
         select(Measurement.measured_at, Measurement.quality_status)
@@ -292,11 +288,39 @@ async def school_lines(
             }
         )
 
+    return [detail(row) for row in rows]
+
+
+async def school_lines(
+    session: AsyncSession, school_id: int, params: PageParams, *, now: datetime
+) -> LineDetailPage:
+    """Lines of the school with their provider, contract and current quality (ТЗ п. 10, п. 14)."""
+    await ensure_school(session, school_id)
+    query = line_rows().where(Line.school_id == school_id)
+    total = await session.scalar(select(func.count()).select_from(query.subquery())) or 0
+    rows = (
+        await session.execute(
+            query.order_by(LINE_ORDER, Line.id).offset(params.offset).limit(params.page_size)
+        )
+    ).all()
     return LineDetailPage(
-        items=[detail(row) for row in rows],
+        items=await line_details(session, rows, now=now),
         total=total,
         page=params.page,
         page_size=params.page_size,
+    )
+
+
+def contact_detail(contact: SchoolContact, *, show_phone: bool) -> SchoolContactDetail:
+    return SchoolContactDetail(
+        id=contact.id,
+        school_id=contact.school_id,
+        full_name=contact.full_name,
+        position=contact.position,
+        phone=contact.phone if show_phone else None,
+        email=contact.email,
+        provider_support_contact=contact.provider_support_contact,
+        updated_at=contact.updated_at,
     )
 
 
@@ -311,19 +335,7 @@ async def school_contacts(
         query.order_by(SchoolContact.id).offset(params.offset).limit(params.page_size)
     )
     return SchoolContactDetailPage(
-        items=[
-            SchoolContactDetail(
-                id=contact.id,
-                school_id=contact.school_id,
-                full_name=contact.full_name,
-                position=contact.position,
-                phone=contact.phone if show_phone else None,
-                email=contact.email,
-                provider_support_contact=contact.provider_support_contact,
-                updated_at=contact.updated_at,
-            )
-            for contact in contacts
-        ],
+        items=[contact_detail(contact, show_phone=show_phone) for contact in contacts],
         total=total,
         page=params.page,
         page_size=params.page_size,

@@ -2,7 +2,14 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 import { getAnalytics } from '../../api/analytics'
 import { ApiError } from '../../api/client'
-import { getSchool, getSchoolContacts, getSchoolDevices, getSchoolLines, getSchools } from '../../api/schools'
+import {
+  getSchool,
+  getSchoolContacts,
+  getSchoolDevices,
+  getSchoolLines,
+  getSchoolPoints,
+  getSchools,
+} from '../../api/schools'
 import type { AnalyticsPeriod, SchoolSort } from '../../api/types'
 import { filtersQuery, type MapFilters } from '../map/filters'
 import { REFRESH_MS } from '../map/queries'
@@ -45,6 +52,13 @@ export const useSchoolLines = (schoolId: number) =>
   useQuery({
     queryKey: ['schools', schoolId, 'lines'],
     queryFn: ({ signal }) => getSchoolLines(schoolId, signal),
+    retry: retryUnlessMissing,
+  })
+
+export const useSchoolPoints = (schoolId: number) =>
+  useQuery({
+    queryKey: ['schools', schoolId, 'points'],
+    queryFn: ({ signal }) => getSchoolPoints(schoolId, signal),
     retry: retryUnlessMissing,
   })
 

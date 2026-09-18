@@ -1,23 +1,29 @@
 import { useNotification, usePermissions } from '@refinedev/core'
 import { Alert, Segmented, Tabs } from 'antd'
-import { Construction, FileDown, SearchX } from 'lucide-react'
+import { Construction, FileDown, Plus, SearchX } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useParams, useSearchParams } from 'react-router'
 
 import { ApiError } from '../../api/client'
-import type { AnalyticsPeriod } from '../../api/types'
+import type { AnalyticsPeriod, LineDetail, MonitoringPointDetail, SchoolContactDetail } from '../../api/types'
+import { ContactDrawer } from '../../components/admin/ContactDrawer'
+import { LineDrawer } from '../../components/admin/LineDrawer'
+import { PointDrawer } from '../../components/admin/PointDrawer'
+import { useDrawer } from '../../components/admin/useDrawer'
 import { useBuildExport } from '../../components/exports/queries'
 import { ContactList } from '../../components/schools/ContactList'
 import { ContractFact } from '../../components/schools/ContractFact'
 import { DeviceTable } from '../../components/schools/DeviceTable'
 import { problemHeatmap } from '../../components/schools/heatmap'
 import { LineTable } from '../../components/schools/LineTable'
+import { PointTable } from '../../components/schools/PointTable'
 import {
   useSchool,
   useSchoolAnalytics,
   useSchoolContacts,
   useSchoolDevices,
   useSchoolLines,
+  useSchoolPoints,
 } from '../../components/schools/queries'
 import { schoolReportBody } from '../../components/schools/report'
 import styles from '../../components/schools/SchoolCard.module.css'
@@ -32,6 +38,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { ConnectionStatusBadge } from '../../components/ui/StatusBadge'
 import { formatDateTime } from '../../lib/format'
 import { IFACE_LABELS, PERIOD_LABELS, SECTION_LABELS } from '../../lib/labels'
+import { SIZES } from '../../styles/theme'
 
 type Period = keyof typeof PERIOD_LABELS
 
@@ -54,6 +61,18 @@ function TabState<T>({
   if (query.isPending || query.data === undefined) return <ContentSkeleton />
   return empty(query.data) ?? children(query.data)
 }
+
+/** Outlined «Добавить …» of a tab (DESIGN.md §1, rule 2): the Action of the card is in its header. */
+const addButton = (label: string, onClick: () => void, disabled = false) => (
+  <Button
+    kind="outlined"
+    icon={<Plus size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} aria-hidden />}
+    disabled={disabled}
+    onClick={onClick}
+  >
+    {label}
+  </Button>
+)
 
 const upcoming = (title: string) => (
   <EmptyState
@@ -84,7 +103,13 @@ export function SchoolCardPage() {
   const lines = useSchoolLines(schoolId)
   const devices = useSchoolDevices(schoolId)
   const contacts = useSchoolContacts(schoolId)
+  const points = useSchoolPoints(schoolId)
   const { data: permissions } = usePermissions<string[]>({})
+  // Область and Администратор set up the lines, points and contacts right in the card (T-35).
+  const canEdit = permissions?.includes('schools:write') ?? false
+  const lineDrawer = useDrawer<LineDetail>()
+  const pointDrawer = useDrawer<MonitoringPointDetail>()
+  const contactDrawer = useDrawer<SchoolContactDetail>()
   // The PDF is built by the worker (T-33): the card waits for it for a minute, then it is in «Экспорт».
   const report = useBuildExport(60_000)
   const { open } = useNotification()
@@ -241,14 +266,39 @@ export function SchoolCardPage() {
             key: 'lines',
             label: 'Линии и договор',
             children: (
-              <TabState
-                query={lines}
-                empty={(data) =>
-                  data.items.length ? null : <EmptyState title="Линий нет" description="Линии заводятся в админке." />
-                }
-              >
-                {(data) => <LineTable items={data.items} />}
-              </TabState>
+              <>
+                {canEdit && <div className={styles.toolbar}>{addButton('Добавить линию', () => lineDrawer.show())}</div>}
+                <TabState
+                  query={lines}
+                  empty={(data) =>
+                    data.items.length ? null : (
+                      <EmptyState
+                        title="Линий нет"
+                        description={canEdit ? 'Добавьте основную линию школы.' : 'Линии заводит администратор.'}
+                      />
+                    )
+                  }
+                >
+                  {(data) => <LineTable items={data.items} onEdit={canEdit ? lineDrawer.show : undefined} />}
+                </TabState>
+                <div className={styles.section}>
+                  <h3 className={styles.sectionTitle}>Точки мониторинга</h3>
+                  {canEdit && addButton('Добавить точку', () => pointDrawer.show(), !lines.data?.items.length)}
+                </div>
+                <TabState
+                  query={points}
+                  empty={(data) =>
+                    data.items.length ? null : (
+                      <EmptyState
+                        title="Точек мониторинга нет"
+                        description="Без точки агент не сможет зарегистрироваться на ПК школы."
+                      />
+                    )
+                  }
+                >
+                  {(data) => <PointTable items={data.items} onEdit={canEdit ? pointDrawer.show : undefined} />}
+                </TabState>
+              </>
             ),
           },
           {
@@ -273,22 +323,58 @@ export function SchoolCardPage() {
             key: 'contacts',
             label: 'Контакты',
             children: (
-              <TabState
-                query={contacts}
-                empty={(data) =>
-                  data.items.length ? null : (
-                    <EmptyState title="Контактов нет" description="Ответственный за связь ещё не указан." />
-                  )
-                }
-              >
-                {(data) => (
-                  <ContactList items={data.items} canSeePhone={permissions?.includes('contacts:phone') ?? false} />
+              <>
+                {canEdit && (
+                  <div className={styles.toolbar}>{addButton('Добавить контакт', () => contactDrawer.show())}</div>
                 )}
-              </TabState>
+                <TabState
+                  query={contacts}
+                  empty={(data) =>
+                    data.items.length ? null : (
+                      <EmptyState title="Контактов нет" description="Ответственный за связь ещё не указан." />
+                    )
+                  }
+                >
+                  {(data) => (
+                    <ContactList
+                      items={data.items}
+                      canSeePhone={permissions?.includes('contacts:phone') ?? false}
+                      onEdit={canEdit ? contactDrawer.show : undefined}
+                    />
+                  )}
+                </TabState>
+              </>
             ),
           },
         ]}
       />
+      {canEdit && (
+        <>
+          <LineDrawer
+            key={`line-${lineDrawer.key}`}
+            schoolId={schoolId}
+            open={lineDrawer.open}
+            line={lineDrawer.item}
+            newStatus={mainLine ? 'reserve' : 'main'}
+            onClose={lineDrawer.close}
+          />
+          <PointDrawer
+            key={`point-${pointDrawer.key}`}
+            schoolId={schoolId}
+            open={pointDrawer.open}
+            point={pointDrawer.item}
+            lines={lines.data?.items ?? []}
+            onClose={pointDrawer.close}
+          />
+          <ContactDrawer
+            key={`contact-${contactDrawer.key}`}
+            schoolId={schoolId}
+            open={contactDrawer.open}
+            contact={contactDrawer.item}
+            onClose={contactDrawer.close}
+          />
+        </>
+      )}
     </>
   )
 }

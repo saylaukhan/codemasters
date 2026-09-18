@@ -288,3 +288,54 @@ class SchoolContactDetail(BaseModel):
 
 class SchoolContactDetailPage(Page[SchoolContactDetail]):
     """Page of the contacts of a school."""
+
+
+class MonitoringPointCreate(BaseModel):
+    """Place at a school where agents measure one of its lines (ТЗ п. 10, ADR-003)."""
+
+    line_id: int = Field(description="Линия той же школы, которую меряют компьютеры точки")
+    name: str = Field(min_length=1, max_length=255, examples=["Кабинет информатики"])
+    room: str | None = Field(
+        default=None,
+        max_length=255,
+        examples=["214"],
+        description="Кабинет: по нему агент при установке выбирает точку (параметр ROOM)",
+    )
+    is_primary: bool = Field(
+        default=False,
+        description="Главная точка школы; она одна — признак снимается с прежней главной",
+    )
+
+
+class MonitoringPointUpdate(BaseModel):
+    """Changes of a point; a new ``line_id`` moves its computers to that line."""
+
+    line_id: int | SkipJsonSchema[None] = None
+    name: Annotated[str, Field(min_length=1, max_length=255)] | SkipJsonSchema[None] = None
+    room: str | None = Field(default=None, max_length=255)
+    is_primary: bool | SkipJsonSchema[None] = None
+
+    @field_validator("line_id", "name", "is_primary", mode="before")
+    @classmethod
+    def reject_null(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("поле не может быть null")
+        return value
+
+
+class MonitoringPointDetail(BaseModel):
+    """Monitoring point of a school with the line it is bound to (ТЗ п. 10)."""
+
+    id: int
+    school_id: int
+    line_id: int
+    line_status: LineStatus
+    provider_name: str = Field(description="Поставщик линии точки")
+    name: str
+    room: str | None
+    is_primary: bool = Field(description="Главная точка школы")
+    devices_count: int = Field(ge=0, description="Активные компьютеры точки")
+
+
+class MonitoringPointDetailPage(Page[MonitoringPointDetail]):
+    """Page of the monitoring points of a school, the primary one first."""

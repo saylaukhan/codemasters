@@ -32,6 +32,7 @@ type AuditEntityType = Literal[
     "user",
     "school",
     "line",
+    "monitoring_point",
     "school_contact",
     "device",
     "enrollment_code",

@@ -3,6 +3,7 @@ import { Table, type TableProps } from 'antd'
 import type { LineDetail } from '../../api/types'
 import { NO_VALUE, formatDate, formatSpeed } from '../../lib/format'
 import { LINE_STATUS_LABELS } from '../../lib/labels'
+import { Button } from '../ui/Button'
 import { ConnectionStatusBadge } from '../ui/StatusBadge'
 import styles from './SchoolCard.module.css'
 
@@ -54,13 +55,34 @@ const columns: TableProps<LineDetail>['columns'] = [
   },
 ]
 
+interface LineTableProps {
+  items: LineDetail[]
+  /** «Изменить» of a row, for a role that sets up the monitoring (T-35). */
+  onEdit?: (line: LineDetail) => void
+}
+
 /** Lines of the school (ТЗ п. 10, п. 14): main and reserve, provider and contract values. */
-export function LineTable({ items }: { items: LineDetail[] }) {
+export function LineTable({ items, onEdit }: LineTableProps) {
   return (
     <Table<LineDetail>
       rowKey="id"
       size="middle"
-      columns={columns}
+      columns={
+        onEdit
+          ? [
+              ...(columns ?? []),
+              {
+                key: 'edit',
+                align: 'right',
+                render: (_, line) => (
+                  <Button kind="flat" size="small" onClick={() => onEdit(line)}>
+                    Изменить
+                  </Button>
+                ),
+              },
+            ]
+          : columns
+      }
       dataSource={items}
       scroll={{ x: 'max-content' }}
       pagination={false}

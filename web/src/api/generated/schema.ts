@@ -451,6 +451,50 @@ export interface paths {
         patch: operations["update_school_line"];
         trace?: never;
     };
+    "/api/schools/{school_id}/points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Точки мониторинга школы с их линиями
+         * @description Главная точка — первой.
+         */
+        get: operations["list_school_points"];
+        put?: never;
+        /**
+         * Добавить точку мониторинга школы
+         * @description Линия другой школы или неизвестная — 422 на line_id.
+         */
+        post: operations["create_school_point"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/schools/{school_id}/points/{point_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить точку мониторинга или привязать её к другой линии
+         * @description Линия другой школы или неизвестная — 422 на line_id.
+         */
+        patch: operations["update_school_point"];
+        trace?: never;
+    };
     "/api/schools/{school_id}/contacts": {
         parameters: {
             query?: never;
@@ -482,7 +526,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Изменить ответственное лицо школы */
+        /**
+         * Изменить ответственное лицо школы
+         * @description updated_at ставит сервер при каждом изменении.
+         */
         patch: operations["update_school_contact"];
         trace?: never;
     };
@@ -1761,7 +1808,7 @@ export interface components {
         /** @enum {string} */
         AuditAction: "login_success" | "login_failure" | "create" | "update" | "block" | "unblock" | "password_reset" | "status_change" | "export" | "transfer_error";
         /** @enum {string} */
-        AuditEntityType: "user" | "school" | "line" | "school_contact" | "device" | "enrollment_code" | "region" | "provider" | "connection_type" | "threshold_profile" | "schedule" | "setting" | "incident_rule" | "agent_release" | "incident" | "appeal" | "export";
+        AuditEntityType: "user" | "school" | "line" | "monitoring_point" | "school_contact" | "device" | "enrollment_code" | "region" | "provider" | "connection_type" | "threshold_profile" | "schedule" | "setting" | "incident_rule" | "agent_release" | "incident" | "appeal" | "export";
         /**
          * AuditLogListItem
          * @description One audit record: who, when, what (T-39).
@@ -3157,6 +3204,94 @@ export interface components {
             min: number;
             /** Max */
             max: number;
+        };
+        /**
+         * MonitoringPointCreate
+         * @description Place at a school where agents measure one of its lines (ТЗ п. 10, ADR-003).
+         */
+        MonitoringPointCreate: {
+            /**
+             * Line Id
+             * @description Линия той же школы, которую меряют компьютеры точки
+             */
+            line_id: number;
+            /**
+             * Name
+             * @example Кабинет информатики
+             */
+            name: string;
+            /**
+             * Room
+             * @description Кабинет: по нему агент при установке выбирает точку (параметр ROOM)
+             * @example 214
+             */
+            room?: string | null;
+            /**
+             * Is Primary
+             * @description Главная точка школы; она одна — признак снимается с прежней главной
+             * @default false
+             */
+            is_primary: boolean;
+        };
+        /**
+         * MonitoringPointDetail
+         * @description Monitoring point of a school with the line it is bound to (ТЗ п. 10).
+         */
+        MonitoringPointDetail: {
+            /** Id */
+            id: number;
+            /** School Id */
+            school_id: number;
+            /** Line Id */
+            line_id: number;
+            line_status: components["schemas"]["LineStatus"];
+            /**
+             * Provider Name
+             * @description Поставщик линии точки
+             */
+            provider_name: string;
+            /** Name */
+            name: string;
+            /** Room */
+            room: string | null;
+            /**
+             * Is Primary
+             * @description Главная точка школы
+             */
+            is_primary: boolean;
+            /**
+             * Devices Count
+             * @description Активные компьютеры точки
+             */
+            devices_count: number;
+        };
+        /**
+         * MonitoringPointDetailPage
+         * @description Page of the monitoring points of a school, the primary one first.
+         */
+        MonitoringPointDetailPage: {
+            /** Items */
+            items: components["schemas"]["MonitoringPointDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * MonitoringPointUpdate
+         * @description Changes of a point; a new ``line_id`` moves its computers to that line.
+         */
+        MonitoringPointUpdate: {
+            /** Line Id */
+            line_id?: number;
+            /** Name */
+            name?: string;
+            /** Room */
+            room?: string | null;
+            /** Is Primary */
+            is_primary?: boolean;
         };
         /** OutageAccepted */
         OutageAccepted: {
@@ -5582,6 +5717,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description У школы уже есть основная линия (type main_line_exists) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Ошибка валидации запроса */
             422: {
                 headers: {
@@ -5628,6 +5772,176 @@ export interface operations {
                 };
             };
             /** @description Школа или линия не найдены */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description У школы уже есть основная линия (type main_line_exists) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_school_points: {
+        parameters: {
+            query?: {
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringPointDetailPage"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_school_point: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MonitoringPointCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringPointDetail"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_school_point: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                school_id: number;
+                point_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MonitoringPointUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonitoringPointDetail"];
+                };
+            };
+            /** @description Школа или точка не найдены */
             404: {
                 headers: {
                     [name: string]: unknown;

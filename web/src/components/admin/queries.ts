@@ -11,7 +11,26 @@ import {
   updateProvider,
   updateRegion,
 } from '../../api/admin'
-import { createSchool, getSchool, getSchools, updateSchool } from '../../api/schools'
+import {
+  createSchool,
+  createSchoolContact,
+  createSchoolLine,
+  createSchoolPoint,
+  getSchool,
+  getSchools,
+  updateSchool,
+  updateSchoolContact,
+  updateSchoolLine,
+  updateSchoolPoint,
+} from '../../api/schools'
+import type {
+  LineCreate,
+  LineUpdate,
+  MonitoringPointCreate,
+  MonitoringPointUpdate,
+  SchoolContactCreate,
+  SchoolContactUpdate,
+} from '../../api/types'
 import type { AdminListView } from './useAdminListView'
 
 // Names of schools and references are shown across the panel: lists, cards, the map and its filters, KPIs, analytics.
@@ -59,18 +78,21 @@ export const useRegions = (view: AdminListView) =>
     placeholderData: keepPreviousData,
   })
 
-// Districts and cities of VKO fit on one page of the API (at most 100): the select of a school searches among them.
-const REGION_OPTIONS = { page: 1, pageSize: 100 }
+// Districts and cities, providers and connection types of VKO fit on one page of the API (at most 100):
+// the selects of the forms search among them.
+const OPTIONS_PAGE = { page: 1, pageSize: 100 }
+
+const byName = (page: { items: { id: number; name: string }[] }) =>
+  [...page.items]
+    .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+    .map((item) => ({ value: item.id, label: item.name }))
 
 /** Districts and cities for the select of the school form, by name. */
 export const useRegionOptions = () =>
   useQuery({
     queryKey: ['admin', 'regions', 'options'],
-    queryFn: ({ signal }) => getRegions(REGION_OPTIONS, signal),
-    select: (page) =>
-      [...page.items]
-        .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
-        .map((region) => ({ value: region.id, label: region.name })),
+    queryFn: ({ signal }) => getRegions(OPTIONS_PAGE, signal),
+    select: byName,
   })
 
 export const useSaveRegion = () => useSave(createRegion, updateRegion)
@@ -92,3 +114,38 @@ export const useConnectionTypes = (view: AdminListView) =>
   })
 
 export const useSaveConnectionType = () => useSave(createConnectionType, updateConnectionType)
+
+/** Providers for the select of the line form, by name. */
+export const useProviderOptions = () =>
+  useQuery({
+    queryKey: ['admin', 'providers', 'options'],
+    queryFn: ({ signal }) => getProviders(OPTIONS_PAGE, signal),
+    select: byName,
+  })
+
+/** Connection types for the select of the line form, by name. */
+export const useConnectionTypeOptions = () =>
+  useQuery({
+    queryKey: ['admin', 'connection-types', 'options'],
+    queryFn: ({ signal }) => getConnectionTypes(OPTIONS_PAGE, signal),
+    select: byName,
+  })
+
+// Lines, points and contacts of a school (T-35): saved from its card, shown in the card, the list and the map.
+export const useSaveLine = (schoolId: number) =>
+  useSave(
+    (body: LineCreate) => createSchoolLine(schoolId, body),
+    (lineId: number, body: LineUpdate) => updateSchoolLine(schoolId, lineId, body),
+  )
+
+export const useSavePoint = (schoolId: number) =>
+  useSave(
+    (body: MonitoringPointCreate) => createSchoolPoint(schoolId, body),
+    (pointId: number, body: MonitoringPointUpdate) => updateSchoolPoint(schoolId, pointId, body),
+  )
+
+export const useSaveContact = (schoolId: number) =>
+  useSave(
+    (body: SchoolContactCreate) => createSchoolContact(schoolId, body),
+    (contactId: number, body: SchoolContactUpdate) => updateSchoolContact(schoolId, contactId, body),
+  )
