@@ -1,17 +1,27 @@
 """Export API (plan.md §10 «Экспорт», ТЗ п. 9): create an export, then download its file.
 
-Contract stubs: every endpoint answers 501 until T-30. The same two endpoints serve the
-synchronous MVP (T-30…T-32: the file is built within the POST) and background exports (T-33:
-the POST answers ``pending``, the GET answers 202 until the file is ready). Exports cover only
-the user's scope (ADR-008).
+Raw measurements (T-30) are built within the POST; aggregates (T-31) and the PDF report (T-32)
+still answer 501. The same two endpoints serve background exports of T-33: the POST answers
+``pending``, the GET answers 202 until the file is ready. Exports cover only the user's scope
+(ADR-008); the file is served only to the user who made it. The work is in
+``app/services/exports/``.
 """
 
-from fastapi import APIRouter, Depends, Response, status
+from datetime import UTC, datetime
+from typing import Annotated, cast
 
-from app.auth import require
-from app.core.errors import not_implemented
+from fastapi import APIRouter, Depends, Response, status
+from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.auth import AuthUser, current_user, require
+from app.core.db import get_session
+from app.core.errors import ApiError
 from app.schemas.errors import Problem
-from app.schemas.exports import ExportCreate, ExportJob
+from app.schemas.exports import ExportCreate, ExportFormat, ExportJob
+from app.services.exports import create_export as build_export
+from app.services.exports import owned_export
+from app.services.exports.files import MEDIA_TYPES
 
 router = APIRouter(
     prefix="/exports", tags=["exports"], dependencies=[Depends(require("exports:create"))]
@@ -34,11 +44,19 @@ FILE_SCHEMA = {"schema": {"type": "string", "format": "binary"}}
         "или вне области видимости school_ids и device_ids — 422 (ADR-008). До T-33 файл "
         "формируется в запросе и выгрузка приходит ready или failed; с T-33 PDF и выгрузки "
         "больше порога строк из settings (по умолчанию 10 000) приходят pending и формируются "
-        "в фоне."
+        "в фоне. Файлы raw: в xlsx и csv — русские заголовки, статусы словами, дата "
+        "ДД.ММ.ГГГГ и время по settings.timezone (Asia/Almaty); csv — UTF-8 с BOM, "
+        "разделитель «;», десятичная запятая; в json — коды колонок и значений, дата и время "
+        "ISO. Строки — по названию школы, затем по времени замера."
     ),
 )
-async def create_export(body: ExportCreate) -> ExportJob:
-    raise not_implemented("T-30")
+async def create_export(
+    body: ExportCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[AuthUser, Depends(current_user)],
+) -> ExportJob:
+    export = await build_export(session, user.id, body, now=datetime.now(UTC))
+    return ExportJob.model_validate(export, from_attributes=True)
 
 
 @router.get(
@@ -75,5 +93,19 @@ async def create_export(body: ExportCreate) -> ExportJob:
         },
     },
 )
-async def get_export(export_id: int) -> Response:
-    raise not_implemented("T-30")
+async def get_export(
+    export_id: int,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[AuthUser, Depends(current_user)],
+) -> Response:
+    export = await owned_export(session, export_id, user.id, now=datetime.now(UTC))
+    if export.status == "pending":
+        job = ExportJob.model_validate(export, from_attributes=True)
+        return JSONResponse(job.model_dump(mode="json"), status_code=status.HTTP_202_ACCEPTED)
+    if export.status == "failed" or export.content is None:
+        raise ApiError(409, "export_failed", export.error or "Файл выгрузки не сформирован")
+    return Response(
+        export.content,
+        media_type=MEDIA_TYPES[cast(ExportFormat, export.format)],
+        headers={"Content-Disposition": f'attachment; filename="{export.file_name}"'},
+    )

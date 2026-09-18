@@ -17,6 +17,7 @@ const PAGES: Partial<Record<SectionKey, ComponentType>> = {
   schools: lazy(() => import('../schools/SchoolsSection').then((page) => ({ default: page.SchoolsSection }))),
   devices: lazy(() => import('../devices/DevicesSection').then((page) => ({ default: page.DevicesSection }))),
   analytics: lazy(() => import('../analytics/AnalyticsPage').then((page) => ({ default: page.AnalyticsPage }))),
+  exports: lazy(() => import('../exports/ExportsPage').then((page) => ({ default: page.ExportsPage }))),
 }
 
 /** A section opened by URL is checked like the navigation: no permission — no screen (ТЗ п. 16). */

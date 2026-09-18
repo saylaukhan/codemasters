@@ -4,6 +4,9 @@ import type {
   AnalyticsLevel,
   AnalyticsPeriod,
   DeviceStatus,
+  ExportColumn,
+  ExportFormat,
+  ExportMode,
   IfaceType,
   IncidentStatus,
   LineStatus,
@@ -112,6 +115,47 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   oblast: 'Область',
   provider: 'Провайдер',
   admin: 'Администратор',
+}
+
+/** What an export contains (DESIGN.md §3.24): measurements, one row per school, PDF of a school. */
+export const EXPORT_MODE_LABELS: Record<ExportMode, string> = {
+  raw: 'Сырые данные',
+  aggregates: 'Агрегаты по школе',
+  school_report: 'PDF-отчёт',
+}
+
+export const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
+  xlsx: 'XLSX',
+  csv: 'CSV',
+  json: 'JSON',
+  pdf: 'PDF',
+}
+
+/**
+ * Columns of a raw export in the order of the file; the first eleven are the minimum of ТЗ п. 9.
+ * The headers of XLSX and CSV repeat them: backend/app/services/exports/columns.py.
+ */
+export const EXPORT_COLUMN_LABELS: Record<ExportColumn, string> = {
+  school_name: 'Школа',
+  hostname: 'Компьютер',
+  room: 'Кабинет',
+  date: 'Дата',
+  time: 'Время',
+  download_mbps: 'Download, Мбит/с',
+  upload_mbps: 'Upload, Мбит/с',
+  ping_ms: 'Ping, мс',
+  jitter_ms: 'Jitter, мс',
+  packet_loss_pct: 'Packet Loss, %',
+  quality_status: 'Статус',
+  school_code: 'School ID',
+  device_id: 'ID компьютера',
+  line_status: 'Линия',
+  connection_status: 'Связь',
+  iface_type: 'Интерфейс',
+  duration_s: 'Длительность замера, с',
+  external_ip: 'Внешний IP',
+  server: 'Сервер замера',
+  agent_version: 'Версия агента',
 }
 
 /** Sections of the side navigation (DESIGN.md §3.6). */
