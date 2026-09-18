@@ -1,4 +1,4 @@
-"""School API of the panel (plan.md §10 «Школы»): list, card, devices, lines, contacts.
+"""School API of the panel (plan.md §10 «Школы»): list, card, devices, lines, points, contacts.
 
 Endpoints of later tasks answer 501 until the task in ``not_implemented`` lands. There is no
 DELETE: a school is deactivated with ``is_active`` and keeps its history (ТЗ п. 20). Lists and
@@ -25,6 +25,10 @@ from app.schemas.schools import (
     LineDetail,
     LineDetailPage,
     LineUpdate,
+    MonitoringPointCreate,
+    MonitoringPointDetail,
+    MonitoringPointDetailPage,
+    MonitoringPointUpdate,
     SchoolContactCreate,
     SchoolContactDetail,
     SchoolContactDetailPage,
@@ -36,7 +40,7 @@ from app.schemas.schools import (
     SchoolUpdate,
 )
 from app.schemas.statuses import SchoolStatus
-from app.services import references
+from app.services import references, school_setup
 from app.services.school_card import school_contacts, school_detail, school_devices, school_lines
 from app.services.schools import SchoolListFilters, school_list
 
@@ -48,6 +52,11 @@ router = APIRouter(
 PHONE_PERMISSION = "contacts:phone"
 
 SCHOOL_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Школа не найдена"}
+
+MAIN_LINE_EXISTS: dict[str, Any] = {
+    "model": Problem,
+    "description": "У школы уже есть основная линия (type main_line_exists)",
+}
 
 SCHOOL_CODE_TAKEN: dict[str, Any] = {
     "model": Problem,
@@ -185,10 +194,13 @@ async def list_school_lines(
     status_code=status.HTTP_201_CREATED,
     summary="Добавить линию школы",
     description="Неизвестный provider_id или connection_type_id — 422.",
-    responses={404: SCHOOL_NOT_FOUND},
+    responses={404: SCHOOL_NOT_FOUND, 409: MAIN_LINE_EXISTS},
 )
-async def create_school_line(school_id: int, body: LineCreate) -> LineDetail:
-    raise not_implemented("T-35")
+async def create_school_line(
+    school_id: int, body: LineCreate, session: Annotated[AsyncSession, Depends(get_session)]
+) -> LineDetail:
+    line_id = await school_setup.create_line(session, school_id, body)
+    return await school_setup.school_line(session, school_id, line_id, now=datetime.now(UTC))
 
 
 @router.patch(
@@ -196,10 +208,71 @@ async def create_school_line(school_id: int, body: LineCreate) -> LineDetail:
     dependencies=[Depends(require("schools:write"))],
     summary="Изменить линию школы",
     description="Неизвестный provider_id или connection_type_id — 422.",
-    responses={404: {"model": Problem, "description": "Школа или линия не найдены"}},
+    responses={
+        404: {"model": Problem, "description": "Школа или линия не найдены"},
+        409: MAIN_LINE_EXISTS,
+    },
 )
-async def update_school_line(school_id: int, line_id: int, body: LineUpdate) -> LineDetail:
-    raise not_implemented("T-35")
+async def update_school_line(
+    school_id: int,
+    line_id: int,
+    body: LineUpdate,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> LineDetail:
+    changes = await school_setup.update_line(session, school_id, line_id, body)
+    describe_action(request, changes=changes or None)
+    return await school_setup.school_line(session, school_id, line_id, now=datetime.now(UTC))
+
+
+@router.get(
+    "/{school_id}/points",
+    summary="Точки мониторинга школы с их линиями",
+    description="Главная точка — первой.",
+    responses={404: SCHOOL_NOT_FOUND},
+)
+async def list_school_points(
+    school_id: int,
+    params: Annotated[PageParams, Depends(page_params)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> MonitoringPointDetailPage:
+    return await school_setup.school_points(session, school_id, params)
+
+
+@router.post(
+    "/{school_id}/points",
+    dependencies=[Depends(require("schools:write"))],
+    status_code=status.HTTP_201_CREATED,
+    summary="Добавить точку мониторинга школы",
+    description="Линия другой школы или неизвестная — 422 на line_id.",
+    responses={404: SCHOOL_NOT_FOUND},
+)
+async def create_school_point(
+    school_id: int,
+    body: MonitoringPointCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> MonitoringPointDetail:
+    point_id = await school_setup.create_point(session, school_id, body)
+    return await school_setup.school_point(session, point_id)
+
+
+@router.patch(
+    "/{school_id}/points/{point_id}",
+    dependencies=[Depends(require("schools:write"))],
+    summary="Изменить точку мониторинга или привязать её к другой линии",
+    description="Линия другой школы или неизвестная — 422 на line_id.",
+    responses={404: {"model": Problem, "description": "Школа или точка не найдены"}},
+)
+async def update_school_point(
+    school_id: int,
+    point_id: int,
+    body: MonitoringPointUpdate,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> MonitoringPointDetail:
+    changes = await school_setup.update_point(session, school_id, point_id, body)
+    describe_action(request, changes=changes or None)
+    return await school_setup.school_point(session, point_id)
 
 
 @router.get(
@@ -225,20 +298,41 @@ async def list_school_contacts(
     summary="Добавить ответственное лицо школы",
     responses={404: SCHOOL_NOT_FOUND},
 )
-async def create_school_contact(school_id: int, body: SchoolContactCreate) -> SchoolContactDetail:
-    raise not_implemented("T-35")
+async def create_school_contact(
+    school_id: int,
+    body: SchoolContactCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[AuthUser, Depends(current_user)],
+) -> SchoolContactDetail:
+    return await school_setup.create_contact(
+        session, school_id, body, show_phone=PHONE_PERMISSION in user.permissions
+    )
 
 
 @router.patch(
     "/{school_id}/contacts/{contact_id}",
     dependencies=[Depends(require("schools:write"))],
     summary="Изменить ответственное лицо школы",
+    description="updated_at ставит сервер при каждом изменении.",
     responses={404: {"model": Problem, "description": "Школа или контакт не найдены"}},
 )
 async def update_school_contact(
-    school_id: int, contact_id: int, body: SchoolContactUpdate
+    school_id: int,
+    contact_id: int,
+    body: SchoolContactUpdate,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[AuthUser, Depends(current_user)],
 ) -> SchoolContactDetail:
-    raise not_implemented("T-35")
+    contact, changes = await school_setup.update_contact(
+        session,
+        school_id,
+        contact_id,
+        body,
+        show_phone=PHONE_PERMISSION in user.permissions,
+    )
+    describe_action(request, changes=changes or None)
+    return contact
 
 
 @router.get(

@@ -47,6 +47,7 @@ MAX_ID_DIGITS = 18
 ENTITY_BY_SEGMENT: dict[str, AuditEntityType] = {
     "schools": "school",
     "lines": "line",
+    "points": "monitoring_point",
     "contacts": "school_contact",
     "devices": "device",
     "enrollment-codes": "enrollment_code",
