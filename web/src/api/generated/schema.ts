@@ -967,7 +967,7 @@ export interface paths {
         head?: never;
         /**
          * Изменить пользователя, заблокировать или сбросить пароль
-         * @description role передаётся вместе с областью видимости и заменяет её целиком. Неизвестный region_id, provider_id или school_id — 422.
+         * @description role передаётся вместе с областью видимости и заменяет её целиком. Неизвестный region_id, provider_id или school_id — 422. Блокировка и новый пароль завершают все сессии пользователя. Заблокировать себя или сменить себе роль нельзя — 422.
          */
         patch: operations["update_user"];
         trace?: never;
@@ -4417,6 +4417,12 @@ export interface components {
             full_name: string;
             role: components["schemas"]["UserRole"];
             scope: components["schemas"]["UserScope"];
+            /**
+             * Scope Name
+             * @description Район или город, поставщик или школа области видимости; null — вся область
+             * @example Усть-Каменогорск
+             */
+            scope_name: string | null;
             /**
              * Is Active
              * @description false — учётная запись заблокирована

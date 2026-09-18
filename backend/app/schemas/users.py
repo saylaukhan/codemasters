@@ -117,6 +117,10 @@ class UserDetail(BaseModel):
     full_name: str
     role: UserRole
     scope: UserScope
+    scope_name: str | None = Field(
+        examples=["Усть-Каменогорск"],
+        description="Район или город, поставщик или школа области видимости; null — вся область",
+    )
     is_active: bool = Field(description="false — учётная запись заблокирована")
 
 
