@@ -1,14 +1,15 @@
 """Shared FastAPI dependencies: security schemes, device authentication and list pagination.
 
 ``current_device`` turns ``Authorization: Device <token>`` into the row of ``devices`` (T-14,
-ADR-005); the panel JWT and ``require(permission)`` arrive in T-20, so ``user_token`` and
-``refresh_cookie`` still only declare authentication in OpenAPI (``auto_error=False``).
+ADR-005). ``user_token`` and ``refresh_cookie`` declare the panel authentication in OpenAPI
+(``auto_error=False``: the errors are problem+json); the panel user and ``require(permission)``
+live in ``app/auth`` (T-20).
 """
 
 from dataclasses import dataclass
 from typing import Annotated
 
-from fastapi import Depends, Query, Security
+from fastapi import Depends, Query, Request, Security
 from fastapi.security import APIKeyCookie, APIKeyHeader, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -49,6 +50,7 @@ UNAUTHORIZED_DETAIL = "Токен устройства отсутствует и
 
 
 async def current_device(
+    request: Request,
     authorization: Annotated[str | None, Security(device_token)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Device:
@@ -65,6 +67,8 @@ async def current_device(
     device = await session.get(Device, device_id)
     if device is None or not verify_secret(secret, device.token_hash):
         raise unauthorized_device()
+    # A rejected request of a known device is logged against it (app/auth/audit.py).
+    request.state.device_id = device.id
     # Blocking keeps the device and its history, but stops every request of the agent
     # (ТЗ п. 16, п. 20).
     if device.status != "active":

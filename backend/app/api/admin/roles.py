@@ -6,13 +6,14 @@ roles is fixed and the role → permission matrix comes from T-20, so there is n
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Security
+from fastapi import APIRouter, Depends
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.users import RoleListItemPage
 
-router = APIRouter(prefix="/roles", tags=["admin"], dependencies=[Security(user_token)])
+router = APIRouter(prefix="/roles", tags=["admin"], dependencies=[Depends(require("users:manage"))])
 
 
 @router.get(

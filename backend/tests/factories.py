@@ -10,9 +10,12 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.security import (
+    encode_jwt,
     format_device_token,
     format_enrollment_code,
+    hash_password,
     hash_secret,
     new_device_secret,
     new_enrollment_secret,
@@ -26,6 +29,8 @@ from app.models import (
     Region,
     School,
     SystemSettings,
+    User,
+    UserScope,
 )
 
 ENROLLMENT_CODE_TTL = timedelta(days=7)
@@ -136,3 +141,47 @@ async def create_settings(
     # Columns filled by the database defaults are read back, as a fresh session would see them.
     await session.refresh(settings)
     return settings
+
+
+PASSWORD = "Password1"
+
+
+async def create_user(
+    session: AsyncSession,
+    role: str,
+    *,
+    email: str | None = None,
+    password: str = PASSWORD,
+    is_active: bool = True,
+    **scope: int | None,
+) -> User:
+    """Panel user of ``role`` with its scope id (``region_id``, ``provider_id`` or
+    ``school_id``), as the user administration of T-38 will create it."""
+    user = User(
+        email=email or f"{role}@example.kz",
+        full_name=f"Пользователь {role}",
+        role=role,
+        password_hash=hash_password(password),
+        is_active=is_active,
+    )
+    session.add(user)
+    await session.flush()
+    if scope:
+        session.add(UserScope(user_id=user.id, **scope))
+        await session.flush()
+    await session.refresh(user)
+    return user
+
+
+def bearer(user: User) -> dict[str, str]:
+    """``Authorization`` header with an access token of ``user``, as login issues it."""
+    now = datetime.now(UTC)
+    token = encode_jwt(
+        user_id=user.id,
+        version=user.token_version,
+        typ="access",
+        issued_at=now,
+        expires_at=now + timedelta(minutes=15),
+        key=get_settings().secret_key,
+    )
+    return {"Authorization": f"Bearer {token}"}

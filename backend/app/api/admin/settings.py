@@ -4,13 +4,15 @@ Contract stubs: every endpoint answers 501 until T-37. The settings are a single
 path has no id and there is neither POST nor DELETE.
 """
 
-from fastapi import APIRouter, Security
+from fastapi import APIRouter, Depends
 
-from app.core.deps import user_token
+from app.auth import require
 from app.core.errors import not_implemented
 from app.schemas.settings import SettingsDetail, SettingsUpdate
 
-router = APIRouter(prefix="/settings", tags=["admin"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/settings", tags=["admin"], dependencies=[Depends(require("settings:manage"))]
+)
 
 
 @router.get(

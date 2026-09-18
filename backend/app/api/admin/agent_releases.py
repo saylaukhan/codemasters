@@ -6,9 +6,10 @@ withdrawn with ``is_active``. Releases are managed by the Administrator role (AD
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Security, status
+from fastapi import APIRouter, Depends, status
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.agent_releases import (
     AgentReleaseCreate,
@@ -18,7 +19,11 @@ from app.schemas.agent_releases import (
 )
 from app.schemas.errors import Problem
 
-router = APIRouter(prefix="/agent-releases", tags=["admin"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/agent-releases",
+    tags=["admin"],
+    dependencies=[Depends(require("agent_releases:manage"))],
+)
 
 
 @router.get("", summary="Релизы агента, новые сверху")

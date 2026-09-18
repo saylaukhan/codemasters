@@ -6,14 +6,17 @@ The log is read-only: records are written by the audit middleware (T-20) and nev
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Security
+from fastapi import APIRouter, Depends, Query
 from pydantic import AwareDatetime
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.audit import AuditAction, AuditEntityType, AuditLogListItemPage
 
-router = APIRouter(prefix="/audit-log", tags=["admin"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/audit-log", tags=["admin"], dependencies=[Depends(require("audit:read"))]
+)
 
 
 @router.get("", summary="Журнал аудита, новые сверху")

@@ -1,4 +1,4 @@
-"""Secrets the API checks: device tokens and agent installation codes (ТЗ п. 12, ADR-005).
+"""Secrets the API checks: device tokens, installation codes, passwords and panel JWTs.
 
 Neither secret is stored: the database keeps only their argon2id hash — ``devices.token_hash``
 and ``enrollment_codes.code_hash``. An argon2 hash carries a random salt, so no row can be
@@ -6,13 +6,24 @@ found by hashing what the client sent; every secret therefore starts with the id
 row (``17.<random>`` for a token, ``VKO-0011-...`` for a code). The id selects exactly one row
 and argon2 checks the random part, so a wrong id is as useless as a wrong secret.
 
-Parameters are the argon2id minimum recommended by OWASP (19 MiB, 2 passes, 1 lane): both
-secrets are machine-generated and long, so the cost is there to slow down a stolen dump, not
-to stretch a human password. The password hasher of the panel arrives with T-20.
+Parameters are the argon2id minimum recommended by OWASP (19 MiB, 2 passes, 1 lane); the same
+hasher stores passwords of the panel users (``users.password_hash``, ТЗ п. 12).
+
+Panel JWTs (ADR-009) are HS256 signed with ``SECRET_KEY``: access for 15 minutes, refresh in
+the httpOnly cookie. Only the header this module writes is accepted, so a token cannot choose
+its own algorithm; ``typ`` keeps a refresh token out of ``Authorization`` and back.
 """
 
+import base64
+import binascii
+import hashlib
+import hmac
+import json
 import re
 import secrets
+from datetime import datetime
+from functools import lru_cache
+from typing import Any, Literal
 
 from argon2 import PasswordHasher
 from argon2.exceptions import Argon2Error, InvalidHashError
@@ -115,3 +126,97 @@ def parse_device_token(token: str) -> tuple[int, str] | None:
     if device_id > MAX_DEVICE_ID:
         return None
     return device_id, match[2]
+
+
+def hash_password(password: str) -> str:
+    """argon2id hash of a panel password for ``users.password_hash``."""
+    return _HASHER.hash(password)
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    """Check a typed password; a damaged hash is a mismatch."""
+    return verify_secret(password, hashed)
+
+
+def password_needs_rehash(hashed: str) -> bool:
+    """True when the hash was made with older parameters: login stores a fresh one."""
+    return _HASHER.check_needs_rehash(hashed)
+
+
+@lru_cache
+def _dummy_password_hash() -> str:
+    return _HASHER.hash(secrets.token_urlsafe(16))
+
+
+def burn_password_check(password: str) -> None:
+    """Spend the time of a password check for an unknown e-mail: the answer time must not
+    tell which e-mails have accounts."""
+    verify_secret(password, _dummy_password_hash())
+
+
+type TokenType = Literal["access", "refresh"]
+
+
+def _b64encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _b64decode(text: str) -> bytes:
+    return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+
+
+def _json(data: dict[str, Any]) -> bytes:
+    return json.dumps(data, separators=(",", ":"), sort_keys=True).encode()
+
+
+JWT_HEADER = _b64encode(_json({"alg": "HS256", "typ": "JWT"}))
+
+
+def _signature(signing_input: str, key: str) -> bytes:
+    return hmac.new(key.encode(), signing_input.encode("ascii"), hashlib.sha256).digest()
+
+
+def encode_jwt(
+    *,
+    user_id: int,
+    version: int,
+    typ: TokenType,
+    issued_at: datetime,
+    expires_at: datetime,
+    key: str,
+) -> str:
+    """Signed token of a panel user; ``version`` is ``users.token_version`` at issue time."""
+    claims = {
+        "sub": str(user_id),
+        "ver": version,
+        "typ": typ,
+        "iat": int(issued_at.timestamp()),
+        "exp": int(expires_at.timestamp()),
+    }
+    signing_input = f"{JWT_HEADER}.{_b64encode(_json(claims))}"
+    return f"{signing_input}.{_b64encode(_signature(signing_input, key))}"
+
+
+def decode_jwt(token: str, *, typ: TokenType, now: datetime, key: str) -> tuple[int, int] | None:
+    """``(user_id, version)`` of a valid unexpired token of type ``typ``; ``None`` otherwise."""
+    header, _, rest = token.partition(".")
+    payload, _, signature = rest.partition(".")
+    if header != JWT_HEADER or not payload or not signature:
+        return None
+    try:
+        given = _b64decode(signature)
+        claims = json.loads(_b64decode(payload))
+    except (binascii.Error, ValueError):
+        return None
+    if not hmac.compare_digest(given, _signature(f"{header}.{payload}", key)):
+        return None
+    if not isinstance(claims, dict) or claims.get("typ") != typ:
+        return None
+    subject, version, expires = claims.get("sub"), claims.get("ver"), claims.get("exp")
+    if not isinstance(subject, str) or not subject.isdecimal() or len(subject) > 18:
+        return None
+    if not isinstance(version, int) or not isinstance(expires, int):
+        return None
+    if expires <= now.timestamp():
+        return None
+    return int(subject), version

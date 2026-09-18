@@ -9,10 +9,11 @@ sees the incidents of its own lines (ADR-008, T-44). Incidents of a school card 
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Security, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import AwareDatetime
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.incidents import (
@@ -26,7 +27,9 @@ from app.schemas.incidents import (
 )
 from app.schemas.statuses import IncidentStatus
 
-router = APIRouter(prefix="/incidents", tags=["incidents"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/incidents", tags=["incidents"], dependencies=[Depends(require("incidents:read"))]
+)
 
 INCIDENT_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Инцидент не найден"}
 
@@ -64,6 +67,7 @@ async def list_incidents(
 
 @router.post(
     "",
+    dependencies=[Depends(require("incidents:create"))],
     status_code=status.HTTP_201_CREATED,
     summary="Создать инцидент вручную",
     description=(
@@ -86,6 +90,7 @@ async def get_incident(incident_id: int) -> IncidentDetail:
 
 @router.patch(
     "/{incident_id}",
+    dependencies=[Depends(require("incidents:update"))],
     summary="Изменить ответственного или описание инцидента",
     description=(
         "Статус меняется только через POST /api/incidents/{incident_id}/status. "
@@ -99,6 +104,7 @@ async def update_incident(incident_id: int, body: IncidentUpdate) -> IncidentDet
 
 @router.post(
     "/{incident_id}/status",
+    dependencies=[Depends(require("incidents:update"))],
     summary="Сменить статус инцидента",
     description=(
         "Переходы (T-41): вперёд по порядку ТЗ п. 19, sent_to_provider, in_progress и "
@@ -126,6 +132,7 @@ async def change_incident_status(incident_id: int, body: IncidentStatusChange) -
 
 @router.post(
     "/{incident_id}/comments",
+    dependencies=[Depends(require("incidents:update"))],
     status_code=status.HTTP_201_CREATED,
     summary="Добавить комментарий к инциденту",
     description="Комментарий — событие comment в истории; статус не меняется.",

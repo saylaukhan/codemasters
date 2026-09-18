@@ -7,15 +7,17 @@ panel of T-22 drives both. Period defaults differ on purpose: KPIs cover the las
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Security
+from fastapi import APIRouter, Depends, Query
 from pydantic import AwareDatetime
 
-from app.core.deps import user_token
+from app.auth import require
 from app.core.errors import not_implemented
 from app.schemas.dashboard import DashboardSummary
 from app.schemas.statuses import SchoolStatus
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/dashboard", tags=["dashboard"], dependencies=[Depends(require("dashboard:read"))]
+)
 
 
 @router.get(

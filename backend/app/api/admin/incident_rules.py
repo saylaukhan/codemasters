@@ -7,9 +7,10 @@ Oblast and Administrator roles (ADR-008 «Открыто»).
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Security, status
+from fastapi import APIRouter, Depends, status
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.incident_rules import (
@@ -19,7 +20,11 @@ from app.schemas.incident_rules import (
     IncidentRuleUpdate,
 )
 
-router = APIRouter(prefix="/incident-rules", tags=["admin"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/incident-rules",
+    tags=["admin"],
+    dependencies=[Depends(require("incident_rules:manage"))],
+)
 
 
 @router.get("", summary="Правила формирования инцидентов")

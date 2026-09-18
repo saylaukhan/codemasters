@@ -6,9 +6,10 @@ regions. Boundaries are loaded from the VKO GeoJSON by T-04; editing them here i
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Security, status
+from fastapi import APIRouter, Depends, Query, status
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.references import (
@@ -18,7 +19,9 @@ from app.schemas.references import (
     RegionUpdate,
 )
 
-router = APIRouter(prefix="/regions", tags=["admin"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/regions", tags=["admin"], dependencies=[Depends(require("references:manage"))]
+)
 
 REGION_CODE_TAKEN: dict[str, Any] = {
     "model": Problem,

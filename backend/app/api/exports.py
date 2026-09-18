@@ -6,14 +6,16 @@ the POST answers ``pending``, the GET answers 202 until the file is ready). Expo
 the user's scope (ADR-008).
 """
 
-from fastapi import APIRouter, Response, Security, status
+from fastapi import APIRouter, Depends, Response, status
 
-from app.core.deps import user_token
+from app.auth import require
 from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.exports import ExportCreate, ExportJob
 
-router = APIRouter(prefix="/exports", tags=["exports"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/exports", tags=["exports"], dependencies=[Depends(require("exports:create"))]
+)
 
 FILE_SCHEMA = {"schema": {"type": "string", "format": "binary"}}
 

@@ -6,9 +6,10 @@ connection types. plan.md §10 does not list this path; T-34 requires it.
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Security, status
+from fastapi import APIRouter, Depends, Query, status
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.references import (
@@ -18,7 +19,9 @@ from app.schemas.references import (
     ConnectionTypeUpdate,
 )
 
-router = APIRouter(prefix="/connection-types", tags=["admin"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/connection-types", tags=["admin"], dependencies=[Depends(require("references:manage"))]
+)
 
 CONNECTION_TYPE_CODE_TAKEN: dict[str, Any] = {
     "model": Problem,

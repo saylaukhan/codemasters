@@ -6,9 +6,10 @@ off with ``is_active``; measurements keep the thresholds they were evaluated wit
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Security, status
+from fastapi import APIRouter, Depends, status
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.errors import Problem
 from app.schemas.threshold_profiles import (
@@ -19,7 +20,9 @@ from app.schemas.threshold_profiles import (
     ThresholdProfileUpdate,
 )
 
-router = APIRouter(prefix="/thresholds", tags=["admin"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/thresholds", tags=["admin"], dependencies=[Depends(require("thresholds:manage"))]
+)
 
 PROFILE_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Профиль порогов не найден"}
 

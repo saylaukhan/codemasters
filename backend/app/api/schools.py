@@ -7,10 +7,11 @@ There is no DELETE: a school is deactivated with ``is_active`` and keeps its his
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Security, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import AwareDatetime
 
-from app.core.deps import PageParams, page_params, user_token
+from app.auth import require
+from app.core.deps import PageParams, page_params
 from app.core.errors import not_implemented
 from app.schemas.devices import DeviceListItemPage
 from app.schemas.errors import Problem
@@ -32,7 +33,9 @@ from app.schemas.schools import (
 )
 from app.schemas.statuses import SchoolStatus
 
-router = APIRouter(prefix="/schools", tags=["schools"], dependencies=[Security(user_token)])
+router = APIRouter(
+    prefix="/schools", tags=["schools"], dependencies=[Depends(require("schools:read"))]
+)
 
 SCHOOL_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Школа не найдена"}
 
@@ -86,6 +89,7 @@ async def list_schools(
 
 @router.post(
     "",
+    dependencies=[Depends(require("schools:write"))],
     status_code=status.HTTP_201_CREATED,
     summary="Создать школу",
     description="Неизвестный region_id — 422.",
@@ -106,6 +110,7 @@ async def get_school(school_id: int) -> SchoolDetail:
 
 @router.patch(
     "/{school_id}",
+    dependencies=[Depends(require("schools:write"))],
     summary="Изменить или деактивировать школу",
     description="Рабочие часы (working_hours) настраиваются в T-37. Неизвестный region_id — 422.",
     responses={404: SCHOOL_NOT_FOUND, 409: SCHOOL_CODE_TAKEN},
@@ -138,6 +143,7 @@ async def list_school_lines(
 
 @router.post(
     "/{school_id}/lines",
+    dependencies=[Depends(require("schools:write"))],
     status_code=status.HTTP_201_CREATED,
     summary="Добавить линию школы",
     description="Неизвестный provider_id или connection_type_id — 422.",
@@ -149,6 +155,7 @@ async def create_school_line(school_id: int, body: LineCreate) -> LineDetail:
 
 @router.patch(
     "/{school_id}/lines/{line_id}",
+    dependencies=[Depends(require("schools:write"))],
     summary="Изменить линию школы",
     description="Неизвестный provider_id или connection_type_id — 422.",
     responses={404: {"model": Problem, "description": "Школа или линия не найдены"}},
@@ -170,6 +177,7 @@ async def list_school_contacts(
 
 @router.post(
     "/{school_id}/contacts",
+    dependencies=[Depends(require("schools:write"))],
     status_code=status.HTTP_201_CREATED,
     summary="Добавить ответственное лицо школы",
     responses={404: SCHOOL_NOT_FOUND},
@@ -180,6 +188,7 @@ async def create_school_contact(school_id: int, body: SchoolContactCreate) -> Sc
 
 @router.patch(
     "/{school_id}/contacts/{contact_id}",
+    dependencies=[Depends(require("schools:write"))],
     summary="Изменить ответственное лицо школы",
     responses={404: {"model": Problem, "description": "Школа или контакт не найдены"}},
 )
