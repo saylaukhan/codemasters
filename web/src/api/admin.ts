@@ -1,12 +1,15 @@
 // References of the administration (T-34): districts and cities, providers, connection types; threshold
-// profiles, schedules and settings (T-37); users (T-38). Nothing is deleted: schools and lines refer to the
-// references, a profile or a schedule is switched off, a user is blocked; a PATCH changes only the fields present.
+// profiles, schedules and settings (T-37); users (T-38); incident rules (T-40). Nothing is deleted: schools and
+// lines refer to the references, a profile, a schedule or a rule is switched off, a user is blocked; a PATCH changes
+// only the fields present.
 // The audit log is read-only (T-39).
 import { apiRequest, type QueryValue } from './client'
 import type { components } from './generated/schema'
 import type {
   ConnectionTypeCreate,
   ConnectionTypeUpdate,
+  IncidentRuleCreate,
+  IncidentRuleUpdate,
   ProviderCreate,
   ProviderUpdate,
   RegionCreate,
@@ -69,6 +72,15 @@ export const createSchedule = (body: ScheduleCreate) =>
 
 export const updateSchedule = (scheduleId: number, body: ScheduleUpdate) =>
   apiRequest<Schemas['ScheduleDetail']>(`/admin/schedules/${scheduleId}`, { method: 'PATCH', body })
+
+export const getIncidentRules = (query: Record<string, QueryValue>, signal?: AbortSignal) =>
+  apiRequest<Schemas['IncidentRuleDetailPage']>('/admin/incident-rules', { query, signal })
+
+export const createIncidentRule = (body: IncidentRuleCreate) =>
+  apiRequest<Schemas['IncidentRuleDetail']>('/admin/incident-rules', { method: 'POST', body })
+
+export const updateIncidentRule = (ruleId: number, body: IncidentRuleUpdate) =>
+  apiRequest<Schemas['IncidentRuleDetail']>(`/admin/incident-rules/${ruleId}`, { method: 'PATCH', body })
 
 export const getSettings = (signal?: AbortSignal) =>
   apiRequest<Schemas['SettingsDetail']>('/admin/settings', { signal })

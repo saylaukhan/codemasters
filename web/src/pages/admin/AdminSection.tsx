@@ -11,6 +11,7 @@ import { NotFoundPage } from '../section/NotFoundPage'
 import { AuditLogPage, EventLogPage } from './AuditLogPage'
 import { ConnectionTypesPage } from './ConnectionTypesPage'
 import { DevicesAdminPage } from './DevicesAdminPage'
+import { IncidentRulesPage } from './IncidentRulesPage'
 import { ProvidersPage } from './ProvidersPage'
 import { RegionsPage } from './RegionsPage'
 import { SchedulesPage } from './SchedulesPage'
@@ -28,6 +29,7 @@ const PAGES: Record<AdminTabKey, ComponentType> = {
   'connection-types': ConnectionTypesPage,
   thresholds: ThresholdsPage,
   schedules: SchedulesPage,
+  'incident-rules': IncidentRulesPage,
   settings: SettingsPage,
   audit: AuditLogPage,
   events: EventLogPage,

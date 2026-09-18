@@ -12,6 +12,9 @@ from app.models.device import Device
 from app.models.enrollment_code import EnrollmentCode
 from app.models.export import Export
 from app.models.heartbeat import Heartbeat
+from app.models.incident import Incident
+from app.models.incident_event import IncidentEvent
+from app.models.incident_rule import IncidentRule
 from app.models.line import Line
 from app.models.m_daily import MDaily
 from app.models.m_hourly import MHourly
@@ -38,6 +41,9 @@ __all__ = [
     "EnrollmentCode",
     "Export",
     "Heartbeat",
+    "Incident",
+    "IncidentEvent",
+    "IncidentRule",
     "Line",
     "MDaily",
     "MHourly",

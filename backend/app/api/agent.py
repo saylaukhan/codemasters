@@ -7,6 +7,7 @@ line of a request are derived from the device binding, never taken from the body
 Endpoints still answering 501 name the task that implements them.
 """
 
+import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from ipaddress import IPv4Address, IPv6Address, ip_address
@@ -65,6 +66,8 @@ EXTERNAL_IP_UNKNOWN = "Сервер не определил внешний IP з
 BLOCKED = "Устройство заблокировано администратором"
 DUPLICATE_MEASUREMENT = "Замер с этим measurement_uuid уже принят"
 DUPLICATE_OUTAGE = "Простой с этим started_at уже принят"
+
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -333,6 +336,7 @@ async def create_measurement(
     if body.measurement_uuid not in stored:
         raise ApiError(409, "duplicate_measurement", DUPLICATE_MEASUREMENT)
     await session.commit()
+    enqueue_detection(await measured_line(session, device))
     return MeasurementAccepted(
         measurement_uuid=body.measurement_uuid, received_at=stored[body.measurement_uuid]
     )
@@ -359,6 +363,8 @@ async def create_measurement_batch(
     """
     stored = await store_measurements(session, device, body.items)
     await session.commit()
+    if stored:
+        enqueue_detection(await measured_line(session, device))
     results = []
     counted: set[UUID] = set()
     for item in body.items:
@@ -412,6 +418,21 @@ async def store_measurements(
         .returning(Measurement.measurement_uuid, Measurement.received_at)
     )
     return {measurement_uuid: received_at for measurement_uuid, received_at in rows.all()}
+
+
+def enqueue_detection(line_id: int) -> None:
+    """Hand the line to the incident detection once its new measurements are committed (T-40).
+
+    The task is imported here: the Celery app reads the settings when it is created, and the API
+    imports without them (tests replace this function). A broker that does not answer loses
+    nothing: the measurement is stored and the beat run of every 5 minutes judges the line.
+    """
+    from app.workers.tasks.incidents import detect_line_task
+
+    try:
+        detect_line_task.delay(line_id)
+    except Exception:
+        logger.exception("incident detection of line %s not queued", line_id)
 
 
 async def measured_line(session: AsyncSession, device: Device) -> int:

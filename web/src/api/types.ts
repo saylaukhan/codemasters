@@ -13,6 +13,7 @@ export type FieldError = Schema<'FieldError'>
 export type SchoolStatus = Schemas['SchoolStatus']
 export type QualityStatus = Schemas['QualityStatus']
 export type IncidentStatus = Schemas['IncidentStatus']
+export type IncidentMetric = Schemas['IncidentMetric']
 export type UserRole = Schemas['UserRole']
 export type LineStatus = Schemas['LineStatus']
 export type DeviceStatus = Schemas['DeviceStatus']
@@ -105,6 +106,11 @@ export type ScheduleCreate = Schema<'ScheduleCreate'>
 export type ScheduleUpdate = Schema<'ScheduleUpdate'>
 export type SettingsDetail = Schema<'SettingsDetail'>
 export type SettingsUpdate = Schema<'SettingsUpdate'>
+
+// Incident rules of the administration (T-40): N in a row or T minutes open an incident, M normal restore it.
+export type IncidentRuleDetail = Schema<'IncidentRuleDetail'>
+export type IncidentRuleCreate = Schema<'IncidentRuleCreate'>
+export type IncidentRuleUpdate = Schema<'IncidentRuleUpdate'>
 
 // Users of the administration (T-38): a role with its scope, blocked instead of deleted.
 export type UserDetail = Schema<'UserDetail'>

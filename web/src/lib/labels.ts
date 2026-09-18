@@ -12,6 +12,7 @@ import type {
   ExportMode,
   ExportStatus,
   IfaceType,
+  IncidentMetric,
   IncidentStatus,
   LineStatus,
   QualityStatus,
@@ -233,6 +234,7 @@ export const ADMIN_TAB_LABELS = {
   'connection-types': 'Типы подключения',
   thresholds: 'Пороги',
   schedules: 'Расписания',
+  'incident-rules': 'Правила инцидентов',
   settings: 'Настройки',
   audit: 'Аудит',
   events: 'События',
@@ -252,6 +254,16 @@ export const SCHEDULE_SCOPE_LABELS: Record<ScheduleScope, string> = {
   global: 'Вся область',
   district: 'Район или город',
   school: 'Школа',
+}
+
+/** Metric an incident rule watches on every line (ТЗ п. 18, ADR-007): the names of the thresholds page. */
+export const INCIDENT_METRIC_LABELS: Record<IncidentMetric, string> = {
+  download_mbps: 'Download',
+  upload_mbps: 'Upload',
+  ping_ms: 'Ping',
+  jitter_ms: 'Jitter',
+  packet_loss_pct: 'Packet Loss',
+  no_connection: SCHOOL_STATUS_LABELS.offline,
 }
 
 /** A profile or a schedule is switched off, never deleted: the next one of its chain applies (T-37). */
