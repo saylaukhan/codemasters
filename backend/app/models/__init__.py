@@ -20,6 +20,8 @@ from app.models.m_daily import MDaily
 from app.models.m_hourly import MHourly
 from app.models.measurement import Measurement
 from app.models.monitoring_point import MonitoringPoint
+from app.models.notification import Notification
+from app.models.notification_log import NotificationLog
 from app.models.outage import Outage
 from app.models.provider import Provider
 from app.models.region import Region
@@ -49,6 +51,8 @@ __all__ = [
     "MHourly",
     "Measurement",
     "MonitoringPoint",
+    "Notification",
+    "NotificationLog",
     "Outage",
     "Provider",
     "Region",
