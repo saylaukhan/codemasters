@@ -1,7 +1,8 @@
 // Command vko-agent is the CLI of the school internet monitoring agent.
 //
-// Subcommands: configure, install, uninstall, run, status, probe, speed, measure, version. The
-// service, its loop (schedule, measurements, resend) and the config live in internal/service.
+// Subcommands: configure, install, uninstall, run, status, probe, speed, measure, update-apply,
+// version. The service, its loop (schedule, measurements, resend) and the config live in
+// internal/service.
 package main
 
 import (
@@ -24,6 +25,7 @@ import (
 	"github.com/saylaukhan/codemasters/agent/internal/queue"
 	"github.com/saylaukhan/codemasters/agent/internal/service"
 	"github.com/saylaukhan/codemasters/agent/internal/speed"
+	"github.com/saylaukhan/codemasters/agent/internal/update"
 )
 
 // Exit codes: 0 - success, 1 - runtime error, 2 - wrong usage (as in flag).
@@ -62,6 +64,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cmdSpeed(args[1:], stdout, stderr)
 	case "measure":
 		return cmdMeasure(args[1:], stdout, stderr)
+	case "update-apply":
+		return cmdUpdateApply(args[1:], stdout, stderr)
 	case "version":
 		return cmdVersion(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
@@ -91,6 +95,8 @@ func printUsage(w io.Writer) {
                             замерить Download и Upload (LibreSpeed, резерв ndt7)
   measure [--config <путь>] [--target <url>] [--librespeed <url>] [--ndt7 <url>]
                             один замер: в очередь и сразу отправить на сервер
+  update-apply --msi <путь> [--config <путь>] [--version <версия>] [--remove <путь>]
+                            установить скачанный релиз; запускает служба при обновлении
   version                   показать версию агента
 
 Справка по команде: vko-agent <команда> -h
@@ -464,6 +470,60 @@ func cmdMeasure(args []string, stdout, stderr io.Writer) int {
 	if n, err := q.Pending(ctx); err == nil {
 		fmt.Fprintf(stdout, "Очередь на отправку: %d\n", n)
 	}
+	return exitOK
+}
+
+// cmdUpdateApply installs a downloaded release. It is the separate updater
+// process the service starts and then dies with: msiexec stops the service
+// VKOMonitorAgent, so the installation cannot run inside it (plan.md §4.6,
+// T-50). It is not meant to be run by hand — the service passes the file it
+// has already checked by SHA-256 and by signature.
+//
+// --remove uninstalls the installation that is there now before installing;
+// a rollback needs it, because the package refuses to install over a newer
+// version (installer/wix/Package.wxs, MajorUpgrade).
+func cmdUpdateApply(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("update-apply", stderr)
+	configPath := fs.String("config", service.DefaultConfigPath(), "путь к файлу конфигурации агента (YAML)")
+	msi := fs.String("msi", "", "путь к установщику MSI, который нужно установить")
+	version := fs.String("version", "", "версия, которая устанавливается (для журнала)")
+	remove := fs.String("remove", "", "путь к MSI прежней установки: снять её перед установкой (откат)")
+	if code, ok := parseFlags(fs, args); !ok {
+		return code
+	}
+	if *msi == "" {
+		fmt.Fprintln(stderr, "update-apply: не указан установщик, используйте --msi <путь>")
+		return exitUsage
+	}
+
+	cfg, err := service.LoadConfig(*configPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "update-apply: %v\n", err)
+		return exitError
+	}
+	// The log of the agent is the only place a silent installation on a school
+	// computer can be explained from afterwards.
+	logger, closer, err := service.OpenLogger(cfg, stderr)
+	if err != nil {
+		fmt.Fprintf(stderr, "update-apply: %v\n", err)
+		return exitError
+	}
+	defer closer.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	if err := update.Install(ctx, update.InstallOptions{
+		DataDir: cfg.DataDir,
+		MSI:     *msi,
+		Version: *version,
+		Remove:  *remove,
+		Logger:  logger,
+	}); err != nil {
+		logger.Error("обновление не установлено", "version", *version, "msi", *msi, "err", err)
+		return exitError
+	}
+	logger.Info("обновление установлено", "version", *version, "msi", *msi)
+	fmt.Fprintf(stdout, "Обновление установлено: %s\n", *msi)
 	return exitOK
 }
 
