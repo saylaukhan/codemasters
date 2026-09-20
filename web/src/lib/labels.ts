@@ -84,6 +84,20 @@ export const SYSTEM_AUTHOR_LABEL = 'Система'
 /** Appeals go through the same six statuses as incidents (ADR-011). */
 export const APPEAL_STATUS_LABELS: Record<IncidentStatus, string> = INCIDENT_STATUS_LABELS
 
+/**
+ * Captions of an appeal to the provider (ТЗ п. 17, DESIGN.md §3.19): the draft opens from the card of an incident
+ * or of a school (T-47); the number is assigned by the sending of T-48, so the button waits for it.
+ */
+export const APPEAL_LABELS = {
+  create: 'Создать обращение',
+  draft: 'Черновик обращения',
+  send: 'Отправить обращение',
+  sendUpcoming: 'Отправка обращения появится в ближайшем обновлении панели',
+  regenerate: 'Перегенерировать',
+  regenerateHint: 'Модель напишет письмо заново: текст в редакторе будет заменён',
+  aiNote: 'Черновик создан автоматически. Проверьте перед отправкой.',
+} as const
+
 /** What the notification is about (T-42, ТЗ п. 18): every one of them follows an incident. */
 export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
   incident_opened: 'Новый инцидент',
