@@ -259,7 +259,14 @@ async def school_statuses(
 
     statuses: dict[int, SchoolStatus] = {}
     for school_id in school_ids:
-        moment = last_seen.get(school_id)
+        if school_id not in last_seen:
+            # Not one active computer of the school is visible: nothing has told us how the
+            # line behaves, and silence of a computer that does not exist is not «Нет
+            # соединения». A provider of only the reserve line of a school sees it this way
+            # too — the computers of the main line are outside his scope (T-44, ADR-008).
+            statuses[school_id] = "no_data"
+            continue
+        moment = last_seen[school_id]
         if moment is None or now - moment > timedelta(seconds=settings.offline_after_s):
             working = is_working_time(hours[school_id], settings.timezone, now)
             statuses[school_id] = "offline" if working else "no_data"
