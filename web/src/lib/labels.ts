@@ -62,6 +62,14 @@ export const INCIDENT_STATUS_ORDER: readonly IncidentStatus[] = [
   'closed',
 ]
 
+/** Switch of the incidents section (DESIGN.md §3.18): the table of T-41 or the kanban of T-43. */
+export const INCIDENT_VIEW_LABELS = {
+  list: 'Список',
+  board: 'Доска',
+} as const
+
+export type IncidentViewKey = keyof typeof INCIDENT_VIEW_LABELS
+
 /** Entry of the incident history (`incident_events`, ADR-007); a status change is written «Статус: A → B». */
 export const INCIDENT_EVENT_LABELS: Record<IncidentEventKind, string> = {
   created: 'Инцидент создан',

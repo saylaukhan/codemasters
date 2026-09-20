@@ -4,7 +4,7 @@ import { NotFoundPage } from '../section/NotFoundPage'
 import { IncidentCardPage } from './IncidentCardPage'
 import { IncidentsPage } from './IncidentsPage'
 
-/** Section «Инциденты»: the list and the card of an incident at /incidents/:incidentId (T-41); the kanban is T-43. */
+/** Section «Инциденты»: the list and the kanban at /incidents (T-41, T-43), the card at /incidents/:incidentId. */
 export function IncidentsSection() {
   return (
     <Routes>
