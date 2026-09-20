@@ -1,12 +1,13 @@
 import { useGetIdentity, useNotification } from '@refinedev/core'
 import { Steps, Table, type TableProps } from 'antd'
-import { SearchX } from 'lucide-react'
+import { Mail, SearchX } from 'lucide-react'
 import { Fragment, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 
 import { ApiError } from '../../api/client'
 import type { CurrentUser, IncidentBasisMetric } from '../../api/types'
-import { schoolCardPath } from '../../app/sections'
+import { appealDraftPath, schoolCardPath } from '../../app/sections'
+import { appealTargetQuery, canCreateAppeal, incidentAppealTarget } from '../../components/appeals/appeals'
 import styles from '../../components/incidents/Incident.module.css'
 import { IncidentActivity } from '../../components/incidents/IncidentActivity'
 import { durationCaption, formatMetricValue } from '../../components/incidents/incidents'
@@ -21,12 +22,14 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { IncidentStatusBadge } from '../../components/ui/StatusBadge'
 import { formatDateTime, formatDuration, NO_VALUE } from '../../lib/format'
 import {
+  APPEAL_LABELS,
   INCIDENT_METRIC_LABELS,
   INCIDENT_STATUS_LABELS,
   INCIDENT_STATUS_ORDER,
   LINE_STATUS_LABELS,
   SECTION_LABELS,
 } from '../../lib/labels'
+import { SIZES } from '../../styles/theme'
 
 // Values and thresholds come from the measurement that opened the incident; a manual one has none (ADR-004).
 const BASIS_COLUMNS: TableProps<IncidentBasisMetric>['columns'] = [
@@ -65,6 +68,7 @@ export function IncidentCardPage() {
   const update = useUpdateIncident(incidentId)
   const { data: user } = useGetIdentity<CurrentUser>()
   const { open: notify } = useNotification()
+  const navigate = useNavigate()
 
   if (incident.isError) {
     if (incident.error instanceof ApiError && incident.error.status === 404) {
@@ -146,6 +150,17 @@ export function IncidentCardPage() {
             <span>·</span>
             <span>{card.schoolName}</span>
           </span>
+        }
+        actions={
+          // The Action of this screen is «Сохранить» of the status form (DESIGN.md §1, rule 2).
+          canCreateAppeal(user) && (
+            <Button
+              icon={<Mail size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} aria-hidden />}
+              onClick={() => navigate(appealDraftPath(appealTargetQuery(incidentAppealTarget(card))))}
+            >
+              {APPEAL_LABELS.create}
+            </Button>
+          )
         }
       />
       <Steps

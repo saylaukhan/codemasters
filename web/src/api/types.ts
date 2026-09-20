@@ -125,6 +125,12 @@ export type IncidentUpdate = Schema<'IncidentUpdate'>
 export type IncidentStatusChange = Schema<'IncidentStatusChange'>
 export type IncidentCommentCreate = Schema<'IncidentCommentCreate'>
 
+// Appeals (T-47, ТЗ п. 17, ADR-011): the AI draft of a letter to the provider; sending and the number are T-48.
+export type AppealDraftRequest = Schema<'AppealDraftRequest'>
+export type AppealDraft = Schema<'AppealDraft'>
+export type AppealContext = Schema<'AppealContext'>
+export type MetricStats = Schema<'MetricStats'>
+
 // Users of the administration (T-38): a role with its scope, blocked instead of deleted.
 export type UserDetail = Schema<'UserDetail'>
 export type UserCreate = Schema<'UserCreate'>

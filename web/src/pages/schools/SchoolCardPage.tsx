@@ -1,16 +1,18 @@
 import { useNotification, usePermissions } from '@refinedev/core'
 import { Alert, Segmented, Tabs } from 'antd'
-import { Construction, FileDown, Plus, SearchX } from 'lucide-react'
+import { Construction, FileDown, Mail, Plus, SearchX } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useParams, useSearchParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import { ApiError } from '../../api/client'
 import type { AnalyticsPeriod, LineDetail, MonitoringPointDetail, SchoolContactDetail } from '../../api/types'
+import { appealDraftPath } from '../../app/sections'
 import { ContactDrawer } from '../../components/admin/ContactDrawer'
 import { EnrollmentCodeButton } from '../../components/admin/EnrollmentCodeButton'
 import { LineDrawer } from '../../components/admin/LineDrawer'
 import { PointDrawer } from '../../components/admin/PointDrawer'
 import { useDrawer } from '../../components/admin/useDrawer'
+import { APPEAL_CREATE_PERMISSION, appealTargetQuery, schoolAppealTarget } from '../../components/appeals/appeals'
 import { useBuildExport } from '../../components/exports/queries'
 import { IncidentCreateDrawer } from '../../components/incidents/IncidentCreateDrawer'
 import { SchoolIncidents } from '../../components/incidents/SchoolIncidents'
@@ -41,7 +43,7 @@ import { ErrorState } from '../../components/ui/ErrorState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { ConnectionStatusBadge } from '../../components/ui/StatusBadge'
 import { formatDateTime } from '../../lib/format'
-import { IFACE_LABELS, PERIOD_LABELS, SECTION_LABELS } from '../../lib/labels'
+import { APPEAL_LABELS, IFACE_LABELS, PERIOD_LABELS, SECTION_LABELS } from '../../lib/labels'
 import { SIZES } from '../../styles/theme'
 
 type Period = keyof typeof PERIOD_LABELS
@@ -115,6 +117,8 @@ export function SchoolCardPage() {
   const canManageDevices = permissions?.includes('devices:manage') ?? false
   // Район/город, Область and Администратор open an incident by hand when people notice a problem (T-41).
   const canCreateIncident = permissions?.includes(CREATE_PERMISSION) ?? false
+  // Школа, Район/город, Область and Администратор write to the provider from the card (ТЗ п. 17, T-47).
+  const canCreateAppeal = permissions?.includes(APPEAL_CREATE_PERMISSION) ?? false
   const lineDrawer = useDrawer<LineDetail>()
   const pointDrawer = useDrawer<MonitoringPointDetail>()
   const contactDrawer = useDrawer<SchoolContactDetail>()
@@ -122,6 +126,7 @@ export function SchoolCardPage() {
   // The PDF is built by the worker (T-33): the card waits for it for a minute, then it is in «Экспорт».
   const report = useBuildExport(60_000)
   const { open } = useNotification()
+  const navigate = useNavigate()
 
   if (school.isError) {
     if (school.error instanceof ApiError && school.error.status === 404) {
@@ -137,6 +142,8 @@ export function SchoolCardPage() {
   const latest = card.latestMeasurement
   const row = analytics.data?.rows[0]
   const mainLine = lines.data?.items.find((line) => line.status === 'main')
+  // An appeal goes to the provider of one line: the main one, or the first that is not switched off (ТЗ п. 10).
+  const appealLine = mainLine ?? lines.data?.items.find((line) => line.status !== 'disabled')
   const chart = analytics.data ? speedChart(analytics.data, mainLine) : undefined
   const heatmap = analytics.data ? problemHeatmap(analytics.data) : undefined
 
@@ -214,7 +221,6 @@ export function SchoolCardPage() {
         actions={
           <>
             <ConnectionStatusBadge status={card.status} />
-            {/* «Создать обращение» becomes the Action of the card with appeals (T-45…T-48). */}
             <Button
               icon={<FileDown size={16} />}
               loading={report.isPending}
@@ -238,6 +244,21 @@ export function SchoolCardPage() {
             >
               Отчёт PDF
             </Button>
+            {canCreateAppeal && (
+              <Button
+                kind="action"
+                icon={<Mail size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} aria-hidden />}
+                disabled={appealLine === undefined}
+                tooltip={appealLine === undefined ? 'У школы нет действующей линии' : undefined}
+                aria-label={APPEAL_LABELS.create}
+                onClick={() =>
+                  appealLine &&
+                  navigate(appealDraftPath(appealTargetQuery(schoolAppealTarget(schoolId, appealLine.id))))
+                }
+              >
+                {APPEAL_LABELS.create}
+              </Button>
+            )}
           </>
         }
       />

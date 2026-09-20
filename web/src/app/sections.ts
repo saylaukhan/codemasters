@@ -87,5 +87,11 @@ export const deviceCardPath = (deviceId: number): string => `/devices/${deviceId
 /** Card of one incident (T-41): the list, the school card and notifications lead here. */
 export const incidentCardPath = (incidentId: number): string => `/incidents/${incidentId}`
 
+/**
+ * Editor of an appeal draft (T-47): the card of an incident and the card of a school open it with the target and
+ * the period in the query (`appealTargetQuery` of components/appeals), so the address alone opens the same draft.
+ */
+export const appealDraftPath = (target: URLSearchParams): string => `/appeals/new?${target.toString()}`
+
 /** Tab of «Администрирование» (T-34): schools and the references, each at its own address. */
 export const adminTabPath = (tab: AdminTabKey): string => `/admin/${tab}`
