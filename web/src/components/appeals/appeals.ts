@@ -1,9 +1,22 @@
-// Appeal to a provider (T-47, ТЗ п. 17, ADR-011): the target of the letter and the period kept in the address of
-// the editor, the facts shown next to it. The number, the sending and the PDF are T-48.
+// Appeal to a provider (T-47, T-48, ТЗ п. 17, ADR-011): the target of the letter and the period kept in the address
+// of the editor, the facts shown next to it, and the view of the list of sent appeals kept in the URL.
 import dayjs from 'dayjs'
 
-import type { AppealContext, AppealDraftRequest, CurrentUser, IncidentDetail, IncidentMetric } from '../../api/types'
+import type { QueryValue } from '../../api/client'
+import type {
+  AppealContext,
+  AppealCreate,
+  AppealDraftRequest,
+  AppealEventDetail,
+  CurrentUser,
+  IncidentDetail,
+  IncidentMetric,
+  IncidentStatus,
+} from '../../api/types'
 import { formatDate, formatDateTime, NO_VALUE } from '../../lib/format'
+import { APPEAL_STATUS_LABELS, INCIDENT_EVENT_LABELS, INCIDENT_STATUS_ORDER } from '../../lib/labels'
+import { canClose, INCIDENT_TRANSITIONS } from '../incidents/transitions'
+import { PAGE_SIZES } from '../schools/useSchoolListView'
 
 /** Length limits of backend/app/schemas/appeals.py (`AppealCreate`), checked before sending. */
 export const SUBJECT_MAX_LENGTH = 255
@@ -13,8 +26,27 @@ export const COMMENT_MAX_LENGTH = 2000
 /** Permission of backend/app/auth/permissions.py to write to a provider: Школа, Район/город, Область, Администратор. */
 export const APPEAL_CREATE_PERMISSION = 'appeals:create'
 
+/** Permission to move an appeal and to comment it; the provider has it, `appeals:create` he has not (ТЗ п. 16). */
+export const APPEAL_UPDATE_PERMISSION = 'appeals:update'
+
 export const canCreateAppeal = (user: Pick<CurrentUser, 'permissions'> | undefined): boolean =>
   user?.permissions.includes(APPEAL_CREATE_PERMISSION) ?? false
+
+export const canUpdateAppeal = (user: Pick<CurrentUser, 'permissions'> | undefined): boolean =>
+  user?.permissions.includes(APPEAL_UPDATE_PERMISSION) ?? false
+
+/**
+ * Statuses the user may move an appeal to from `from`: an appeal goes through the same six statuses as an incident
+ * and by the same table (ADR-007, ADR-011), so «Закрыт» stays with Район/город, Область and Администратор. The API
+ * checks the transition and the role again (409, 403).
+ */
+export function appealTargets(
+  from: IncidentStatus,
+  user: Pick<CurrentUser, 'role' | 'permissions'> | undefined,
+): IncidentStatus[] {
+  if (!canUpdateAppeal(user)) return []
+  return INCIDENT_TRANSITIONS[from].filter((to) => to !== 'closed' || canClose(user?.role))
+}
 
 /** Period of an appeal opened from the school card: an incident brings its own (plan.md §8). */
 export const DEFAULT_PERIOD_DAYS = 7
@@ -123,3 +155,74 @@ export function fallbackDraft(target: AppealDraftRequest): { subject: string; te
     ].join('\n'),
   }
 }
+
+export interface AppealListView {
+  /** Chosen statuses in the order of ТЗ п. 19; none — all of them. */
+  statuses: IncidentStatus[]
+  /** Number of the appeal or its part, as typed. */
+  q: string
+  page: number
+  pageSize: number
+}
+
+const readPositive = (value: string | null, fallback: number): number => {
+  const number = Number(value ?? undefined)
+  return Number.isInteger(number) && number > 0 ? number : fallback
+}
+
+export function readAppealListView(params: URLSearchParams): AppealListView {
+  const pageSize = readPositive(params.get('page_size'), PAGE_SIZES[0])
+  const chosen = params.getAll('status')
+  return {
+    statuses: INCIDENT_STATUS_ORDER.filter((status) => chosen.includes(status)),
+    q: params.get('q') ?? '',
+    page: readPositive(params.get('page'), 1),
+    pageSize: (PAGE_SIZES as readonly number[]).includes(pageSize) ? pageSize : PAGE_SIZES[0],
+  }
+}
+
+export function writeAppealListView(current: URLSearchParams, view: AppealListView): URLSearchParams {
+  const updated = new URLSearchParams(current)
+  for (const key of ['status', 'q']) updated.delete(key)
+  for (const status of view.statuses) updated.append('status', status)
+  if (view.q) updated.set('q', view.q)
+  updated.set('page', String(view.page))
+  updated.set('page_size', String(view.pageSize))
+  return updated
+}
+
+/** Query of GET /api/appeals; the page is on the server, newest `sent_at` first. */
+export const appealListQuery = (view: AppealListView): Record<string, QueryValue> => ({
+  status: view.statuses,
+  q: view.q.trim() || undefined,
+  page: view.page,
+  pageSize: view.pageSize,
+})
+
+export const isAppealFiltered = (view: AppealListView): boolean => view.statuses.length > 0 || view.q.trim() !== ''
+
+export interface AppealLetter {
+  subject: string
+  text: string
+  comment: string
+}
+
+/**
+ * Body of POST /api/appeals: the target and the period of the editor with the letter as the person left it. The
+ * server rebuilds the facts over the same period itself, so nothing of the draft is sent back (ADR-011).
+ */
+export const appealCreateBody = (target: AppealDraftRequest, letter: AppealLetter): AppealCreate => ({
+  ...target,
+  subject: letter.subject.trim(),
+  text: letter.text.trim(),
+  userComment: letter.comment.trim() || null,
+})
+
+/**
+ * Entry of the appeal history (`appeal_events`, T-48): «Статус: Передан поставщику» for a move — the first one is
+ * the sending itself — and «Комментарий» for an entry that only carries one.
+ */
+export const appealEventCaption = (event: Pick<AppealEventDetail, 'status'>): string =>
+  event.status === null
+    ? INCIDENT_EVENT_LABELS.comment
+    : `${INCIDENT_EVENT_LABELS.status_change}: ${APPEAL_STATUS_LABELS[event.status]}`

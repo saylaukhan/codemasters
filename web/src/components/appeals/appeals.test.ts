@@ -2,15 +2,23 @@ import { describe, expect, it } from 'vitest'
 
 import type { AppealContext } from '../../api/types'
 import {
+  appealCreateBody,
+  appealEventCaption,
+  appealListQuery,
   appealTargetQuery,
+  appealTargets,
   canCreateAppeal,
+  canUpdateAppeal,
   contractCaption,
   fallbackDraft,
   incidentAppealTarget,
+  isAppealFiltered,
   metricRows,
   periodCaption,
+  readAppealListView,
   readAppealTarget,
   schoolAppealTarget,
+  writeAppealListView,
 } from './appeals'
 
 const NOW = new Date('2026-09-13T09:00:00Z')
@@ -153,5 +161,84 @@ describe('right to write to a provider', () => {
     expect(canCreateAppeal({ permissions: ['appeals:read', 'appeals:create'] })).toBe(true)
     expect(canCreateAppeal({ permissions: ['appeals:read'] })).toBe(false)
     expect(canCreateAppeal(undefined)).toBe(false)
+  })
+})
+
+describe('view of the appeal list', () => {
+  it('reads the statuses in the order of ТЗ п. 19 and drops unknown ones', () => {
+    const view = readAppealListView(new URLSearchParams('status=resolved&status=new&status=lost&q=ОБР&page=2'))
+    expect(view).toEqual({ statuses: ['new', 'resolved'], q: 'ОБР', page: 2, pageSize: 25 })
+    expect(isAppealFiltered(view)).toBe(true)
+  })
+
+  it('falls back to the first page and the default size', () => {
+    const view = readAppealListView(new URLSearchParams('page=-1&page_size=33'))
+    expect(view).toEqual({ statuses: [], q: '', page: 1, pageSize: 25 })
+    expect(isAppealFiltered(view)).toBe(false)
+  })
+
+  it('writes the view back next to the other parameters', () => {
+    const params = writeAppealListView(new URLSearchParams('status=new&other=1'), {
+      statuses: ['in_progress', 'awaiting_info'],
+      q: '',
+      page: 1,
+      pageSize: 50,
+    })
+    expect(params.getAll('status')).toEqual(['in_progress', 'awaiting_info'])
+    expect(params.get('other')).toBe('1')
+    expect(params.get('q')).toBeNull()
+    expect(readAppealListView(params)).toEqual({
+      statuses: ['in_progress', 'awaiting_info'],
+      q: '',
+      page: 1,
+      pageSize: 50,
+    })
+  })
+
+  it('asks the API only for what is filled in', () => {
+    expect(appealListQuery({ statuses: ['new'], q: ' 45 ', page: 2, pageSize: 50 })).toEqual({
+      status: ['new'],
+      q: '45',
+      page: 2,
+      pageSize: 50,
+    })
+    expect(appealListQuery({ statuses: [], q: '  ', page: 1, pageSize: 25 }).q).toBeUndefined()
+  })
+})
+
+describe('sending an appeal', () => {
+  it('sends the target of the editor with the letter as the person left it', () => {
+    const target = incidentAppealTarget({ id: 12, startedAt: '2026-09-12T10:00:00Z', restoredAt: null }, NOW)
+    expect(appealCreateBody(target, { subject: ' Тема ', text: ' Письмо ', comment: '  ' })).toEqual({
+      incidentId: 12,
+      periodFrom: '2026-09-12T10:00:00Z',
+      periodTo: '2026-09-13T09:00:00.000Z',
+      subject: 'Тема',
+      text: 'Письмо',
+      userComment: null,
+    })
+    expect(appealCreateBody(target, { subject: 'Тема', text: 'Письмо', comment: ' Срочно ' }).userComment).toBe(
+      'Срочно',
+    )
+  })
+})
+
+describe('statuses of an appeal', () => {
+  it('offers the transitions of an incident and keeps «Закрыт» for the closing roles', () => {
+    const provider = { role: 'provider' as const, permissions: ['appeals:read', 'appeals:update'] }
+    expect(appealTargets('resolved', provider)).toEqual(['in_progress'])
+    expect(appealTargets('resolved', { role: 'district', permissions: ['appeals:update'] })).toEqual([
+      'in_progress',
+      'closed',
+    ])
+    expect(appealTargets('closed', provider)).toEqual([])
+    expect(appealTargets('new', { role: 'school', permissions: ['appeals:read'] })).toEqual([])
+    expect(canUpdateAppeal(provider)).toBe(true)
+    expect(canCreateAppeal(provider)).toBe(false)
+  })
+
+  it('writes the history entries', () => {
+    expect(appealEventCaption({ status: 'sent_to_provider' })).toBe('Статус: Передан поставщику')
+    expect(appealEventCaption({ status: null })).toBe('Комментарий')
   })
 })
