@@ -28,8 +28,13 @@ type HeartbeatOptions struct {
 	Interval func() time.Duration
 	// Wake, when set, is signalled once the connection is back, so the queue
 	// of measurements is resent at once and not after its own pause (ADR-006).
-	Wake   chan<- struct{}
-	Logger *slog.Logger
+	Wake chan<- struct{}
+	// OnSuccess, when set, gets the time of every heartbeat the server
+	// accepted. The heartbeat carries buildinfo.Version, so an accepted one
+	// means the server knows which version runs here: that is what confirms a
+	// self-update (T-50).
+	OnSuccess func(at time.Time)
+	Logger    *slog.Logger
 	// Now is the clock, time.Now when nil; tests replace it.
 	Now func() time.Time
 }
@@ -109,6 +114,10 @@ func (h *heartbeat) beat(ctx context.Context) {
 	case err != nil:
 		online = false
 		h.opts.Logger.Warn("heartbeat не дошёл: связи нет", "err", err)
+	default:
+		if h.opts.OnSuccess != nil {
+			h.opts.OnSuccess(at)
+		}
 	}
 
 	h.tracker.Interval = h.interval()

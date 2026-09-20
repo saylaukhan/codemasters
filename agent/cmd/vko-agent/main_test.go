@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -137,6 +138,41 @@ func TestRunWithRepoDevConfig(t *testing.T) {
 	code, _, stderr := runCLI(t, "run", "--config", filepath.Join("..", "..", "dev.yaml"), "--check")
 	if code != exitOK {
 		t.Fatalf("run with dev.yaml: exit code = %d, want %d; stderr: %s", code, exitOK, stderr)
+	}
+}
+
+func TestUpdateApplyWithoutMSIIsUsageError(t *testing.T) {
+	code, _, stderr := runCLI(t, "update-apply")
+	if code != exitUsage {
+		t.Fatalf("update-apply without --msi: exit code = %d, want %d", code, exitUsage)
+	}
+	if !strings.Contains(stderr, "--msi") {
+		t.Fatalf("update-apply without --msi: stderr %q does not name the flag", stderr)
+	}
+}
+
+// TestUpdateApplyOutsideWindows: the release of the agent is an MSI, so the
+// updater refuses to install it elsewhere instead of running a msiexec that
+// does not exist (T-50).
+func TestUpdateApplyOutsideWindows(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("на Windows установка выполняется по-настоящему")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "agent.yaml")
+	if err := os.WriteFile(path, []byte("server_url: http://localhost:8000\ndata_dir: data\n"), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	msi := filepath.Join(dir, "0.2.0.msi")
+	if err := os.WriteFile(msi, []byte("MSI"), 0o644); err != nil {
+		t.Fatalf("write msi: %v", err)
+	}
+	code, _, stderr := runCLI(t, "update-apply", "--config", path, "--msi", msi, "--version", "0.2.0")
+	if code != exitError {
+		t.Fatalf("update-apply: exit code = %d, want %d; stderr: %s", code, exitError, stderr)
+	}
+	if !strings.Contains(stderr, "только на Windows") {
+		t.Fatalf("update-apply: stderr %q does not explain why", stderr)
 	}
 }
 

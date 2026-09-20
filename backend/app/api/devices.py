@@ -114,10 +114,11 @@ async def list_device_measurements(
 @router.patch(
     "/{device_id}",
     dependencies=[Depends(require("devices:manage"))],
-    summary="Перепривязать устройство к другой точке мониторинга",
+    summary="Перепривязать устройство и задать канал обновления агента",
     description=(
         "Школа и линия новых замеров берутся из новой точки; прежние замеры остаются со своей "
-        "линией. Неизвестный monitoring_point_id — 422."
+        "линией. Неизвестный monitoring_point_id — 422. update_channel pilot выдаёт агенту "
+        "релиз раньше остальных (T-50)."
     ),
     responses={404: DEVICE_NOT_FOUND},
 )
@@ -127,7 +128,7 @@ async def update_device(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> DeviceDetail:
-    changes = await device_admin.rebind_device(session, device_id, body.monitoring_point_id)
+    changes = await device_admin.update_device(session, device_id, body)
     describe_action(request, changes=changes or None)
     return await device_detail(session, device_id, now=datetime.now(UTC))
 

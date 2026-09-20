@@ -179,6 +179,7 @@ async def device_items(
                 "agent_version": row.Device.agent_version,
                 "last_seen_at": row.Device.last_seen_at,
                 "status": row.Device.status,
+                "update_channel": row.Device.update_channel,
                 "current_status": current_status(row.Device, row.MonitoringPoint),
                 "latest_measurement": latest_measurement(latest.get(row.Device.id)),
             }

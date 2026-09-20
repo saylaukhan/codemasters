@@ -65,10 +65,13 @@ func definition(configPath string) *kservice.Config {
 
 // program adapts the agent loop to kardianos/service Start/Stop.
 type program struct {
-	cfg    Config
-	logger *slog.Logger
-	cancel context.CancelFunc
-	done   chan struct{}
+	cfg Config
+	// configPath is the file the service was registered with; the updater
+	// process is started with the same one (T-50).
+	configPath string
+	logger     *slog.Logger
+	cancel     context.CancelFunc
+	done       chan struct{}
 }
 
 func (p *program) Start(kservice.Service) error {
@@ -77,7 +80,7 @@ func (p *program) Start(kservice.Service) error {
 	p.done = make(chan struct{})
 	go func() {
 		defer close(p.done)
-		if err := runAgent(ctx, p.cfg, p.logger); err != nil {
+		if err := runAgent(ctx, p.cfg, p.configPath, p.logger); err != nil {
 			p.logger.Error("агент остановлен с ошибкой", "err", err)
 			// Exit non-zero so the service manager applies the restart policy.
 			os.Exit(1)
@@ -99,8 +102,8 @@ func (p *program) Stop(kservice.Service) error {
 // runAgent is the agent main loop: it records the start in the state file,
 // opens the queue, registers the device (T-07), keeps the configuration of the
 // server up to date, measures by its schedule (T-08, T-13), resends the queue
-// (T-11) and watches for a network change, until stop.
-func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
+// (T-11), updates itself (T-50) and watches for a network change, until stop.
+func runAgent(ctx context.Context, cfg Config, configPath string, logger *slog.Logger) error {
 	st, err := ReadState(cfg.DataDir)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		logger.Warn("файл состояния повреждён, создаётся заново", "err", err)
@@ -129,6 +132,8 @@ func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
 		// connection after a heartbeat or a network change (ADR-006).
 		wake := make(chan struct{}, 1)
 		settings := &Settings{}
+		// beats tell the self-update that the server heard this version (T-50).
+		beats := &beatClock{}
 
 		go q.Run(ctx, client, wake, func(pending int) {
 			state.update(func(s *State) { s.QueueSize = pending })
@@ -143,8 +148,9 @@ func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
 			Interval: func() time.Duration {
 				return time.Duration(settings.Current().HeartbeatIntervalS) * time.Second
 			},
-			Wake:   wake,
-			Logger: logger,
+			Wake:      wake,
+			Logger:    logger,
+			OnSuccess: beats.mark,
 		})
 
 		measure := measureFunc(cfg, client, q, settings, state, wake, logger)
@@ -165,6 +171,7 @@ func runAgent(ctx context.Context, cfg Config, logger *slog.Logger) error {
 			go sched.Run(ctx)
 		}
 		go runConfig(ctx, client, cfg.DataDir, settings, apply, logger)
+		startUpdates(ctx, cfg, configPath, client, settings, beats, logger)
 	}
 	<-ctx.Done()
 	logger.Info("агент остановлен")
@@ -233,7 +240,7 @@ func ReadToken(dataDir string) (string, error) {
 // Run starts the agent: under the service manager as a service, from a
 // terminal in the foreground until Ctrl+C (`make agent-run`).
 func Run(cfg Config, configPath string, logger *slog.Logger) error {
-	svc, err := kservice.New(&program{cfg: cfg, logger: logger}, definition(configPath))
+	svc, err := kservice.New(&program{cfg: cfg, configPath: configPath, logger: logger}, definition(configPath))
 	if err != nil {
 		return err
 	}
