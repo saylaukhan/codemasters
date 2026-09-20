@@ -12,7 +12,10 @@ class Device(TimestampMixin, Base):
     """Computer with an agent; its school and line come only from ``monitoring_point_id``."""
 
     __tablename__ = "devices"
-    __table_args__ = (CheckConstraint("status IN ('active', 'blocked')", name="status"),)
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'blocked')", name="status"),
+        CheckConstraint("update_channel IN ('pilot', 'stable')", name="update_channel"),
+    )
 
     id: Mapped[int] = mapped_column(Identity(), primary_key=True)
     device_uid: Mapped[str] = mapped_column(unique=True)
@@ -29,3 +32,6 @@ class Device(TimestampMixin, Base):
     # Set by the admin panel: the agent sees it in its configuration and exchanges its token
     # with ``POST /api/agent/token``, which clears it (T-36).
     token_rotation_requested_at: Mapped[datetime | None]
+    # Channel of the self-update: a device on ``pilot`` takes a release before the rest, which
+    # wait for its promotion to ``stable`` (T-50).
+    update_channel: Mapped[str] = mapped_column(server_default=text("'stable'"))
