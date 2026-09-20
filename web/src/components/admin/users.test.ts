@@ -11,6 +11,7 @@ const district: UserDetail = {
   scope: { regionId: 3, regionName: 'Усть-Каменогорск', providerId: null, schoolId: null },
   scopeName: 'Усть-Каменогорск',
   isActive: true,
+  telegramChatId: '123456789',
 }
 
 describe('users of the administration', () => {
@@ -33,5 +34,23 @@ describe('users of the administration', () => {
     expect(userUpdateBody(initial, { ...initial, regionId: 4 })).toEqual({ role: 'district', regionId: 4 })
     expect(userUpdateBody(initial, { ...initial, role: 'oblast' })).toEqual({ role: 'oblast' })
     expect(userUpdateBody(initial, initial)).toEqual({})
+  })
+
+  it('sends the Telegram chat only when it is filled, and `null` when it is cleared', () => {
+    expect(
+      userCreateBody({ fullName: 'Новый', email: 'new@example.kz', role: 'oblast', password: 'Password1' }),
+    ).not.toHaveProperty('telegramChatId')
+    expect(
+      userCreateBody({
+        fullName: 'Новый',
+        email: 'new@example.kz',
+        role: 'oblast',
+        password: 'Password1',
+        telegramChatId: ' 42 ',
+      }),
+    ).toMatchObject({ telegramChatId: '42' })
+    const initial = userFormValues(district)
+    expect(userUpdateBody(initial, { ...initial, telegramChatId: '' })).toEqual({ telegramChatId: null })
+    expect(userUpdateBody(initial, { ...initial, telegramChatId: '987' })).toEqual({ telegramChatId: '987' })
   })
 })
