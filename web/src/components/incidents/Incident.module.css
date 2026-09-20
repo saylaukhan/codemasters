@@ -37,6 +37,11 @@
   min-width: var(--popover-width);
 }
 
+/* Switch «Список / Доска» (DESIGN.md §3.18) — at the right end of the toolbar. */
+.viewSwitch {
+  margin-left: auto;
+}
+
 /* Header of the card: the number in JetBrains Mono, the badge and the duration on one line. */
 .meta {
   display: flex;

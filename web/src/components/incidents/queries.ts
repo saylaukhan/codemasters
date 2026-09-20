@@ -64,6 +64,16 @@ export const useChangeIncidentStatus = (incidentId: number) => {
   })
 }
 
+/** Move of a card on the kanban (T-43): the same endpoint as the card's form, for any incident of the board. */
+export const useMoveIncident = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ incidentId, ...body }: IncidentStatusChange & { incidentId: number }) =>
+      changeIncidentStatus(incidentId, body),
+    onSuccess: () => invalidateIncidents(queryClient),
+  })
+}
+
 export const useUpdateIncident = (incidentId: number) => {
   const queryClient = useQueryClient()
   return useMutation({
