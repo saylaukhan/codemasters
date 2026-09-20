@@ -4,8 +4,15 @@
 `VKOMonitorAgent` с отложенным автозапуском, папку данных и файл конфигурации. GUI и значка в
 трее нет — после установки участие пользователя не требуется (ТЗ п. 2, ADR-010).
 
-Собирается в CI: `.github/workflows/agent-msi.yml`. Локально MSI не собирается — нужен
-Windows и WiX; `make check-agent` установщик не трогает.
+Собирается только в CI: `.github/workflows/agent-msi.yml`, `runs-on: windows-latest`.
+`make check-agent` установщик не трогает.
+
+**Локально на macOS и Linux `Package.wxs` не проверить даже компиляцией.** `wix build` там
+запускается (`dotnet tool install --global wix`), но падает с `WIX0389: The Directory/@Name
+attribute's value ... is not a relative path` на любом элементе `Directory` — на версиях 4.0.6,
+5.0.2 и 6.0.1 и на образце из документации WiX тоже (`wixtoolset/issues#7154`). Отдельной
+схемы XSD для проверки редактором WiX v4 не публикует. Единственный способ проверить
+установщик — прогнать `Agent MSI` (`workflow_dispatch`) и поставить артефакт на Windows.
 
 ## Что делает установка
 
