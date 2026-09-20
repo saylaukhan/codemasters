@@ -5,26 +5,11 @@ import { Link } from 'react-router'
 import type { AnalyticsLevel } from '../../api/types'
 import { schoolCardPath } from '../../app/sections'
 import { formatMs, formatNumber, formatPercent, formatSpeed, NO_VALUE } from '../../lib/format'
+import { ANALYTICS_ENTITY_LABELS } from '../../lib/labels'
 import styles from './Analytics.module.css'
-import type { RankedRow } from './report'
+import { byValue, type RankedRow } from './report'
 
 type Metric = 'downloadMbps' | 'uploadMbps' | 'pingMs'
-
-const NAME_TITLES: Record<AnalyticsLevel, string> = {
-  school: 'Школа',
-  district: 'Район/город',
-  provider: 'Провайдер',
-  region: 'Область',
-}
-
-/** Ascending order with empty values last in both directions of the column. */
-const byValue =
-  (value: (row: RankedRow) => number | null | undefined) =>
-  (a: RankedRow, b: RankedRow, order?: 'ascend' | 'descend' | null) => {
-    const [x, y] = [value(a), value(b)]
-    if (x == null || y == null) return x == null && y == null ? 0 : (x == null ? 1 : -1) * (order === 'descend' ? -1 : 1)
-    return x - y
-  }
 
 const number = (text: string, alert = false) => (
   <span className={alert ? `${styles.number} ${styles.below}` : styles.number}>{text}</span>
@@ -71,7 +56,7 @@ export function RatingTable({ level, rows, availabilityMinPct, loading, empty }:
     },
     {
       key: 'name',
-      title: NAME_TITLES[level],
+      title: ANALYTICS_ENTITY_LABELS[level],
       width: 280,
       sorter: (a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'ru'),
       render: (_, row) =>

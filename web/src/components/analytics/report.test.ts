@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import type { AnalyticsReport, AnalyticsRow } from '../../api/types'
-import { compareChart, hoursChart, rankRows, reportTotals } from './report'
+import type { AnalyticsReport, AnalyticsRow, IncidentAnalyticsReport, IncidentAnalyticsRow } from '../../api/types'
+import { compareChart, hoursChart, incidentTotals, rankRows, reportTotals } from './report'
 import { analyticsQuery, readView, writeView } from './view'
 
 const row = (id: number, problemPct: number | null, availabilityPct: number | null = 100): AnalyticsRow => ({
@@ -65,6 +65,65 @@ describe('reportTotals', () => {
 
   it('has no values without measurements', () => {
     expect(reportTotals({ ...REPORT, series: [] })).toMatchObject({ measurementsCount: 0, problemPct: null })
+  })
+})
+
+const incidentRow = (id: number, fields: Partial<IncidentAnalyticsRow> = {}): IncidentAnalyticsRow => ({
+  id,
+  name: `Школа ${id}`,
+  linesCount: 1,
+  incidentsCount: 0,
+  openCount: 0,
+  restoredCount: 0,
+  totalDurationS: null,
+  avgDurationS: null,
+  maxDurationS: null,
+  incidentsPerLine30d: 0,
+  ...fields,
+})
+
+/** Seven days of three schools: one with three incidents, one with one, one untouched. */
+const INCIDENTS: IncidentAnalyticsReport = {
+  periodFrom: '2026-09-11T19:00:00Z',
+  periodTo: '2026-09-18T19:00:00Z',
+  repeatabilityWindowDays: 30,
+  rows: [
+    incidentRow(1, {
+      incidentsCount: 3,
+      openCount: 1,
+      restoredCount: 2,
+      totalDurationS: 10800,
+      avgDurationS: 5400,
+      maxDurationS: 7200,
+      incidentsPerLine30d: 3 * (30 / 7),
+    }),
+    incidentRow(2, {
+      incidentsCount: 1,
+      restoredCount: 1,
+      totalDurationS: 1800,
+      avgDurationS: 1800,
+      maxDurationS: 1800,
+      incidentsPerLine30d: 30 / 7,
+    }),
+    incidentRow(3),
+  ],
+}
+
+describe('incidentTotals', () => {
+  it('adds up the counts, weights the average length and counts the repeatability anew', () => {
+    expect(incidentTotals(INCIDENTS)).toEqual({
+      linesCount: 3,
+      incidentsCount: 4,
+      openCount: 1,
+      restoredCount: 3,
+      avgDurationS: 4200,
+      incidentsPerLine30d: (4 / 3) * (30 / 7),
+    })
+  })
+
+  it('has no average length while nothing is restored', () => {
+    const open = { ...INCIDENTS, rows: [incidentRow(1, { incidentsCount: 2, openCount: 2 })] }
+    expect(incidentTotals(open)).toMatchObject({ avgDurationS: null, incidentsPerLine30d: 2 * (30 / 7) })
   })
 })
 

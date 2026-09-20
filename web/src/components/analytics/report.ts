@@ -1,10 +1,12 @@
 // Pure functions over the analytics report (T-27): totals of the selection, the rating of the rows
 // and the chart data of «Часы ухудшения» and «Сравнение школ».
-import type { AnalyticsReport, AnalyticsRow } from '../../api/types'
+import type { AnalyticsReport, AnalyticsRow, IncidentAnalyticsReport, IncidentAnalyticsRow } from '../../api/types'
 import { MS_UNIT, SPEED_UNIT } from '../../lib/format'
 import type { TimeChartData } from '../ui/chartOption'
 
 type Point = AnalyticsReport['series'][number]
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 export interface ReportTotals {
   measurementsCount: number
@@ -37,6 +39,48 @@ export function reportTotals(report: AnalyticsReport): ReportTotals {
     avgDownloadMbps: weighted(report.series, (point) => point.avgDownloadMbps),
     avgUploadMbps: weighted(report.series, (point) => point.avgUploadMbps),
     avgPingMs: weighted(report.series, (point) => point.avgPingMs),
+  }
+}
+
+/** Ascending order of a column with empty values last in both directions. */
+export const byValue =
+  <Row>(value: (row: Row) => number | null | undefined) =>
+  (a: Row, b: Row, order?: 'ascend' | 'descend' | null) => {
+    const [x, y] = [value(a), value(b)]
+    if (x == null || y == null) return x == null && y == null ? 0 : (x == null ? 1 : -1) * (order === 'descend' ? -1 : 1)
+    return x - y
+  }
+
+export interface IncidentTotals {
+  linesCount: number
+  incidentsCount: number
+  openCount: number
+  restoredCount: number
+  avgDurationS: number | null
+  incidentsPerLine30d: number | null
+}
+
+/**
+ * Totals of «Инциденты» (ТЗ п. 19): the rows of a level split the lines between them, so counts add
+ * up. The average length is weighted by the restored incidents of every row — the mean of means is
+ * wrong — and the repeatability is counted anew over all lines of the selection, as the server does.
+ */
+export function incidentTotals(report: IncidentAnalyticsReport): IncidentTotals {
+  const sum = (value: (row: IncidentAnalyticsRow) => number | null) =>
+    report.rows.reduce((total, row) => total + (value(row) ?? 0), 0)
+  const linesCount = sum((row) => row.linesCount)
+  const incidentsCount = sum((row) => row.incidentsCount)
+  const restoredCount = sum((row) => row.restoredCount)
+  const totalDurationS = sum((row) => row.totalDurationS)
+  const days = (Date.parse(report.periodTo) - Date.parse(report.periodFrom)) / DAY_MS
+  return {
+    linesCount,
+    incidentsCount,
+    openCount: sum((row) => row.openCount),
+    restoredCount,
+    avgDurationS: restoredCount ? totalDurationS / restoredCount : null,
+    incidentsPerLine30d:
+      linesCount && days > 0 ? (incidentsCount / linesCount) * (report.repeatabilityWindowDays / days) : null,
   }
 }
 

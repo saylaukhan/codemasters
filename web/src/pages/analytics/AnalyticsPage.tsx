@@ -1,12 +1,14 @@
+import { Tabs } from 'antd'
 import { SearchX } from 'lucide-react'
 
 import { AnalyticsFilterBar } from '../../components/analytics/AnalyticsFilterBar'
 import styles from '../../components/analytics/Analytics.module.css'
-import { useAnalytics } from '../../components/analytics/queries'
+import { IncidentAnalyticsTab } from '../../components/analytics/IncidentAnalyticsTab'
+import { useAnalytics, useIncidentAnalytics } from '../../components/analytics/queries'
 import { RatingTable } from '../../components/analytics/RatingTable'
 import { hoursChart, rankRows, reportTotals } from '../../components/analytics/report'
 import { SchoolComparison } from '../../components/analytics/SchoolComparison'
-import { isFiltered, useAnalyticsView } from '../../components/analytics/view'
+import { isFiltered, TABS, useAnalyticsTab, useAnalyticsView } from '../../components/analytics/view'
 import { useMapFilterOptions } from '../../components/map/queries'
 import { KpiCard } from '../../components/overview/KpiCard'
 import { speedChart } from '../../components/schools/speedChart'
@@ -17,28 +19,39 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, formatMs, formatNumber, formatPercent, formatSpeed, MS_UNIT, SPEED_UNIT } from '../../lib/format'
-import { ANALYTICS_LEVEL_LABELS, SECTION_LABELS } from '../../lib/labels'
+import { ANALYTICS_LEVEL_LABELS, ANALYTICS_TAB_LABELS, SECTION_LABELS, type AnalyticsTabKey } from '../../lib/labels'
 
 const NO_MEASUREMENTS = (
   <EmptyState title="Замеров за период нет" description="Выберите другой период или снимите фильтры." />
 )
 
-/** Analytics (ТЗ п. 5, п. 13; plan.md §11): totals, charts, rating, slices and comparison of schools. */
+/**
+ * Analytics (ТЗ п. 5, п. 13, п. 19; plan.md §11): «Показатели» — totals, charts, rating and the
+ * comparison of schools; «Инциденты» — their count, length and repeatability (T-45). Both tabs stand
+ * on one filter bar, and the hidden one is not requested.
+ */
 export function AnalyticsPage() {
   const [view, setView] = useAnalyticsView()
+  const [tab, setTab] = useAnalyticsTab()
   const options = useMapFilterOptions()
-  const report = useAnalytics(view)
+  const quality = tab === 'quality'
+  const report = useAnalytics(view, view.level, quality)
   // Choices of «Сравнение школ»; the same request as the report on the school level.
-  const schools = useAnalytics(view, 'school')
+  const schools = useAnalytics(view, 'school', quality)
+  const incidents = useIncidentAnalytics(view, !quality)
 
   const data = report.data
-  const period = data
-    ? `${formatDate(data.periodFrom)} — ${formatDate(Date.parse(data.periodTo) - 1)}`
+  // Bounds of the period as the server resolved the preset: either tab answers with them.
+  const bounds = data ?? incidents.data
+  const period = bounds
+    ? `${formatDate(bounds.periodFrom)} — ${formatDate(Date.parse(bounds.periodTo) - 1)}`
     : undefined
   const resetFilters = () => setView({ ...view, regionId: undefined, providerId: undefined, connectionTypeId: undefined })
 
   let content
-  if (report.isError) {
+  if (!quality) {
+    content = <IncidentAnalyticsTab view={view} report={incidents} onResetFilters={resetFilters} />
+  } else if (report.isError) {
     content = <ErrorState error={report.error} onRetry={() => void report.refetch()} />
   } else if (!data) {
     content = <ContentSkeleton rows={8} />
@@ -144,6 +157,11 @@ export function AnalyticsPage() {
   return (
     <>
       <PageHeader title={SECTION_LABELS.analytics} subtitle={period} />
+      <Tabs
+        activeKey={tab}
+        items={TABS.map((key) => ({ key, label: ANALYTICS_TAB_LABELS[key] }))}
+        onChange={(key) => setTab(key as AnalyticsTabKey)}
+      />
       <AnalyticsFilterBar view={view} options={options.data} onChange={setView} />
       {content}
     </>

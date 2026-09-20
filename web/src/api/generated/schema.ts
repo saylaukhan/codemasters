@@ -722,6 +722,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/analytics/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Инциденты за период: количество, длительность, повторяемость
+         * @description Вкладка «Инциденты» аналитики (ТЗ п. 19, plan.md §7). Инцидент попадает в период по started_at; длительность — restored_at − started_at, как в карточке (T-41), поэтому открытый инцидент считается, но длительность не увеличивает. Повторяемость — инцидентов на линию, приведённых к 30 суткам. Фильтры и область видимости — те же, что у сводной аналитики: строки стоят на линиях выборки (ADR-008).
+         */
+        get: operations["get_incident_analytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/incidents": {
         parameters: {
             query?: never;
@@ -2645,6 +2665,98 @@ export interface components {
         };
         /** @enum {string} */
         IfaceType: "ethernet" | "wifi" | "other";
+        /**
+         * IncidentAnalyticsReport
+         * @description Incidents of one level for a period (ТЗ п. 19, plan.md §7).
+         *
+         *     Rows are the entities of ``level`` within the scope and the filters, those without a single
+         *     incident included; sorting happens in the panel.
+         */
+        IncidentAnalyticsReport: {
+            /**
+             * Period From
+             * Format: date-time
+             * @description Начало периода, включительно
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец периода, не включительно
+             */
+            period_to: string;
+            /**
+             * Repeatability Window Days
+             * @description Окно повторяемости: к скольким суткам приведён incidents_per_line_30d
+             */
+            repeatability_window_days: number;
+            /**
+             * Rows
+             * @description Все сущности уровня в области видимости и фильтрах, по name; без пагинации
+             */
+            rows: components["schemas"]["IncidentAnalyticsRow"][];
+        };
+        /**
+         * IncidentAnalyticsRow
+         * @description One entity of the level: incidents of the period, their length and repeatability (ТЗ п. 19).
+         *
+         *     An incident belongs to the period by ``started_at``. Length is ``restored_at − started_at``
+         *     (T-41), so an incident that is still open only counts and lengthens nothing. Repeatability
+         *     is the incidents of one line brought to 30 days, so periods of different length stay
+         *     comparable (plan.md §7).
+         */
+        IncidentAnalyticsRow: {
+            /**
+             * Id
+             * @description id школы, района/города (regions) или поставщика; null при level=region
+             */
+            id: number | null;
+            /**
+             * Name
+             * @description Наименование школы, района/города или поставщика; null при level=region
+             */
+            name: string | null;
+            /**
+             * Lines Count
+             * @description Линий в выборке: знаменатель повторяемости
+             */
+            lines_count: number;
+            /**
+             * Incidents Count
+             * @description Инцидентов, начавшихся в периоде
+             */
+            incidents_count: number;
+            /**
+             * Open Count
+             * @description Из них без restored_at: показатели ещё не восстановились
+             */
+            open_count: number;
+            /**
+             * Restored Count
+             * @description Из них с restored_at: только по ним считается длительность
+             */
+            restored_count: number;
+            /**
+             * Total Duration S
+             * @description Суммарная длительность восстановленных, с; null, если таких инцидентов нет
+             */
+            total_duration_s: number | null;
+            /**
+             * Avg Duration S
+             * @description Средняя длительность восстановленных, с; null, если таких нет
+             */
+            avg_duration_s: number | null;
+            /**
+             * Max Duration S
+             * @description Самый долгий восстановленный инцидент, с; null, если таких нет
+             */
+            max_duration_s: number | null;
+            /**
+             * Incidents Per Line 30D
+             * @description Повторяемость: инцидентов на линию за 30 дней, приведено к длине периода (plan.md §7); null, если в выборке нет линий
+             */
+            incidents_per_line_30d: number | null;
+        };
         /**
          * IncidentBasisMetric
          * @description Metric an incident is based on: the violating value next to its threshold (ТЗ п. 19).
@@ -6927,6 +7039,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnalyticsReport"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_incident_analytics: {
+        parameters: {
+            query: {
+                /** @description Группировка строк: школа, район/город (regions), поставщик или вся ВКО */
+                level: components["schemas"]["AnalyticsLevel"];
+                /** @description today, 7 или 30 суток с текущими, custom — period_from и period_to */
+                period: components["schemas"]["AnalyticsPeriod"];
+                /** @description Начало, включительно; только и обязательно при period=custom */
+                period_from?: string | null;
+                /** @description Конец, не включительно; только и обязательно при period=custom */
+                period_to?: string | null;
+                school_id?: number | null;
+                /** @description Район или город (regions) */
+                region_id?: number | null;
+                provider_id?: number | null;
+                connection_type_id?: number | null;
+                /** @description Статус учитываемых линий; основные и резервные не смешиваются (п. 10) */
+                line_status?: components["schemas"]["LineStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentAnalyticsReport"];
                 };
             };
             /** @description Ошибка валидации запроса */

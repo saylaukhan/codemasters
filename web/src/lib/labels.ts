@@ -167,6 +167,22 @@ export const ANALYTICS_LEVEL_LABELS: Record<AnalyticsLevel, string> = {
   region: 'Вся область',
 }
 
+/** One entity of a level: title of the first column of a table of the analytics. */
+export const ANALYTICS_ENTITY_LABELS: Record<AnalyticsLevel, string> = {
+  school: 'Школа',
+  district: 'Район/город',
+  provider: 'Провайдер',
+  region: 'Область',
+}
+
+/** Tabs of «Аналитика» (DESIGN.md §3.8): the metrics of T-27 and the incidents of T-45. */
+export const ANALYTICS_TAB_LABELS = {
+  quality: 'Показатели',
+  incidents: 'Инциденты',
+} as const
+
+export type AnalyticsTabKey = keyof typeof ANALYTICS_TAB_LABELS
+
 /** Days of the week in Asia/Almaty (ADR-014): rows of the heatmap «час × день недели». */
 export const WEEKDAY_LABELS: Record<Weekday, string> = {
   mon: 'Пн',

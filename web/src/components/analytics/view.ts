@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router'
 
 import type { QueryValue } from '../../api/client'
 import type { AnalyticsLevel, AnalyticsPeriod } from '../../api/types'
-import { ANALYTICS_LEVEL_LABELS, PERIOD_LABELS } from '../../lib/labels'
+import { ANALYTICS_LEVEL_LABELS, ANALYTICS_TAB_LABELS, PERIOD_LABELS, type AnalyticsTabKey } from '../../lib/labels'
 
 export interface AnalyticsView {
   level: AnalyticsLevel
@@ -21,9 +21,11 @@ export interface AnalyticsView {
 }
 
 export const LEVELS = Object.keys(ANALYTICS_LEVEL_LABELS) as AnalyticsLevel[]
+export const TABS = Object.keys(ANALYTICS_TAB_LABELS) as AnalyticsTabKey[]
 export const PRESETS = Object.keys(PERIOD_LABELS) as Exclude<AnalyticsPeriod, 'custom'>[]
 
 export const DEFAULT_VIEW: AnalyticsView = { level: 'school', period: 'week', compare: [] }
+export const DEFAULT_TAB: AnalyticsTabKey = 'quality'
 
 const ID_PARAMS = {
   regionId: 'region_id',
@@ -111,4 +113,24 @@ export function useAnalyticsView(): [AnalyticsView, (view: AnalyticsView) => voi
     [setParams],
   )
   return [view, setView]
+}
+
+/** Tab of the screen in the URL next to the view (DESIGN.md §2.6), so a link opens the same tab. */
+export function useAnalyticsTab(): [AnalyticsTabKey, (tab: AnalyticsTabKey) => void] {
+  const [params, setParams] = useSearchParams()
+  const chosen = params.get('tab') as AnalyticsTabKey
+  const tab = TABS.includes(chosen) ? chosen : DEFAULT_TAB
+  const setTab = useCallback(
+    (next: AnalyticsTabKey) =>
+      setParams(
+        (current) => {
+          const updated = new URLSearchParams(current)
+          updated.set('tab', next)
+          return updated
+        },
+        { replace: true },
+      ),
+    [setParams],
+  )
+  return [tab, setTab]
 }

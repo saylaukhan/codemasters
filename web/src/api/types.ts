@@ -60,6 +60,8 @@ export type SchoolContactDetail = Schema<'SchoolContactDetail'>
 export type MonitoringPointDetail = Schema<'MonitoringPointDetail'>
 export type AnalyticsReport = Schema<'AnalyticsReport'>
 export type AnalyticsRow = Schema<'AnalyticsRow'>
+export type IncidentAnalyticsReport = Schema<'IncidentAnalyticsReport'>
+export type IncidentAnalyticsRow = Schema<'IncidentAnalyticsRow'>
 
 /** Body of POST /api/exports: `columns` has a default and is raw only, so it may be left out. */
 export type ExportCreate = Omit<Schema<'ExportCreate'>, 'columns'> & Partial<Pick<Schema<'ExportCreate'>, 'columns'>>

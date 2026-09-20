@@ -6,3 +6,7 @@ type Schemas = components['schemas']
 
 export const getAnalytics = (query: Record<string, QueryValue>, signal?: AbortSignal) =>
   apiRequest<Schemas['AnalyticsReport']>('/analytics', { query, signal })
+
+/** Incidents of the same selection: count, length, repeatability (T-45). */
+export const getIncidentAnalytics = (query: Record<string, QueryValue>, signal?: AbortSignal) =>
+  apiRequest<Schemas['IncidentAnalyticsReport']>('/analytics/incidents', { query, signal })
