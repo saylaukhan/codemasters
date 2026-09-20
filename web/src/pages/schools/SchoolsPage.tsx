@@ -1,6 +1,7 @@
 import { SearchX } from 'lucide-react'
 import { useSearchParams } from 'react-router'
 
+import { useProviderHint } from '../../app/useProviderHint'
 import { MapFilterBar } from '../../components/map/MapFilterBar'
 import { isFiltered, NO_FILTERS, writeFilters } from '../../components/map/filters'
 import { useMapFilterOptions } from '../../components/map/queries'
@@ -13,7 +14,7 @@ import { ContentSkeleton } from '../../components/ui/ContentSkeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { SECTION_LABELS } from '../../lib/labels'
+import { PROVIDER_SCOPE_HINTS, SECTION_LABELS } from '../../lib/labels'
 
 /** List of schools (ТЗ п. 4): averages for the last 24 hours, the last measurement and the status. */
 export function SchoolsPage() {
@@ -22,6 +23,7 @@ export function SchoolsPage() {
   const [, setParams] = useSearchParams()
   const options = useMapFilterOptions()
   const schools = useSchoolList(filters, view)
+  const providerHint = useProviderHint(PROVIDER_SCOPE_HINTS.schools)
 
   const empty = isFiltered(filters) ? (
     <EmptyState
@@ -36,7 +38,7 @@ export function SchoolsPage() {
 
   return (
     <>
-      <PageHeader title={SECTION_LABELS.schools} />
+      <PageHeader title={SECTION_LABELS.schools} subtitle={providerHint} />
       <MapFilterBar
         filters={filters}
         options={options.data}

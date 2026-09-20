@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import type { CurrentUser, UserRole } from '../api/types'
 import type { AdminTabKey, SectionKey } from '../lib/labels'
 
 export interface Section {
@@ -53,6 +54,29 @@ export const SECTIONS: readonly Section[] = [
 /** Hidden, not disabled: a role never sees a section it cannot use (ТЗ п. 16, ADR-008). */
 export const canOpenSection = (section: Section, granted: readonly string[] | undefined): boolean =>
   section.permissions.some((permission) => granted?.includes(permission))
+
+/**
+ * Cabinet of the provider (T-44, plan.md §9, §11; ТЗ п. 16): its lines, their incidents and the appeals about them —
+ * the provider is a participant of the fix, not a viewer of the whole oblast. Only the navigation is cut: the rights
+ * of the role stay as they are (backend/app/auth/permissions.py), so the card of his school opens its charts and the
+ * card of a computer on his line opens from it. What he sees inside every screen is decided by the scope and RLS.
+ */
+export const PROVIDER_SECTIONS: readonly SectionKey[] = ['schools', 'incidents', 'appeals']
+
+export const isProviderCabinet = (role: UserRole | undefined): boolean => role === 'provider'
+
+const inCabinet = (section: Section, role: UserRole | undefined): boolean =>
+  !isProviderCabinet(role) || PROVIDER_SECTIONS.includes(section.key)
+
+/** Sections of the side navigation for the user: his permissions and, for the provider, his cabinet. */
+export const navigationSections = (
+  user: Pick<CurrentUser, 'role' | 'permissions'> | undefined,
+  granted: readonly string[] | undefined = user?.permissions,
+): Section[] => SECTIONS.filter((section) => canOpenSection(section, granted) && inCabinet(section, user?.role))
+
+/** Where «/» leads: the first section of the navigation — «Обзор» for most roles, «Школы» in the provider cabinet. */
+export const landingPath = (user: Pick<CurrentUser, 'role' | 'permissions'> | undefined): string =>
+  navigationSections(user)[0]?.path ?? SECTIONS[0].path
 
 /** Card of one school (T-25): the popover of the map and the lists lead here. */
 export const schoolCardPath = (schoolId: number): string => `/schools/${schoolId}`

@@ -1,15 +1,16 @@
-import { usePermissions } from '@refinedev/core'
+import { useGetIdentity } from '@refinedev/core'
 import { Layout, Menu, type MenuProps } from 'antd'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useState, type PropsWithChildren } from 'react'
 import { Link, useLocation } from 'react-router'
 
+import type { CurrentUser } from '../api/types'
 import { Button } from '../components/ui/Button'
 import { SECTION_LABELS } from '../lib/labels'
 import { NARROW_SCREEN, SIZES } from '../styles/theme'
 import { AppHeader } from './AppHeader'
 import styles from './AppLayout.module.css'
-import { SECTIONS, canOpenSection, type Section } from './sections'
+import { SECTIONS, navigationSections, type Section } from './sections'
 import { useMediaQuery } from './useMediaQuery'
 
 const menuItem = ({ key, path, icon: Icon }: Section): NonNullable<MenuProps['items']>[number] => ({
@@ -25,9 +26,10 @@ export function AppLayout({ children }: PropsWithChildren) {
   // At 1024px and narrower the navigation is always collapsed.
   const collapsed = narrow || folded
   const { pathname } = useLocation()
-  const { data: permissions } = usePermissions<string[]>({})
+  // Role and permissions of one request: the navigation of a provider is his cabinet (T-44).
+  const { data: user } = useGetIdentity<CurrentUser>()
 
-  const visible = SECTIONS.filter((section) => canOpenSection(section, permissions))
+  const visible = navigationSections(user)
   const main = visible.filter((section) => section.key !== 'admin').map(menuItem)
   // «Администрирование» is pinned to the bottom of the navigation (DESIGN.md §3.6).
   const bottom = visible.filter((section) => section.key === 'admin').map(menuItem)
