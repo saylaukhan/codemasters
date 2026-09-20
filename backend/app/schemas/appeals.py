@@ -13,6 +13,7 @@ from pydantic import AwareDatetime, BaseModel, Field, field_validator, model_val
 from pydantic.json_schema import SkipJsonSchema
 
 from app.schemas.analytics import MetricStats
+from app.schemas.pagination import Page
 from app.schemas.statuses import IncidentStatus
 from app.schemas.thresholds import ThresholdValues
 
@@ -141,6 +142,29 @@ class AppealUpdate(BaseModel):
         if self.status is None and self.comment is None:
             raise ValueError("укажите status или comment")
         return self
+
+
+class AppealListItem(BaseModel):
+    """Row of the appeal list and of the provider cabinet (ТЗ п. 17, T-44)."""
+
+    id: int
+    number: str = Field(examples=["ОБР-2026-000045"])
+    status: IncidentStatus
+    subject: str
+    incident_id: int | None
+    incident_number: str | None = Field(examples=["INC-2026-000123"])
+    school_id: int
+    school_code: str = Field(description="School ID")
+    school_name: str
+    line_id: int
+    provider_id: int
+    provider_name: str
+    sent_at: datetime
+    delivery_status: AppealDeliveryStatus
+
+
+class AppealListItemPage(Page[AppealListItem]):
+    """Page of appeals, newest ``sent_at`` first."""
 
 
 class AppealEventDetail(BaseModel):

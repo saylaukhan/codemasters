@@ -4605,6 +4605,207 @@
       }
     },
     "/api/appeals": {
+      "get": {
+        "tags": [
+          "appeals"
+        ],
+        "summary": "Список отправленных обращений, новые сверху",
+        "description": "Порядок — по sent_at, новые сверху. Черновиков здесь нет: обращение появляется после «Отправить» (ТЗ п. 17). Кабинет поставщика читает этот же список.",
+        "operationId": "list_appeals",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IncidentStatus"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Статусы обращения; несколько — повтором параметра",
+              "title": "Status"
+            },
+            "description": "Статусы обращения; несколько — повтором параметра"
+          },
+          {
+            "name": "school_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "incident_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Incident Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Номер обращения или его часть",
+              "title": "Q"
+            },
+            "description": "Номер обращения или его часть"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало периода по sent_at, включительно",
+              "title": "Period From"
+            },
+            "description": "Начало периода по sent_at, включительно"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец периода по sent_at, не включается",
+              "title": "Period To"
+            },
+            "description": "Конец периода по sent_at, не включается"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealListItemPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "appeals"
@@ -4612,15 +4813,20 @@
         "summary": "Отправить обращение: номер, письмо поставщику, PDF",
         "description": "Номер присваивается здесь. Контекст сервер пересобирает за тот же период; статус после отправки — sent_to_provider. SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.",
         "operationId": "create_appeal",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AppealCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -4653,21 +4859,81 @@
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/api/appeals/{appeal_id}": {
+      "get": {
+        "tags": [
+          "appeals"
+        ],
+        "summary": "Карточка обращения с историей",
+        "operationId": "get_appeal",
         "security": [
           {
             "BearerAuth": []
           }
-        ]
-      }
-    },
-    "/api/appeals/{appeal_id}": {
+        ],
+        "parameters": [
+          {
+            "name": "appeal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Appeal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Обращение не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "appeals"
         ],
         "summary": "Сменить статус обращения или добавить комментарий",
-        "description": "Переходы — как у инцидентов (T-41); каждое изменение — в appeal_events.",
+        "description": "Переходы — как у инцидентов (T-41); каждое изменение — в appeal_events. Поставщик двигает свои обращения из кабинета; «Закрыт» ставит пользователь района, области или администратор (ADR-007). Комментарий без статуса — запись comment в истории.",
         "operationId": "update_appeal",
         "security": [
           {
@@ -8636,6 +8902,140 @@
         ],
         "title": "AppealEventDetail",
         "description": "Entry of the appeal history: sending, status change or comment (ТЗ п. 17)."
+      },
+      "AppealListItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number",
+            "examples": [
+              "ОБР-2026-000045"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/IncidentStatus"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "incident_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Id"
+          },
+          "incident_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Number",
+            "examples": [
+              "INC-2026-000123"
+            ]
+          },
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "school_code": {
+            "type": "string",
+            "title": "School Code",
+            "description": "School ID"
+          },
+          "school_name": {
+            "type": "string",
+            "title": "School Name"
+          },
+          "line_id": {
+            "type": "integer",
+            "title": "Line Id"
+          },
+          "provider_id": {
+            "type": "integer",
+            "title": "Provider Id"
+          },
+          "provider_name": {
+            "type": "string",
+            "title": "Provider Name"
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sent At"
+          },
+          "delivery_status": {
+            "$ref": "#/components/schemas/AppealDeliveryStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "status",
+          "subject",
+          "incident_id",
+          "incident_number",
+          "school_id",
+          "school_code",
+          "school_name",
+          "line_id",
+          "provider_id",
+          "provider_name",
+          "sent_at",
+          "delivery_status"
+        ],
+        "title": "AppealListItem",
+        "description": "Row of the appeal list and of the provider cabinet (ТЗ п. 17, T-44)."
+      },
+      "AppealListItemPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AppealListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "AppealListItemPage",
+        "description": "Page of appeals, newest ``sent_at`` first."
       },
       "AppealUpdate": {
         "properties": {

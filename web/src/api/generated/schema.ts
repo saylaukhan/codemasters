@@ -934,7 +934,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Список отправленных обращений, новые сверху
+         * @description Порядок — по sent_at, новые сверху. Черновиков здесь нет: обращение появляется после «Отправить» (ТЗ п. 17). Кабинет поставщика читает этот же список.
+         */
+        get: operations["list_appeals"];
         put?: never;
         /**
          * Отправить обращение: номер, письмо поставщику, PDF
@@ -954,7 +958,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Карточка обращения с историей */
+        get: operations["get_appeal"];
         put?: never;
         post?: never;
         delete?: never;
@@ -962,7 +967,7 @@ export interface paths {
         head?: never;
         /**
          * Сменить статус обращения или добавить комментарий
-         * @description Переходы — как у инцидентов (T-41); каждое изменение — в appeal_events.
+         * @description Переходы — как у инцидентов (T-41); каждое изменение — в appeal_events. Поставщик двигает свои обращения из кабинета; «Закрыт» ставит пользователь района, области или администратор (ADR-007). Комментарий без статуса — запись comment в истории.
          */
         patch: operations["update_appeal"];
         trace?: never;
@@ -1961,6 +1966,64 @@ export interface components {
             status: components["schemas"]["IncidentStatus"] | null;
             /** Comment */
             comment: string | null;
+        };
+        /**
+         * AppealListItem
+         * @description Row of the appeal list and of the provider cabinet (ТЗ п. 17, T-44).
+         */
+        AppealListItem: {
+            /** Id */
+            id: number;
+            /**
+             * Number
+             * @example ОБР-2026-000045
+             */
+            number: string;
+            status: components["schemas"]["IncidentStatus"];
+            /** Subject */
+            subject: string;
+            /** Incident Id */
+            incident_id: number | null;
+            /**
+             * Incident Number
+             * @example INC-2026-000123
+             */
+            incident_number: string | null;
+            /** School Id */
+            school_id: number;
+            /**
+             * School Code
+             * @description School ID
+             */
+            school_code: string;
+            /** School Name */
+            school_name: string;
+            /** Line Id */
+            line_id: number;
+            /** Provider Id */
+            provider_id: number;
+            /** Provider Name */
+            provider_name: string;
+            /**
+             * Sent At
+             * Format: date-time
+             */
+            sent_at: string;
+            delivery_status: components["schemas"]["AppealDeliveryStatus"];
+        };
+        /**
+         * AppealListItemPage
+         * @description Page of appeals, newest ``sent_at`` first.
+         */
+        AppealListItemPage: {
+            /** Items */
+            items: components["schemas"]["AppealListItem"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
         };
         /**
          * AppealUpdate
@@ -7602,6 +7665,60 @@ export interface operations {
             };
         };
     };
+    list_appeals: {
+        parameters: {
+            query?: {
+                /** @description Статусы обращения; несколько — повтором параметра */
+                status?: components["schemas"]["IncidentStatus"][] | null;
+                school_id?: number | null;
+                provider_id?: number | null;
+                incident_id?: number | null;
+                /** @description Номер обращения или его часть */
+                q?: string | null;
+                /** @description Начало периода по sent_at, включительно */
+                period_from?: string | null;
+                /** @description Конец периода по sent_at, не включается */
+                period_to?: string | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealListItemPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     create_appeal: {
         parameters: {
             query?: never;
@@ -7622,6 +7739,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AppealDetail"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_appeal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                appeal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealDetail"];
+                };
+            };
+            /** @description Обращение не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Ошибка валидации запроса */

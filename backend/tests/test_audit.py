@@ -96,7 +96,7 @@ async def test_changing_panel_requests_are_logged_with_who_and_what(
         200,
         403,
         409,
-        501,
+        404,
     ]
     who = {"user_id": admin.id, "user_email": "admin@example.kz", "error_type": None}
     assert await records(session) == [

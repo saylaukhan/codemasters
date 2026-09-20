@@ -186,13 +186,23 @@ def send_telegram(token: str, chat_id: str, text: str) -> None:
             raise RuntimeError(f"Telegram ответил {response.status}")
 
 
-def send_email(settings: Settings, address: str, subject: str, text: str) -> None:
-    """One letter over SMTP; raises on anything the server refuses."""
+def send_email(
+    settings: Settings,
+    address: str,
+    subject: str,
+    text: str,
+    attachment: tuple[str, bytes] | None = None,
+) -> None:
+    """One letter over SMTP; raises on anything the server refuses. ``attachment`` is the name
+    and the bytes of a PDF the letter carries — an appeal sends one (T-48)."""
     letter = EmailMessage()
     letter["From"] = settings.smtp_from or settings.smtp_user
     letter["To"] = address
     letter["Subject"] = subject
     letter.set_content(text)
+    if attachment is not None:
+        name, content = attachment
+        letter.add_attachment(content, maintype="application", subtype="pdf", filename=name)
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=NETWORK_TIMEOUT_S) as server:
         server.starttls()
         if settings.smtp_user:
