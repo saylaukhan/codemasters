@@ -13,7 +13,14 @@ on:
         description: "Адрес API сервера мониторинга; попадает в agent.yaml как значение по умолчанию"
         required: false
         default: "https://monitor.example.kz"
+  # Сборка идёт и на push в developing, когда менялся агент или сам workflow:
+  # поломка установщика должна всплывать сразу, а не на демо. Фильтр по путям
+  # не даёт собирать MSI на каждую правку backend и панели.
   push:
+    branches: [developing]
+    paths:
+      - "agent/**"
+      - ".github/workflows/agent-msi.yml"
     tags: ["v*"]
 
 env:
