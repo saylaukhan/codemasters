@@ -807,7 +807,7 @@ permissions на смену статуса; `GET /api/schools`, `GET /api/incide
 ## H. Обращения и AI (этап 5)
 
 ### T-46 · Адаптер LLMProvider (Claude API, Ollama) · S · MVP
-**Статус:** todo
+**Статус:** done (2026-09-20)
 **Зачем:** п. 17 (AI-генерация проекта обращения); этап 5 плана (plan.md §8); ADR-011
 (адаптер, без ПД).
 **Где:** `backend/app/services/llm/` (интерфейс `LLMProvider`, реализации Claude API и Ollama,

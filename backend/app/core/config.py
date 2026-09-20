@@ -24,7 +24,12 @@ class Settings(BaseSettings):
     ndt7_url: str = ""
     tz: str = "Asia/Almaty"
 
+    # Who writes the draft of an appeal (T-46, ADR-011): claude or ollama. The key lives
+    # only here, in the environment — never in the database and never in the panel.
+    llm_provider: str = "claude"
     llm_api_key: str = ""
+    llm_model: str = ""
+    llm_url: str = ""
     telegram_bot_token: str = ""
 
     smtp_host: str = ""
