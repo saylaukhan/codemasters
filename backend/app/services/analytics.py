@@ -115,22 +115,12 @@ def stats(row: Any, metric: str) -> MetricStats | None:
     )
 
 
-async def analytics_report(
-    session: AsyncSession,
-    level: AnalyticsLevel,
-    filters: AnalyticsFilters,
-    *,
-    period: AnalyticsPeriod,
-    period_from: datetime | None,
-    period_to: datetime | None,
-    now: datetime,
-) -> AnalyticsReport:
-    settings = await system_settings(session)
-    start, end = period_bounds(period, period_from, period_to, now=now, timezone=settings.timezone)
-    granularity: AnalyticsGranularity = "hour" if period == "today" else "day"
-    rollup: Any = MHourly if granularity == "hour" else MDaily
+def selected_lines(filters: AnalyticsFilters) -> Select[Any]:
+    """Lines of the selection, visible to the user: RLS on ``lines`` and ``schools`` applies.
 
-    # Lines of the selection, visible to the user: RLS on ``lines`` and ``schools`` applies.
+    Main and reserve lines never mix (ТЗ п. 10): the status of the filters picks one of them.
+    A request for one school shows it even while it is deactivated; a list never does.
+    """
     query = (
         select(
             Line.id.label("line_id"),
@@ -155,13 +145,55 @@ async def analytics_report(
         query = query.where(Line.provider_id == filters.provider_id)
     if filters.connection_type_id is not None:
         query = query.where(Line.connection_type_id == filters.connection_type_id)
-    selected = query.subquery()
+    return query
 
-    key: ColumnElement[Any] | None = {
+
+def level_key(level: AnalyticsLevel, selected: Any) -> ColumnElement[Any] | None:
+    """Column the rows of the level are grouped by; ``region`` is one row for the whole VKO."""
+    return {
         "school": selected.c.school_id,
         "district": selected.c.region_id,
         "provider": selected.c.provider_id,
     }.get(level)
+
+
+async def level_entities(
+    session: AsyncSession, level: AnalyticsLevel, selected: Any
+) -> list[tuple[int | None, str | None]]:
+    """Entities of the level in the selection by name: rows without numbers stay in the report."""
+    if level == "school":
+        names = select(School.id, School.full_name).where(
+            School.id.in_(select(selected.c.school_id))
+        )
+        return [(i, name) for i, name in await session.execute(names.order_by(School.full_name))]
+    if level == "district":
+        names = select(Region.id, Region.name).where(Region.id.in_(select(selected.c.region_id)))
+        return [(i, name) for i, name in await session.execute(names.order_by(Region.name))]
+    if level == "provider":
+        names = select(Provider.id, Provider.name).where(
+            Provider.id.in_(select(selected.c.provider_id))
+        )
+        return [(i, name) for i, name in await session.execute(names.order_by(Provider.name))]
+    return [(None, None)]
+
+
+async def analytics_report(
+    session: AsyncSession,
+    level: AnalyticsLevel,
+    filters: AnalyticsFilters,
+    *,
+    period: AnalyticsPeriod,
+    period_from: datetime | None,
+    period_to: datetime | None,
+    now: datetime,
+) -> AnalyticsReport:
+    settings = await system_settings(session)
+    start, end = period_bounds(period, period_from, period_to, now=now, timezone=settings.timezone)
+    granularity: AnalyticsGranularity = "hour" if period == "today" else "day"
+    rollup: Any = MHourly if granularity == "hour" else MDaily
+
+    selected = selected_lines(filters).subquery()
+    key = level_key(level, selected)
 
     def in_period(source: Any, width: timedelta) -> list[ColumnElement[bool]]:
         # A bucket that overlaps the period counts whole: the aggregates do not go finer.
@@ -195,24 +227,7 @@ async def analytics_report(
         totals = totals.add_columns(key.label("key")).group_by(key)
     measured_rows = {getattr(row, "key", None): row for row in await session.execute(totals)}
 
-    entities: list[tuple[int | None, str | None]]
-    if level == "school":
-        names = select(School.id, School.full_name).where(
-            School.id.in_(select(selected.c.school_id))
-        )
-        entities = [
-            (i, name) for i, name in await session.execute(names.order_by(School.full_name))
-        ]
-    elif level == "district":
-        names = select(Region.id, Region.name).where(Region.id.in_(select(selected.c.region_id)))
-        entities = [(i, name) for i, name in await session.execute(names.order_by(Region.name))]
-    elif level == "provider":
-        names = select(Provider.id, Provider.name).where(
-            Provider.id.in_(select(selected.c.provider_id))
-        )
-        entities = [(i, name) for i, name in await session.execute(names.order_by(Provider.name))]
-    else:
-        entities = [(None, None)]
+    entities = await level_entities(session, level, selected)
 
     # Availability of the schools behind every row: downtime over observed time of them all.
     schools_of: dict[int | None, set[int]] = defaultdict(set)

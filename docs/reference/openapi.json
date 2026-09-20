@@ -3590,6 +3590,190 @@
         }
       }
     },
+    "/api/analytics/incidents": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Инциденты за период: количество, длительность, повторяемость",
+        "description": "Вкладка «Инциденты» аналитики (ТЗ п. 19, plan.md §7). Инцидент попадает в период по started_at; длительность — restored_at − started_at, как в карточке (T-41), поэтому открытый инцидент считается, но длительность не увеличивает. Повторяемость — инцидентов на линию, приведённых к 30 суткам. Фильтры и область видимости — те же, что у сводной аналитики: строки стоят на линиях выборки (ADR-008).",
+        "operationId": "get_incident_analytics",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "level",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsLevel",
+              "description": "Группировка строк: школа, район/город (regions), поставщик или вся ВКО"
+            },
+            "description": "Группировка строк: школа, район/город (regions), поставщик или вся ВКО"
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsPeriod",
+              "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+            },
+            "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало, включительно; только и обязательно при period=custom",
+              "title": "Period From"
+            },
+            "description": "Начало, включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец, не включительно; только и обязательно при period=custom",
+              "title": "Period To"
+            },
+            "description": "Конец, не включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "school_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Район или город (regions)",
+              "title": "Region Id"
+            },
+            "description": "Район или город (regions)"
+          },
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "connection_type_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Type Id"
+            }
+          },
+          {
+            "name": "line_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/LineStatus",
+              "description": "Статус учитываемых линий; основные и резервные не смешиваются (п. 10)",
+              "default": "main"
+            },
+            "description": "Статус учитываемых линий; основные и резервные не смешиваются (п. 10)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentAnalyticsReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/incidents": {
       "get": {
         "tags": [
@@ -9933,6 +10117,164 @@
           "wifi",
           "other"
         ]
+      },
+      "IncidentAnalyticsReport": {
+        "properties": {
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From",
+            "description": "Начало периода, включительно"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To",
+            "description": "Конец периода, не включительно"
+          },
+          "repeatability_window_days": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Repeatability Window Days",
+            "description": "Окно повторяемости: к скольким суткам приведён incidents_per_line_30d"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/IncidentAnalyticsRow"
+            },
+            "type": "array",
+            "title": "Rows",
+            "description": "Все сущности уровня в области видимости и фильтрах, по name; без пагинации"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_from",
+          "period_to",
+          "repeatability_window_days",
+          "rows"
+        ],
+        "title": "IncidentAnalyticsReport",
+        "description": "Incidents of one level for a period (ТЗ п. 19, plan.md §7).\n\nRows are the entities of ``level`` within the scope and the filters, those without a single\nincident included; sorting happens in the panel."
+      },
+      "IncidentAnalyticsRow": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "id школы, района/города (regions) или поставщика; null при level=region"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Наименование школы, района/города или поставщика; null при level=region"
+          },
+          "lines_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Lines Count",
+            "description": "Линий в выборке: знаменатель повторяемости"
+          },
+          "incidents_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Incidents Count",
+            "description": "Инцидентов, начавшихся в периоде"
+          },
+          "open_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Open Count",
+            "description": "Из них без restored_at: показатели ещё не восстановились"
+          },
+          "restored_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Restored Count",
+            "description": "Из них с restored_at: только по ним считается длительность"
+          },
+          "total_duration_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Duration S",
+            "description": "Суммарная длительность восстановленных, с; null, если таких инцидентов нет"
+          },
+          "avg_duration_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Duration S",
+            "description": "Средняя длительность восстановленных, с; null, если таких нет"
+          },
+          "max_duration_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Duration S",
+            "description": "Самый долгий восстановленный инцидент, с; null, если таких нет"
+          },
+          "incidents_per_line_30d": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incidents Per Line 30D",
+            "description": "Повторяемость: инцидентов на линию за 30 дней, приведено к длине периода (plan.md §7); null, если в выборке нет линий"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "lines_count",
+          "incidents_count",
+          "open_count",
+          "restored_count",
+          "total_duration_s",
+          "avg_duration_s",
+          "max_duration_s",
+          "incidents_per_line_30d"
+        ],
+        "title": "IncidentAnalyticsRow",
+        "description": "One entity of the level: incidents of the period, their length and repeatability (ТЗ п. 19).\n\nAn incident belongs to the period by ``started_at``. Length is ``restored_at − started_at``\n(T-41), so an incident that is still open only counts and lengthens nothing. Repeatability\nis the incidents of one line brought to 30 days, so periods of different length stay\ncomparable (plan.md §7)."
       },
       "IncidentBasisMetric": {
         "properties": {

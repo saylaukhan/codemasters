@@ -126,3 +126,62 @@ class AnalyticsReport(BaseModel):
         description="По возрастанию bucket_start; часы и сутки без замеров не передаются"
     )
     heatmap: list[AnalyticsHeatmapCell] = Field(description="Ячейки без замеров не передаются")
+
+
+class IncidentAnalyticsRow(BaseModel):
+    """One entity of the level: incidents of the period, their length and repeatability (ТЗ п. 19).
+
+    An incident belongs to the period by ``started_at``. Length is ``restored_at − started_at``
+    (T-41), so an incident that is still open only counts and lengthens nothing. Repeatability
+    is the incidents of one line brought to 30 days, so periods of different length stay
+    comparable (plan.md §7).
+    """
+
+    id: int | None = Field(
+        description="id школы, района/города (regions) или поставщика; null при level=region"
+    )
+    name: str | None = Field(
+        description="Наименование школы, района/города или поставщика; null при level=region"
+    )
+    lines_count: int = Field(ge=0, description="Линий в выборке: знаменатель повторяемости")
+    incidents_count: int = Field(ge=0, description="Инцидентов, начавшихся в периоде")
+    open_count: int = Field(
+        ge=0, description="Из них без restored_at: показатели ещё не восстановились"
+    )
+    restored_count: int = Field(
+        ge=0, description="Из них с restored_at: только по ним считается длительность"
+    )
+    total_duration_s: int | None = Field(
+        ge=0,
+        description="Суммарная длительность восстановленных, с; null, если таких инцидентов нет",
+    )
+    avg_duration_s: int | None = Field(
+        ge=0, description="Средняя длительность восстановленных, с; null, если таких нет"
+    )
+    max_duration_s: int | None = Field(
+        ge=0, description="Самый долгий восстановленный инцидент, с; null, если таких нет"
+    )
+    incidents_per_line_30d: float | None = Field(
+        ge=0,
+        description=(
+            "Повторяемость: инцидентов на линию за 30 дней, приведено к длине периода "
+            "(plan.md §7); null, если в выборке нет линий"
+        ),
+    )
+
+
+class IncidentAnalyticsReport(BaseModel):
+    """Incidents of one level for a period (ТЗ п. 19, plan.md §7).
+
+    Rows are the entities of ``level`` within the scope and the filters, those without a single
+    incident included; sorting happens in the panel.
+    """
+
+    period_from: datetime = Field(description="Начало периода, включительно")
+    period_to: datetime = Field(description="Конец периода, не включительно")
+    repeatability_window_days: int = Field(
+        gt=0, description="Окно повторяемости: к скольким суткам приведён incidents_per_line_30d"
+    )
+    rows: list[IncidentAnalyticsRow] = Field(
+        description="Все сущности уровня в области видимости и фильтрах, по name; без пагинации"
+    )
