@@ -4,7 +4,7 @@ import { Link } from 'react-router'
 import type { AppealContext } from '../../api/types'
 import { incidentCardPath, schoolCardPath } from '../../app/sections'
 import { formatDuration, formatNumber, formatSpeed, NO_VALUE } from '../../lib/format'
-import { INCIDENT_METRIC_LABELS } from '../../lib/labels'
+import { APPEAL_FIELD_LABELS, APPEAL_NO_RECIPIENT_HINT, INCIDENT_METRIC_LABELS } from '../../lib/labels'
 import { formatMetricValue } from '../incidents/incidents'
 import styles from './Appeal.module.css'
 import { contractCaption, metricRows, periodCaption } from './appeals'
@@ -17,35 +17,47 @@ import { contractCaption, metricRows, periodCaption } from './appeals'
 export function AppealFacts({ context, recipientEmail }: { context: AppealContext; recipientEmail: string | null }) {
   const count = (value: number) => <span className={styles.number}>{formatNumber(value, 0)}</span>
   const pairs: [string, ReactNode][] = [
-    ['School ID', <span className={styles.code}>{context.schoolCode}</span>],
-    ['Школа', <Link to={schoolCardPath(context.schoolId)}>{context.schoolName}</Link>],
-    ['Поставщик', context.providerName],
+    [APPEAL_FIELD_LABELS.schoolCode, <span className={styles.code}>{context.schoolCode}</span>],
+    [APPEAL_FIELD_LABELS.school, <Link to={schoolCardPath(context.schoolId)}>{context.schoolName}</Link>],
+    [APPEAL_FIELD_LABELS.provider, context.providerName],
     [
-      'Получатель',
-      recipientEmail ?? <span className={styles.muted}>Адрес не задан, письмо не уйдёт</span>,
+      APPEAL_FIELD_LABELS.recipient,
+      recipientEmail ?? <span className={styles.muted}>{APPEAL_NO_RECIPIENT_HINT}</span>,
     ],
-    ['Линия', context.lineIdentifier ? <span className={styles.code}>{context.lineIdentifier}</span> : NO_VALUE],
-    ['Договор', contractCaption(context)],
-    ['Договор Download', <span className={styles.number}>{formatSpeed(context.contractDownMbps)}</span>],
-    ['Договор Upload', <span className={styles.number}>{formatSpeed(context.contractUpMbps)}</span>],
-    ['Период', <span className={styles.number}>{periodCaption(context.periodFrom, context.periodTo)}</span>],
-    ['Замеров', count(context.measurementsCount)],
-    ['Проблемных замеров', count(context.problemCount)],
+    [
+      APPEAL_FIELD_LABELS.line,
+      context.lineIdentifier ? <span className={styles.code}>{context.lineIdentifier}</span> : NO_VALUE,
+    ],
+    [APPEAL_FIELD_LABELS.contract, contractCaption(context)],
+    [APPEAL_FIELD_LABELS.contractDown, <span className={styles.number}>{formatSpeed(context.contractDownMbps)}</span>],
+    [APPEAL_FIELD_LABELS.contractUp, <span className={styles.number}>{formatSpeed(context.contractUpMbps)}</span>],
+    [
+      APPEAL_FIELD_LABELS.period,
+      <span className={styles.number}>{periodCaption(context.periodFrom, context.periodTo)}</span>,
+    ],
+    [APPEAL_FIELD_LABELS.measurements, count(context.measurementsCount)],
+    [APPEAL_FIELD_LABELS.problems, count(context.problemCount)],
     ...metricRows(context).map(
       ({ metric, value, threshold }): [string, ReactNode] => [
         INCIDENT_METRIC_LABELS[metric],
         <span className={styles.number}>
           {formatMetricValue(metric, value)}
-          <span className={styles.muted}> · порог {formatMetricValue(metric, threshold)}</span>
+          <span className={styles.muted}>
+            {' '}
+            · {APPEAL_FIELD_LABELS.threshold} {formatMetricValue(metric, threshold)}
+          </span>
         </span>,
       ],
     ),
-    ['Простоев', count(context.outagesCount)],
-    ['Длительность простоев', <span className={styles.number}>{formatDuration(context.outagesDurationS)}</span>],
+    [APPEAL_FIELD_LABELS.outages, count(context.outagesCount)],
+    [
+      APPEAL_FIELD_LABELS.outagesDuration,
+      <span className={styles.number}>{formatDuration(context.outagesDurationS)}</span>,
+    ],
   ]
   if (context.incidentId !== null && context.incidentNumber !== null) {
     pairs.splice(3, 0, [
-      'Инцидент',
+      APPEAL_FIELD_LABELS.incident,
       <Link className={styles.code} to={incidentCardPath(context.incidentId)}>
         {context.incidentNumber}
       </Link>,

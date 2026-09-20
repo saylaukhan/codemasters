@@ -23,7 +23,8 @@ export const useDeviceOptions = (schoolId: number | undefined) =>
     enabled: schoolId !== undefined,
   })
 
-function saveFile(blob: Blob, fileName: string): void {
+/** A blob fetched with the token, saved by the browser; the appeal card saves its PDF the same way (T-48). */
+export function saveFile(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url

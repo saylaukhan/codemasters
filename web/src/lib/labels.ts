@@ -2,6 +2,7 @@
 // codes, Russian strings live only here. A status string inside a component is a bug.
 import type {
   AnalyticsLevel,
+  AppealDeliveryStatus,
   AuditAction,
   AuditEntityType,
   AnalyticsPeriod,
@@ -86,17 +87,92 @@ export const APPEAL_STATUS_LABELS: Record<IncidentStatus, string> = INCIDENT_STA
 
 /**
  * Captions of an appeal to the provider (ТЗ п. 17, DESIGN.md §3.19): the draft opens from the card of an incident
- * or of a school (T-47); the number is assigned by the sending of T-48, so the button waits for it.
+ * or of a school (T-47), the number is assigned by the sending (T-48) and the letter stays in the list with it.
  */
 export const APPEAL_LABELS = {
   create: 'Создать обращение',
   draft: 'Черновик обращения',
   send: 'Отправить обращение',
-  sendUpcoming: 'Отправка обращения появится в ближайшем обновлении панели',
+  sent: 'Обращение отправлено',
+  sendFailed: 'Обращение не отправлено',
   regenerate: 'Перегенерировать',
   regenerateHint: 'Модель напишет письмо заново: текст в редакторе будет заменён',
   aiNote: 'Черновик создан автоматически. Проверьте перед отправкой.',
+  letter: 'Письмо',
+  facts: 'Сведения',
+  history: 'История',
+  statusChange: 'Смена статуса',
+  userComment: 'Комментарий отправителя',
+  noUserComment: 'Комментарий не оставлен',
+  pdf: 'Скачать PDF',
+  pdfFailed: 'PDF не скачан',
+  search: 'Поиск по номеру обращения',
+  empty: 'Обращений нет',
+  emptyHint: 'Обращение появляется здесь после отправки письма поставщику.',
+  filteredEmpty: 'По заданным фильтрам ничего не найдено',
+  filteredEmptyHint: 'Измените или сбросьте фильтры.',
+  notFound: 'Обращение не найдено',
+  notFoundHint: 'Его нет или оно вне вашей области видимости.',
+  noTarget: 'Обращение не о чем',
+  noTargetHint: 'Откройте черновик кнопкой «Создать обращение» в карточке инцидента или школы.',
 } as const
+
+/** Columns of the appeal list (T-48). */
+export const APPEAL_COLUMN_LABELS = {
+  number: 'Номер',
+  status: 'Статус',
+  school: 'Школа',
+  provider: 'Поставщик',
+  subject: 'Тема',
+  sentAt: 'Отправлено',
+  delivery: 'Доставка письма',
+} as const
+
+/** Captions of the appeal card, left of the values (DESIGN.md §3.17). */
+export const APPEAL_FIELD_LABELS = {
+  school: 'Школа',
+  schoolCode: 'School ID',
+  provider: 'Поставщик',
+  line: 'Линия',
+  incident: 'Инцидент',
+  period: 'Период',
+  sentAt: 'Отправлено',
+  recipient: 'Получатель',
+  delivery: 'Доставка письма',
+  contract: 'Договор',
+  contractDown: 'Договор Download',
+  contractUp: 'Договор Upload',
+  measurements: 'Замеров',
+  problems: 'Проблемных замеров',
+  outages: 'Простоев',
+  outagesDuration: 'Длительность простоев',
+  /** Next to the average of a metric: the threshold it was judged by (ТЗ п. 11, ADR-004). */
+  threshold: 'порог',
+} as const
+
+/** Captions of the fields a person fills in: the editor of the draft (T-47) and the status form of the card (T-48). */
+export const APPEAL_FORM_LABELS = {
+  subject: 'Тема',
+  text: 'Текст письма',
+  comment: 'Комментарий',
+  requiredComment: 'Комментарий, обязателен',
+  status: 'Новый статус',
+} as const
+
+/**
+ * Did the letter go (T-48): without SMTP or without an address of the provider the appeal is kept anyway, with
+ * its number and its PDF, and says so (ADR-011, «Решения по умолчанию»).
+ */
+export const APPEAL_DELIVERY_LABELS: Record<AppealDeliveryStatus, string> = {
+  sent: 'Отправлено',
+  not_sent: 'Не отправлено',
+}
+
+/** Next to «Не отправлено»: the appeal itself is kept, only the mail did not go. */
+export const APPEAL_NOT_SENT_HINT = 'Письмо не ушло, обращение и PDF сохранены'
+
+/** The provider has no `appeals_email`: the appeal is kept with its PDF, the letter goes nowhere (ADR-011). */
+export const APPEAL_NO_RECIPIENT_HINT = 'Адрес не задан, письмо не уйдёт'
 
 /** What the notification is about (T-42, ТЗ п. 18): every one of them follows an incident. */
 export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
@@ -303,6 +379,7 @@ export type SectionKey = keyof typeof SECTION_LABELS
 export const PROVIDER_SCOPE_HINTS = {
   schools: 'Показаны только школы с вашими линиями',
   incidents: 'Показаны только инциденты ваших линий',
+  appeals: 'Показаны только обращения по вашим линиям',
 } as const
 
 /** Tabs of «Администрирование» (T-34): the key is the path under /admin. */

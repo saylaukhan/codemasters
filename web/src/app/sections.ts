@@ -46,7 +46,7 @@ export const SECTIONS: readonly Section[] = [
   { key: 'devices', path: '/devices', icon: Monitor, permissions: ['devices:read'], task: 'T-26' },
   { key: 'analytics', path: '/analytics', icon: ChartLine, permissions: ['analytics:read'], task: 'T-27' },
   { key: 'incidents', path: '/incidents', icon: TriangleAlert, permissions: ['incidents:read'], task: 'T-41' },
-  { key: 'appeals', path: '/appeals', icon: Mail, permissions: ['appeals:read'], task: 'T-47' },
+  { key: 'appeals', path: '/appeals', icon: Mail, permissions: ['appeals:read'], task: 'T-48' },
   { key: 'exports', path: '/exports', icon: Download, permissions: ['exports:create'], task: 'T-30' },
   { key: 'admin', path: '/admin', icon: Settings, permissions: ADMIN_PERMISSIONS, task: 'T-34' },
 ]
@@ -92,6 +92,9 @@ export const incidentCardPath = (incidentId: number): string => `/incidents/${in
  * the period in the query (`appealTargetQuery` of components/appeals), so the address alone opens the same draft.
  */
 export const appealDraftPath = (target: URLSearchParams): string => `/appeals/new?${target.toString()}`
+
+/** Card of one sent appeal (T-48): the list and the editor right after sending lead here. */
+export const appealCardPath = (appealId: number): string => `/appeals/${appealId}`
 
 /** Tab of «Администрирование» (T-34): schools and the references, each at its own address. */
 export const adminTabPath = (tab: AdminTabKey): string => `/admin/${tab}`
