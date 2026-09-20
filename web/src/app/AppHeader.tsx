@@ -3,6 +3,7 @@ import { Dropdown, type MenuProps } from 'antd'
 import { LogOut, Moon, Sun, Wifi } from 'lucide-react'
 
 import type { CurrentUser } from '../api/types'
+import { NotificationBell } from '../components/notifications/NotificationBell'
 import { Button } from '../components/ui/Button'
 import { APP_NAME } from '../lib/app-info'
 import { ROLE_LABELS } from '../lib/labels'
@@ -18,7 +19,13 @@ const initials = (name: string): string =>
     .map((part) => part[0]?.toUpperCase())
     .join('')
 
-/** Header, DESIGN.md §3.5: product name on the left; theme switch and profile menu on the right. */
+// Every role has its own bell (backend/app/auth/permissions.py); a role without it never sees one.
+const NOTIFICATIONS_PERMISSION = 'notifications:read'
+
+/**
+ * Header, DESIGN.md §3.5: product name on the left; the bell with its counter, the theme switch
+ * and the profile menu on the right.
+ */
 export function AppHeader() {
   const { mode, toggle } = useThemeMode()
   const { data: user } = useGetIdentity<CurrentUser>()
@@ -46,6 +53,7 @@ export function AppHeader() {
         {APP_NAME}
       </div>
       <div className={styles.tools}>
+        {user?.permissions.includes(NOTIFICATIONS_PERMISSION) && <NotificationBell />}
         <Button
           kind="flat"
           tooltip={mode === 'dark' ? 'Светлая тема' : 'Тёмная тема'}

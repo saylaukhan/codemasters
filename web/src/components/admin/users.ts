@@ -36,7 +36,12 @@ export interface UserFormValues {
   schoolId?: { value: number; label: string }
   /** Only of a new user; an existing one gets a new password from «Сбросить пароль». */
   password?: string
+  /** Chat of the user with the notification bot (T-42); empty — Telegram is not sent to him. */
+  telegramChatId?: string
 }
+
+// Length the API takes for a chat id (backend/app/schemas/users.py).
+export const TELEGRAM_CHAT_ID_MAX_LENGTH = 32
 
 export const userFormValues = (user?: UserDetail): UserFormValues => ({
   fullName: user?.fullName ?? '',
@@ -48,6 +53,7 @@ export const userFormValues = (user?: UserDetail): UserFormValues => ({
     user?.scope.schoolId != null
       ? { value: user.scope.schoolId, label: user.scopeName ?? String(user.scope.schoolId) }
       : undefined,
+  telegramChatId: user?.telegramChatId ?? '',
 })
 
 type RoleWithScope = Pick<UserCreate, 'role' | 'regionId' | 'providerId' | 'schoolId'>
@@ -59,11 +65,15 @@ function roleWithScope({ role, regionId, providerId, schoolId }: UserFormValues)
   return field ? { role: role as UserRole, [field]: ids[field] } : { role: role as UserRole }
 }
 
+const telegramChatId = (values: UserFormValues): string => values.telegramChatId?.trim() ?? ''
+
 export const userCreateBody = (values: UserFormValues): UserCreate => ({
   email: values.email.trim(),
   fullName: values.fullName.trim(),
   ...roleWithScope(values),
   password: values.password ?? '',
+  // The channel is left out rather than sent empty: a user without a chat gets no Telegram (T-42).
+  ...(telegramChatId(values) ? { telegramChatId: telegramChatId(values) } : {}),
 })
 
 /** PATCH of the changed fields; the role travels with its scope when either of them changed. */
@@ -73,5 +83,7 @@ export function userUpdateBody(initial: UserFormValues, values: UserFormValues):
   if (values.fullName.trim() !== initial.fullName) body.fullName = values.fullName.trim()
   const scope = roleWithScope(values)
   if (JSON.stringify(scope) !== JSON.stringify(roleWithScope(initial))) Object.assign(body, scope)
+  // An emptied field is `null`: the API switches Telegram off for this user (T-42).
+  if (telegramChatId(values) !== telegramChatId(initial)) body.telegramChatId = telegramChatId(values) || null
   return body
 }

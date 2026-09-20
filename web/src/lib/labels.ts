@@ -16,6 +16,7 @@ import type {
   IncidentMetric,
   IncidentStatus,
   LineStatus,
+  NotificationKind,
   QualityStatus,
   ScheduleScope,
   SchoolStatus,
@@ -74,6 +75,30 @@ export const SYSTEM_AUTHOR_LABEL = 'Система'
 
 /** Appeals go through the same six statuses as incidents (ADR-011). */
 export const APPEAL_STATUS_LABELS: Record<IncidentStatus, string> = INCIDENT_STATUS_LABELS
+
+/** What the notification is about (T-42, ТЗ п. 18): every one of them follows an incident. */
+export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
+  incident_opened: 'Новый инцидент',
+  incident_status_changed: 'Смена статуса инцидента',
+  incident_restored: INCIDENT_EVENT_LABELS.restored,
+}
+
+/** Tabs of the notification panel (DESIGN.md §3.23). */
+export const NOTIFICATION_TAB_LABELS = {
+  all: 'Все',
+  unread: 'Непрочитанные',
+} as const
+
+export type NotificationTabKey = keyof typeof NOTIFICATION_TAB_LABELS
+
+/** Bell of the header (DESIGN.md §3.5) and the captions of its panel (§3.23). */
+export const NOTIFICATIONS_TITLE = 'Уведомления'
+export const NOTIFICATIONS_READ_ALL_LABEL = 'Отметить все как прочитанные'
+export const NOTIFICATIONS_EMPTY_LABEL = 'Уведомлений пока нет'
+export const NOTIFICATIONS_UNREAD_EMPTY_LABEL = 'Непрочитанных уведомлений нет'
+
+/** More unread than the counter of the bell can show: «99+». */
+export const NOTIFICATIONS_OVERFLOW_LABEL = '99+'
 
 /** Role of a line at a school (ТЗ п. 10, ADR-003). */
 export const LINE_STATUS_LABELS: Record<LineStatus, string> = {

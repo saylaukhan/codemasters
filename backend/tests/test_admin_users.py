@@ -96,6 +96,8 @@ async def test_admin_creates_resets_password_and_blocks_without_deleting(
         },
         "scope_name": region.name,
         "is_active": True,
+        # Notifications of T-42: the channel is off for him until an administrator fills it in.
+        "telegram_chat_id": None,
     }
     # The password is stored only as an argon2 hash.
     stored = await session.scalar(select(User.password_hash).where(User.id == user_id))

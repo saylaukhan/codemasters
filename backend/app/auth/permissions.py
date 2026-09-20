@@ -23,6 +23,8 @@ VIEW = frozenset(
         "incidents:read",
         "appeals:read",
         "exports:create",
+        # His own bell (T-42): every role has one, and it shows only what his scope let him see.
+        "notifications:read",
     }
 )
 

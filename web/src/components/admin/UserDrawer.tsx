@@ -10,13 +10,14 @@ import { useProviderOptions, useRegionOptions, useSaveUser, useSchoolOptions } f
 import {
   PASSWORD_RULES,
   ROLE_SCOPE_FIELD,
+  TELEGRAM_CHAT_ID_MAX_LENGTH,
   userCreateBody,
   userFormValues,
   userUpdateBody,
   type UserFormValues,
 } from './users'
 
-const FIELDS = ['email', 'fullName', 'role', 'regionId', 'providerId', 'schoolId', 'password']
+const FIELDS = ['email', 'fullName', 'role', 'regionId', 'providerId', 'schoolId', 'password', 'telegramChatId']
 
 const ROLE_OPTIONS = (Object.keys(ROLE_LABELS) as UserRole[]).map((role) => ({ value: role, label: ROLE_LABELS[role] }))
 
@@ -131,6 +132,14 @@ export function UserDrawer({ open, user, isSelf = false, onClose }: UserDrawerPr
             />
           </Form.Item>
         )}
+        <Form.Item
+          label="Telegram chat id"
+          name="telegramChatId"
+          extra="Чат пользователя с ботом уведомлений; пусто — уведомления в Telegram ему не отправляются."
+          rules={[maxLength(TELEGRAM_CHAT_ID_MAX_LENGTH)]}
+        >
+          <Input inputMode="numeric" autoComplete="off" />
+        </Form.Item>
         {!user && (
           <Form.Item
             label="Начальный пароль"

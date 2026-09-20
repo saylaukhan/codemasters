@@ -21,6 +21,9 @@ class User(TimestampMixin, Base):
     password_hash: Mapped[str]
     role: Mapped[str] = mapped_column(ForeignKey("roles.code"), index=True)
     is_active: Mapped[bool] = mapped_column(server_default=true())
+    # Chat of the user with the notification bot (T-42); empty — the Telegram channel is skipped
+    # for him and the skip is written to ``notification_log``.
+    telegram_chat_id: Mapped[str | None]
     # Goes into every token of the user; logout raises it and every token issued before dies.
     token_version: Mapped[int] = mapped_column(server_default=text("0"))
     last_login_at: Mapped[datetime | None]

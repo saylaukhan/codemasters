@@ -1,0 +1,135 @@
+/* Bell of the header, DESIGN.md §3.5 (counter), and its panel, §3.23 (400px, tabs, rows). */
+.bell {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Counter over the bell: the main colour of «Критично», text 11px on its light background. */
+.counter {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--space-4);
+  height: var(--space-4);
+  padding: 0 var(--space-1);
+  border-radius: var(--space-2);
+  background: var(--status-critical-main);
+  color: var(--status-critical-bg);
+  font-size: var(--notification-counter-font);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: var(--notification-panel-width);
+  max-width: 100vw;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-dropdown);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-dropdown);
+}
+
+/* Title and «Отметить все как прочитанные» on one line, the link to the right (§3.23). */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) 0 var(--space-4);
+}
+
+.title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.tabs {
+  padding: 0 var(--space-4);
+}
+
+.tabs :global(.ant-tabs-nav) {
+  margin: 0;
+}
+
+/* The list scrolls, the head and the tabs stay: a long history never pushes them out of view. */
+.list {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.state {
+  padding: var(--space-4);
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: var(--border-width) solid var(--border);
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--motion-duration) var(--motion-easing);
+}
+
+.item:hover {
+  background: var(--bg-subtle);
+}
+
+/* Unread rows stand out by their background alone (§3.23). */
+.unread {
+  background: var(--bg-subtle);
+}
+
+.dot {
+  width: var(--badge-dot);
+  height: var(--badge-dot);
+  margin-top: var(--space-2);
+  border-radius: 50%;
+  background: var(--dot-main);
+  flex: none;
+}
+
+.dot[data-status='normal'] {
+  --dot-main: var(--status-normal-main);
+}
+.dot[data-status='unstable'] {
+  --dot-main: var(--status-unstable-main);
+}
+.dot[data-status='critical'] {
+  --dot-main: var(--status-critical-main);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.itemTitle {
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.school {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}
+
+.time {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}

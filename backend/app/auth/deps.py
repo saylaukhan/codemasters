@@ -115,7 +115,7 @@ def require(permission: str) -> Callable[..., AsyncIterator[AuthUser]]:
     ) -> AsyncIterator[AuthUser]:
         if permission not in user.permissions:
             raise ApiError(403, "forbidden", f"У роли нет права {permission}")
-        await apply_scope(session, user.scope)
+        await apply_scope(session, user.scope, user.id)
         try:
             yield user
         finally:

@@ -115,6 +115,9 @@
   --content-padding: 24px;
   --login-card-width: 400px;
   --popover-width: 320px;
+  --notification-panel-width: 400px;
+  /* Counter of the bell, DESIGN.md §3.5: the only 11px in the panel, outside the type scale. */
+  --notification-counter-font: 11px;
   --badge-height: 22px;
   --badge-dot: 6px;
   --icon-sm: 16px;

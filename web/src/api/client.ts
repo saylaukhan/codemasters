@@ -81,6 +81,8 @@ export interface RequestOptions {
   signal?: AbortSignal
   /** Send the access token and refresh it once on 401; off for the sign-in itself. */
   auth?: boolean
+  /** Media type of the answer; JSON by default, the notification stream asks for SSE (T-42). */
+  accept?: string
 }
 
 function buildUrl(path: string, query: RequestOptions['query']): string {
@@ -104,7 +106,7 @@ async function toApiError(response: Response): Promise<ApiError> {
 }
 
 async function send(path: string, options: RequestOptions): Promise<Response> {
-  const headers: Record<string, string> = { Accept: 'application/json' }
+  const headers: Record<string, string> = { Accept: options.accept ?? 'application/json' }
   if (options.body !== undefined) headers['Content-Type'] = 'application/json'
   if (options.auth !== false && accessToken) headers.Authorization = `Bearer ${accessToken}`
   try {
@@ -121,15 +123,31 @@ async function send(path: string, options: RequestOptions): Promise<Response> {
   }
 }
 
+/** One request, repeated once with a fresh access token when the first answer is a 401. */
+async function sendWithRefresh(path: string, options: RequestOptions): Promise<Response> {
+  const response = await send(path, options)
+  if (response.status === 401 && options.auth !== false && (await refreshAccessToken())) {
+    return send(path, options)
+  }
+  return response
+}
+
 /** Request to `/api{path}`; `T` is the snake_case schema of the response, the result is camelCase. */
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<Camelize<T>> {
-  let response = await send(path, options)
-  if (response.status === 401 && options.auth !== false && (await refreshAccessToken())) {
-    response = await send(path, options)
-  }
+  const response = await sendWithRefresh(path, options)
   if (!response.ok) throw await toApiError(response)
   if (response.status === 204) return undefined as Camelize<T>
   return camelize<T>(await response.json())
+}
+
+/**
+ * Authorized request whose answer is read by the caller, not parsed as JSON: the notification
+ * stream of T-42 is `text/event-stream` and lives as long as the bell is open.
+ */
+export async function apiFetch(path: string, options: RequestOptions = {}): Promise<Response> {
+  const response = await sendWithRefresh(path, options)
+  if (!response.ok) throw await toApiError(response)
+  return response
 }
 
 /**
@@ -140,10 +158,7 @@ export async function apiDownload(
   path: string,
   signal?: AbortSignal,
 ): Promise<{ blob: Blob; fileName: string | null } | null> {
-  let response = await send(path, { signal })
-  if (response.status === 401 && (await refreshAccessToken())) {
-    response = await send(path, { signal })
-  }
+  const response = await sendWithRefresh(path, { signal })
   if (!response.ok) throw await toApiError(response)
   if (response.status === 202) return null
   const disposition = response.headers.get('Content-Disposition') ?? ''

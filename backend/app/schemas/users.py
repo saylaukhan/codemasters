@@ -21,6 +21,9 @@ PASSWORD_MIN_LENGTH = 8
 
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+$"
 
+# Telegram chat id: digits, with a minus for a group; the bot token itself is never stored here.
+TELEGRAM_CHAT_ID_MAX_LENGTH = 32
+
 # Scope id required by each role (ADR-008); None — the whole oblast, no scope id at all.
 ROLE_SCOPE_FIELD: dict[UserRole, str | None] = {
     "school": "school_id",
@@ -62,6 +65,12 @@ class UserCreate(BaseModel):
         max_length=PASSWORD_MAX_LENGTH,
         description="Начальный пароль; хранится только хэшем",
     )
+    telegram_chat_id: str | None = Field(
+        default=None,
+        max_length=TELEGRAM_CHAT_ID_MAX_LENGTH,
+        examples=["123456789"],
+        description="Чат пользователя с ботом уведомлений (T-42); пусто — канал ему не шлётся",
+    )
 
     @model_validator(mode="after")
     def check_scope(self) -> Self:
@@ -92,6 +101,9 @@ class UserUpdate(BaseModel):
         Annotated[SecretStr, Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)]
         | SkipJsonSchema[None]
     ) = Field(default=None, description="Новый пароль: сброс администратором")
+    telegram_chat_id: Annotated[str, Field(max_length=TELEGRAM_CHAT_ID_MAX_LENGTH)] | None = Field(
+        default=None, description="Чат уведомлений (T-42); null — отключить канал пользователю"
+    )
 
     @field_validator("email", "full_name", "role", "is_active", "password", mode="before")
     @classmethod
@@ -122,6 +134,9 @@ class UserDetail(BaseModel):
         description="Район или город, поставщик или школа области видимости; null — вся область",
     )
     is_active: bool = Field(description="false — учётная запись заблокирована")
+    telegram_chat_id: str | None = Field(
+        description="Чат уведомлений (T-42); null — Telegram этому пользователю не отправляется"
+    )
 
 
 class UserDetailPage(Page[UserDetail]):
