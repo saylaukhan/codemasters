@@ -1,15 +1,19 @@
 """Appeal API of the panel (plan.md §10 «Обращения»): AI draft, sending, status, PDF.
 
-Contract stubs: every endpoint answers 501 until the task in ``not_implemented`` lands.
-The number is assigned by sending, never by a draft (ТЗ п. 17, ADR-011). There is no DELETE:
-a sent appeal and its history stay. Appeals are limited by the user's scope from T-20 (ADR-008).
+The draft is built by ``app/services/appeals`` (T-47): it stores nothing and assigns no number
+— the number is given by sending (ТЗ п. 17, ADR-011). The other three endpoints stay contract
+stubs answering 501 until the task in ``not_implemented`` lands. There is no DELETE: a sent
+appeal and its history stay. Appeals are limited by the user's scope from T-20 (ADR-008).
 """
 
-from typing import Any
+from datetime import UTC, datetime
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Response, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require
+from app.auth import AuthUser, current_user, require
+from app.core.db import get_session
 from app.core.errors import not_implemented
 from app.schemas.appeals import (
     AppealCreate,
@@ -19,6 +23,7 @@ from app.schemas.appeals import (
     AppealUpdate,
 )
 from app.schemas.errors import Problem
+from app.services.appeals import appeal_draft
 
 router = APIRouter(
     prefix="/appeals", tags=["appeals"], dependencies=[Depends(require("appeals:read"))]
@@ -38,8 +43,12 @@ APPEAL_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Обращ
         "school_id или line_id, линия другой школы — 422."
     ),
 )
-async def generate_appeal_draft(body: AppealDraftRequest) -> AppealDraft:
-    raise not_implemented("T-47")
+async def generate_appeal_draft(
+    body: AppealDraftRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    user: Annotated[AuthUser, Depends(current_user)],
+) -> AppealDraft:
+    return await appeal_draft(session, body, user, now=datetime.now(UTC))
 
 
 @router.post(
