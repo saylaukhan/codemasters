@@ -6,7 +6,8 @@ of the row so that registration finds it (``app/core/security.py``). Its lifetim
 ``enrollment_code_ttl_days`` of the system settings, never a constant (ТЗ п. 20).
 
 Blocking and rebinding keep the device and its measurements: a measurement stores the line it
-went through, so the history stays where it was taken (ТЗ п. 16, п. 20).
+went through, so the history stays where it was taken (ТЗ п. 16, п. 20). The update channel of a
+device is set here too: a computer on ``pilot`` installs a release before the rest (T-50).
 
 Token rotation is delivered by the agent itself (ADR-005 leaves the order to T-36): the panel
 only sets ``token_rotation_requested_at``; the agent sees ``token_rotation_required`` in
@@ -30,10 +31,10 @@ from app.core.security import (
     new_enrollment_secret,
 )
 from app.models import Device, EnrollmentCode, MonitoringPoint, School
-from app.schemas.devices import DeviceDetailPage, EnrollmentCodeIssued
+from app.schemas.devices import DeviceDetailPage, DeviceUpdate, EnrollmentCodeIssued
 from app.schemas.statuses import DeviceStatus
 from app.services.device_card import device_detail_rows, device_details, device_not_found
-from app.services.references import Changes, invalid_field, matching, page_of
+from app.services.references import Changes, apply_changes, invalid_field, matching, page_of
 from app.services.settings import system_settings
 
 
@@ -108,16 +109,19 @@ async def scoped_device(session: AsyncSession, device_id: int) -> Device:
     return device
 
 
-async def rebind_device(session: AsyncSession, device_id: int, point_id: int) -> Changes:
-    """Bind the device to another point, possibly of another school; 422 on an unknown point."""
+async def update_device(session: AsyncSession, device_id: int, body: DeviceUpdate) -> Changes:
+    """Bind the device to another point, possibly of another school, and set the channel its
+    agent updates from (T-50); 422 on an unknown point."""
     device = await scoped_device(session, device_id)
-    point = await session.scalar(select(MonitoringPoint.id).where(MonitoringPoint.id == point_id))
-    if point is None:
-        raise invalid_field("monitoring_point_id", "Точка мониторинга не найдена")
-    changes: Changes = {}
-    if device.monitoring_point_id != point_id:
-        changes["monitoring_point_id"] = {"old": device.monitoring_point_id, "new": point_id}
-        device.monitoring_point_id = point_id
+    updates = body.model_dump(exclude_unset=True)
+    point_id = updates.get("monitoring_point_id")
+    if point_id is not None:
+        point = await session.scalar(
+            select(MonitoringPoint.id).where(MonitoringPoint.id == point_id)
+        )
+        if point is None:
+            raise invalid_field("monitoring_point_id", "Точка мониторинга не найдена")
+    changes = apply_changes(device, updates)
     await session.commit()
     return changes
 

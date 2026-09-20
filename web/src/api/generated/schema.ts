@@ -210,7 +210,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Последний релиз агента для обновления */
+        /**
+         * Последний релиз агента для обновления
+         * @description Релиз канала устройства: агент на pilot получает и пилотный релиз, остальные — только переведённый в stable. Агент скачивает MSI, сверяет sha256 и ставит только совпавший файл (plan.md §4.6).
+         */
         get: operations["get_latest_agent_release"];
         put?: never;
         post?: never;
@@ -625,8 +628,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Перепривязать устройство к другой точке мониторинга
-         * @description Школа и линия новых замеров берутся из новой точки; прежние замеры остаются со своей линией. Неизвестный monitoring_point_id — 422.
+         * Перепривязать устройство и задать канал обновления агента
+         * @description Школа и линия новых замеров берутся из новой точки; прежние замеры остаются со своей линией. Неизвестный monitoring_point_id — 422. update_channel pilot выдаёт агенту релиз раньше остальных (T-50).
          */
         patch: operations["update_device"];
         trace?: never;
@@ -1374,7 +1377,10 @@ export interface paths {
         /** Релизы агента, новые сверху */
         get: operations["list_agent_releases"];
         put?: never;
-        /** Опубликовать релиз агента */
+        /**
+         * Опубликовать релиз агента
+         * @description Агенты канала pilot забирают релиз сразу, остальные — после перевода в stable. Агент сверяет SHA-256 скачанного MSI и отказывается ставить несовпавший файл.
+         */
         post: operations["create_agent_release"];
         delete?: never;
         options?: never;
@@ -1395,7 +1401,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Перевести релиз в другой канал или отозвать */
+        /**
+         * Перевести релиз в другой канал или отозвать
+         * @description Версия, ссылка и SHA-256 не меняются: исправление — это новый релиз. Отозванный релиз (is_active false) агентам больше не выдаётся, уже установленный остаётся.
+         */
         patch: operations["update_agent_release"];
         trace?: never;
     };
@@ -2315,6 +2324,8 @@ export interface components {
              */
             last_seen_at: string | null;
             status: components["schemas"]["DeviceStatus"];
+            /** @description Канал обновления агента: pilot получает релиз раньше остальных */
+            update_channel: components["schemas"]["AgentChannel"];
             /** @description По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data */
             current_status: components["schemas"]["SchoolStatus"];
             latest_measurement: components["schemas"]["LatestMeasurement"] | null;
@@ -2391,6 +2402,8 @@ export interface components {
              */
             last_seen_at: string | null;
             status: components["schemas"]["DeviceStatus"];
+            /** @description Канал обновления агента: pilot получает релиз раньше остальных */
+            update_channel: components["schemas"]["AgentChannel"];
             /** @description По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data */
             current_status: components["schemas"]["SchoolStatus"];
             latest_measurement: components["schemas"]["LatestMeasurement"] | null;
@@ -2453,12 +2466,16 @@ export interface components {
         DeviceStatus: "active" | "blocked";
         /**
          * DeviceUpdate
-         * @description Rebinding of a device to another monitoring point (T-36): the school and the line of new
-         *     measurements follow the point, measurements already taken keep theirs (ADR-005).
+         * @description Changes of a device: its monitoring point (T-36) and its update channel (T-50).
+         *
+         *     The school and the line of new measurements follow the point, measurements already taken
+         *     keep theirs (ADR-005); the channel decides which release the agent installs.
          */
         DeviceUpdate: {
             /** Monitoring Point Id */
-            monitoring_point_id: number;
+            monitoring_point_id?: number;
+            /** Update Channel */
+            update_channel?: components["schemas"]["AgentChannel"];
         };
         /**
          * EnrollmentCodeCreate

@@ -185,9 +185,9 @@ async def test_require_lets_only_the_roles_of_the_permission_through(
             method, path, headers=bearer(user), json={} if method != "GET" else None
         )
         if role in roles:
-            # Through the permission check: what the endpoint answers next — a validation error,
-            # «не найдено» for the id of the probe or the 501 of a stub — is not the subject here.
-            assert response.status_code in (404, 422, 501), (method, path, response.text)
+            # Through the permission check: what the endpoint answers next — a validation error
+            # or «не найдено» for the id of the probe — is not the subject here.
+            assert response.status_code in (404, 422), (method, path, response.text)
         else:
             problem(response, 403, "forbidden")
 
@@ -196,20 +196,6 @@ async def first_provider_id(session: AsyncSession) -> int:
     provider_id = await session.scalar(select(Provider.id).order_by(Provider.id).limit(1))
     assert provider_id is not None
     return provider_id
-
-
-async def test_stub_answers_not_implemented_after_the_permission_check(
-    session: AsyncSession, api_client: AsyncClient
-) -> None:
-    user = await create_user(session, "admin")
-
-    body = problem(
-        await api_client.get("/api/admin/agent-releases", headers=bearer(user)),
-        501,
-        "not_implemented",
-    )
-
-    assert "T-50" in body["detail"]
 
 
 def test_every_role_has_permissions_and_administration_is_the_admins() -> None:

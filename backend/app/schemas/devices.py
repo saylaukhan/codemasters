@@ -8,8 +8,10 @@ measurement keeps the thresholds it was evaluated with (ADR-004). Time is UTC, R
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, IPvAnyAddress
+from pydantic import BaseModel, Field, IPvAnyAddress, field_validator
+from pydantic.json_schema import SkipJsonSchema
 
+from app.schemas.agent_releases import AgentChannel
 from app.schemas.pagination import Page
 from app.schemas.statuses import (
     ConnectionStatus,
@@ -53,6 +55,9 @@ class DeviceListItem(BaseModel):
     agent_version: str | None
     last_seen_at: datetime | None = Field(description="Последняя связь с агентом")
     status: DeviceStatus
+    update_channel: AgentChannel = Field(
+        description="Канал обновления агента: pilot получает релиз раньше остальных"
+    )
     current_status: SchoolStatus = Field(
         description="По правилу T-16: heartbeat в рабочие часы и последний замер; "
         "вне рабочих часов — no_data"
@@ -82,10 +87,21 @@ class DeviceDetailPage(Page[DeviceDetail]):
 
 
 class DeviceUpdate(BaseModel):
-    """Rebinding of a device to another monitoring point (T-36): the school and the line of new
-    measurements follow the point, measurements already taken keep theirs (ADR-005)."""
+    """Changes of a device: its monitoring point (T-36) and its update channel (T-50).
 
-    monitoring_point_id: int
+    The school and the line of new measurements follow the point, measurements already taken
+    keep theirs (ADR-005); the channel decides which release the agent installs.
+    """
+
+    monitoring_point_id: int | SkipJsonSchema[None] = None
+    update_channel: AgentChannel | SkipJsonSchema[None] = None
+
+    @field_validator("monitoring_point_id", "update_channel", mode="before")
+    @classmethod
+    def reject_null(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("поле не может быть null")
+        return value
 
 
 class MeasurementListItem(LatestMeasurement):

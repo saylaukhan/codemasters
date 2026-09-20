@@ -4,7 +4,6 @@ measurements, outages.
 All endpoints except registration require ``Authorization: Device <token>``: ``current_device``
 answers 401 without a valid token and 403 for a blocked device (ADR-005). The school and the
 line of a request are derived from the device binding, never taken from the body (ТЗ п. 12).
-Endpoints still answering 501 name the task that implements them.
 """
 
 import logging
@@ -22,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.deps import current_device
-from app.core.errors import ApiError, not_implemented
+from app.core.errors import ApiError
 from app.core.security import (
     format_device_token,
     hash_secret,
@@ -49,6 +48,7 @@ from app.schemas.agent import (
 from app.schemas.errors import Problem
 from app.services import device_admin
 from app.services.agent_config import agent_config, config_etag, etag_matches
+from app.services.agent_releases import latest_release
 from app.services.settings import NOT_CONFIGURED_DETAIL
 from app.services.status import Evaluation, evaluate, line_rules
 
@@ -66,6 +66,7 @@ EXTERNAL_IP_UNKNOWN = "Сервер не определил внешний IP з
 BLOCKED = "Устройство заблокировано администратором"
 DUPLICATE_MEASUREMENT = "Замер с этим measurement_uuid уже принят"
 DUPLICATE_OUTAGE = "Простой с этим started_at уже принят"
+NO_RELEASE = "Для канала этого устройства нет опубликованного релиза"
 
 logger = logging.getLogger(__name__)
 
@@ -519,10 +520,26 @@ async def create_outage(
 @device_router.get(
     "/agent/releases/latest",
     summary="Последний релиз агента для обновления",
+    description=(
+        "Релиз канала устройства: агент на pilot получает и пилотный релиз, остальные — "
+        "только переведённый в stable. Агент скачивает MSI, сверяет sha256 и ставит только "
+        "совпавший файл (plan.md §4.6)."
+    ),
     responses={404: {"model": Problem, "description": "Релизов нет"}},
 )
-async def get_latest_agent_release() -> AgentReleaseResponse:
-    raise not_implemented("T-50")
+async def get_latest_agent_release(
+    device: Annotated[Device, Depends(current_device)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AgentReleaseResponse:
+    """Newest active release the channel of the device may install (ТЗ п. 20, plan.md §4.6).
+
+    The channel comes from the device row, never from the request: which computers pilot a
+    build is decided in the admin panel (T-36, ADR-005).
+    """
+    release = await latest_release(session, device.update_channel)
+    if release is None:
+        raise ApiError(404, "not_found", NO_RELEASE)
+    return AgentReleaseResponse.model_validate(release, from_attributes=True)
 
 
 router.include_router(device_router)

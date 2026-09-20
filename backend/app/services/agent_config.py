@@ -1,9 +1,11 @@
 """Configuration an agent asks for: schedule, thresholds, servers, version (T-17, ADR-012).
 
 Nothing here is hard-coded in the agent: the answer is assembled from the database along the
-chain device → line → district → global settings (ТЗ п. 11, п. 20; ADR-004). The ETag is the
-hash of that answer, so any change of ``schedules``, ``threshold_profiles``, ``settings`` or
-``agent_releases`` gives the agent a new configuration and everything else costs it a 304.
+chain device → line → district → global settings (ТЗ п. 11, п. 20; ADR-004). ``latest_version``
+follows the update channel of the device, as ``GET /api/agent/releases/latest`` does (T-50).
+The ETag is the hash of that answer, so any change of ``schedules``, ``threshold_profiles``,
+``settings`` or ``agent_releases`` gives the agent a new configuration and everything else
+costs it a 304.
 """
 
 import hashlib
@@ -12,14 +14,12 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
-from app.models import AgentRelease, Device, MonitoringPoint, Schedule, School
+from app.models import Device, MonitoringPoint, Schedule, School
 from app.schemas.agent import AgentConfigResponse, ScheduleSlot, SpeedtestServers
 from app.schemas.thresholds import ThresholdValues
+from app.services.agent_releases import latest_release
 from app.services.settings import NOT_CONFIGURED, NOT_CONFIGURED_DETAIL, system_settings
 from app.services.thresholds import most_specific, threshold_profile
-
-# Default channel of an agent until per-device channels arrive with self-update (T-50).
-STABLE_CHANNEL = "stable"
 
 
 async def agent_config(session: AsyncSession, device: Device) -> AgentConfigResponse:
@@ -74,22 +74,19 @@ async def agent_config(session: AsyncSession, device: Device) -> AgentConfigResp
             jitter_max_ms=profile.jitter_max_ms,
             packet_loss_max_pct=profile.packet_loss_max_pct,
         ),
-        latest_version=await latest_version(session),
+        latest_version=await latest_version(session, device),
         token_rotation_required=device.token_rotation_requested_at is not None,
     )
 
 
-async def latest_version(session: AsyncSession) -> str | None:
+async def latest_version(session: AsyncSession, device: Device) -> str | None:
     """Version of the newest published release the agent may update to; ``None`` while none is.
 
-    Every agent is on the ``stable`` channel until T-50 gives devices a channel of their own.
+    The release is the one of the channel of the device, so a promotion to ``stable`` or a
+    withdrawal changes the answer and its ETag for exactly the agents it concerns (T-50).
     """
-    return await session.scalar(
-        select(AgentRelease.version)
-        .where(AgentRelease.is_active, AgentRelease.channel == STABLE_CHANNEL)
-        .order_by(AgentRelease.released_at.desc(), AgentRelease.id.desc())
-        .limit(1)
-    )
+    release = await latest_release(session, device.update_channel)
+    return release.version if release is not None else None
 
 
 def config_etag(config: AgentConfigResponse) -> str:
