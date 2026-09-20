@@ -4,10 +4,11 @@ the auto-close of resolved incidents (T-41) every 15 minutes.
 The rules and the hysteresis live in ``app/services/incidents.py``; the tasks only run them and
 commit. ``incidents.detect_line`` is queued by the agent API once new measurements of a line are
 stored; beat runs ``incidents.detect_all`` over every watched line, which also catches the
-silence of the heartbeat and any measurement whose task was lost. Each line is committed on its
+silence of the heartbeat and any measurement whose task was lost. An incident the run opened or
+restored is notified about in the same transaction (T-42). Each line is committed on its
 own: a failure on one line does not hold back the others. ``incidents.close_resolved`` closes
-the incidents «Устранён» for 24 hours (``app/services/incident_card.py``). Celery runs as the
-owner of the tables, outside any scope (ADR-008).
+the incidents «Устранён» for 24 hours (``app/services/incident_card.py``) and notifies about each,
+as a change of the incident. Celery runs as the owner of the tables, outside any scope (ADR-008).
 """
 
 import asyncio
@@ -20,6 +21,7 @@ from sqlalchemy.pool import NullPool
 from app.core.config import get_settings
 from app.services.incident_card import close_resolved
 from app.services.incidents import Detection, detect_line, detection_line_ids
+from app.services.notifications import notify_incident
 from app.workers.celery_app import celery_app
 
 DETECT_LINE = "incidents.detect_line"
@@ -29,13 +31,27 @@ CLOSE_RESOLVED = "incidents.close_resolved"
 logger = logging.getLogger(__name__)
 
 
+async def notify(session: AsyncSession, detection: Detection, now: datetime) -> None:
+    """Notify about what the run opened and restored (T-42); an updated incident says nothing new.
+
+    A channel that fails is already written to ``notification_log`` by the service; a failure of
+    the whole notification must not roll back the incident, which is the record that matters.
+    """
+    for incident_id in detection.opened:
+        await notify_incident(session, incident_id, "incident_opened", now=now)
+    for incident_id in detection.restored:
+        await notify_incident(session, incident_id, "incident_restored", now=now)
+
+
 async def detect_one(line_id: int) -> Detection:
     # An engine of its own per run: ``asyncio.run`` starts a new event loop every time, and a
     # pooled asyncpg connection cannot outlive the loop it was opened on.
     engine = create_async_engine(get_settings().database_url, poolclass=NullPool)
     try:
         async with AsyncSession(engine) as session:
-            detection = await detect_line(session, line_id, now=datetime.now(UTC))
+            now = datetime.now(UTC)
+            detection = await detect_line(session, line_id, now=now)
+            await notify(session, detection, now)
             await session.commit()
             return detection
     finally:
@@ -51,8 +67,11 @@ async def detect_every() -> Detection:
             await session.commit()
             for line_id in line_ids:
                 try:
-                    total.extend(await detect_line(session, line_id, now=datetime.now(UTC)))
+                    now = datetime.now(UTC)
+                    detection = await detect_line(session, line_id, now=now)
+                    await notify(session, detection, now)
                     await session.commit()
+                    total.extend(detection)
                 except Exception:
                     await session.rollback()
                     logger.exception("incident detection failed on line %s", line_id)
@@ -65,7 +84,12 @@ async def close_every() -> list[int]:
     engine = create_async_engine(get_settings().database_url, poolclass=NullPool)
     try:
         async with AsyncSession(engine) as session:
-            closed = await close_resolved(session, now=datetime.now(UTC))
+            now = datetime.now(UTC)
+            closed = await close_resolved(session, now=now)
+            # «Закрыт» is a change of the incident like any other, so it is notified about too
+            # (T-42); the event of the auto-close itself has no author (T-41).
+            for incident_id in closed:
+                await notify_incident(session, incident_id, "incident_status_changed", now=now)
             await session.commit()
             return closed
     finally:

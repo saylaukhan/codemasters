@@ -807,6 +807,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Уведомления пользователя, новые сверху
+         * @description Только уведомления вызывающего: панель уведомлений (DESIGN.md §3.23). unread_only=true — вкладка «Непрочитанные».
+         */
+        get: operations["list_notifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Счётчик непрочитанных уведомлений
+         * @description Число на колокольчике в шапке (DESIGN.md §3.5).
+         */
+        get: operations["get_unread_count"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отметить все уведомления прочитанными
+         * @description Ссылка «Отметить все как прочитанные» панели уведомлений (DESIGN.md §3.23).
+         */
+        post: operations["read_all_notifications"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Поток новых уведомлений (SSE)
+         * @description text/event-stream: событие notification с полями notification и unread на каждое новое уведомление вызывающего; строка-комментарий раз в 20 секунд держит соединение. Панель подписывается через fetch с заголовком Authorization (ADR-009).
+         */
+        get: operations["stream_notifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/appeals/draft": {
         parameters: {
             query?: never;
@@ -3391,6 +3471,74 @@ export interface components {
             /** Is Primary */
             is_primary?: boolean;
         };
+        /** @enum {string} */
+        NotificationKind: "incident_opened" | "incident_status_changed" | "incident_restored";
+        /**
+         * NotificationListItem
+         * @description Row of the notification panel (DESIGN.md §3.23).
+         */
+        NotificationListItem: {
+            /** Id */
+            id: number;
+            kind: components["schemas"]["NotificationKind"];
+            /**
+             * Title
+             * @example Новый инцидент INC-2026-000123
+             */
+            title: string;
+            /**
+             * Body
+             * @example Нет соединения · Школа №1, основная линия
+             */
+            body: string;
+            /** Incident Id */
+            incident_id: number;
+            /**
+             * Incident Number
+             * @example INC-2026-000123
+             */
+            incident_number: string;
+            incident_status: components["schemas"]["IncidentStatus"];
+            /** School Id */
+            school_id: number;
+            /** School Name */
+            school_name: string;
+            /**
+             * Read At
+             * @description null — не прочитано
+             */
+            read_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * NotificationListItemPage
+         * @description Page of the notifications of the caller, newest first.
+         */
+        NotificationListItemPage: {
+            /** Items */
+            items: components["schemas"]["NotificationListItem"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * NotificationUnreadCount
+         * @description Counter on the bell of the header (DESIGN.md §3.5).
+         */
+        NotificationUnreadCount: {
+            /**
+             * Unread
+             * @description Непрочитанные уведомления пользователя
+             */
+            unread: number;
+        };
         /** OutageAccepted */
         OutageAccepted: {
             /** Id */
@@ -4403,6 +4551,12 @@ export interface components {
              * @description Начальный пароль; хранится только хэшем
              */
             password: string;
+            /**
+             * Telegram Chat Id
+             * @description Чат пользователя с ботом уведомлений (T-42); пусто — канал ему не шлётся
+             * @example 123456789
+             */
+            telegram_chat_id?: string | null;
         };
         /**
          * UserDetail
@@ -4428,6 +4582,11 @@ export interface components {
              * @description false — учётная запись заблокирована
              */
             is_active: boolean;
+            /**
+             * Telegram Chat Id
+             * @description Чат уведомлений (T-42); null — Telegram этому пользователю не отправляется
+             */
+            telegram_chat_id: string | null;
         };
         /**
          * UserDetailPage
@@ -4493,6 +4652,11 @@ export interface components {
              * @description Новый пароль: сброс администратором
              */
             password?: string;
+            /**
+             * Telegram Chat Id
+             * @description Чат уведомлений (T-42); null — отключить канал пользователю
+             */
+            telegram_chat_id?: string | null;
         };
         /** @enum {string} */
         Weekday: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
@@ -7087,6 +7251,136 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_notifications: {
+        parameters: {
+            query?: {
+                /** @description Только непрочитанные */
+                unread_only?: boolean;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationListItemPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_unread_count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationUnreadCount"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    read_all_notifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    stream_notifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Поток уведомлений */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
                 };
             };
             /** @description Ошибка (RFC 9457) */

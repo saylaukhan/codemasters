@@ -12,6 +12,7 @@ from app.api import (
     devices,
     exports,
     incidents,
+    notifications,
     schools,
 )
 from app.api import map as school_map
@@ -28,6 +29,7 @@ for domain in (
     devices,
     analytics,
     incidents,
+    notifications,
     appeals,
     exports,
     admin,

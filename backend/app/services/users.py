@@ -98,6 +98,7 @@ def user_detail(
         ),
         scope_name=scope_name,
         is_active=user.is_active,
+        telegram_chat_id=user.telegram_chat_id,
     )
 
 
@@ -167,6 +168,7 @@ async def create_user(session: AsyncSession, body: UserCreate) -> UserDetail:
         full_name=body.full_name.strip(),
         role=body.role,
         password_hash=hash_password(body.password.get_secret_value()),
+        telegram_chat_id=body.telegram_chat_id or None,
     )
     session.add(user)
     await session.flush()
@@ -226,6 +228,8 @@ async def update_user(
         updates["role"] = body.role
     if body.is_active is not None:
         updates["is_active"] = body.is_active
+    if "telegram_chat_id" in body.model_fields_set:
+        updates["telegram_chat_id"] = body.telegram_chat_id or None
     changes = apply_changes(user, updates)
     if body.role is not None:
         changes.update(await replace_scope(session, user, body.role, body))

@@ -3,11 +3,13 @@ creation, status changes and comments.
 
 "CRUD" has no DELETE: an incident and its ``incident_events`` are the history of a problem
 (ТЗ п. 19, ADR-007), so status changes and comments only add events; the transitions and the
-auto-close live in ``app/services/incident_card.py`` (T-41). Lists and cards are limited by the
-user's scope from T-20: a provider sees the incidents of its own lines (ADR-008, T-44).
-Incidents of a school card — ``schools.py``.
+auto-close live in ``app/services/incident_card.py`` (T-41), and a status change also notifies
+the people who see the incident (T-42). Lists and cards are limited by the user's scope from
+T-20: a provider sees the incidents of its own lines (ADR-008, T-44). Incidents of a school
+card — ``schools.py``.
 """
 
+import logging
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
@@ -38,6 +40,8 @@ router = APIRouter(
 )
 
 INCIDENT_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Инцидент не найден"}
+
+logger = logging.getLogger(__name__)
 
 
 @router.get(
@@ -162,6 +166,7 @@ async def change_incident_status(
         session, incident_id, body, user, now=datetime.now(UTC)
     )
     describe_action(request, changes=changes)
+    enqueue_incident_notification(incident_id, "incident_status_changed")
     return await incident_card.incident_detail(session, incident_id)
 
 
@@ -182,3 +187,19 @@ async def create_incident_comment(
     return await incident_card.add_comment(
         session, incident_id, body.comment, user, now=datetime.now(UTC)
     )
+
+
+def enqueue_incident_notification(incident_id: int, kind: str) -> None:
+    """Hand a change of the incident to the notifications of T-42 once it is committed.
+
+    The task is imported here, not at module level: the Celery app reads the settings when it is
+    created and the API imports without them (tests replace this function). A broker that does
+    not answer loses the Telegram and the e-mail of this one change; the incident and its
+    history are already stored, and the next change notifies again.
+    """
+    from app.workers.tasks.notifications import notify_incident_task
+
+    try:
+        notify_incident_task.delay(incident_id, kind)
+    except Exception:
+        logger.exception("notification of incident %s not queued", incident_id)
