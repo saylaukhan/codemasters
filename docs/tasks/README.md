@@ -857,7 +857,7 @@ WeasyPrint); таблицы `appeals`, `appeal_events`; `web/src/pages/appeals/`
 ## I. Безопасность и поставка (этап 6)
 
 ### T-49 · MSI-установщик (WiX), тихая установка, подпись · M · MVP
-**Статус:** todo
+**Статус:** done (2026-09-20)
 **Зачем:** п. 2 (автозапуск, без участия пользователя), п. 20 (управление версиями агента);
 этап 6 плана (plan.md §4.1); ADR-002, ADR-010 (без GUI).
 **Где:** `agent/installer/wix/` (WiX v4), `.github/workflows/agent-msi.yml` (сборка

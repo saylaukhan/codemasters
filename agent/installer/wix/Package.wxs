@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Установщик агента «Мониторинг интернета ВКО» (T-49, plan.md §4.1).
+
+  Ставит vko-agent.exe, создаёт папку данных, пишет конфигурацию вызовом
+  `vko-agent configure` и регистрирует службу VKOMonitorAgent: отложенный
+  автозапуск, учётная запись LocalService, перезапуск после сбоя 1 / 1 / 5 мин,
+  правило брандмауэра только на исходящие.
+
+  Сборка — .github/workflows/agent-msi.yml; переменные препроцессора
+  Version, AgentExe и ServerUrl приходят оттуда ключами -d.
+
+  Пороги, расписание и адрес сервера замеров сюда не попадают: агент получает
+  их с сервера (ADR-004, ADR-012). SERVER_URL — только адрес API, с которого
+  агент их и спрашивает.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:fw="http://wixtoolset.org/schemas/v4/wxs/firewall"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <?define ServiceName = "VKOMonitorAgent" ?>
+
+  <Package
+      Name="Мониторинг интернета ВКО"
+      Manufacturer="Управление образования ВКО"
+      Version="$(var.Version)"
+      UpgradeCode="64bcf527-54c6-4b9a-b3cd-5d7709fe323d"
+      Language="1049"
+      Codepage="1251"
+      Scope="perMachine"
+      InstallerVersion="500"
+      Compressed="yes">
+
+    <SummaryInformation
+        Description="Агент мониторинга качества интернет-соединения школы"
+        Manufacturer="Управление образования ВКО" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Обновление поверх: старая версия снимается сразу после начала установки,
+         папка данных и очередь замеров при этом не трогаются (ADR-006). -->
+    <MajorUpgrade
+        AllowSameVersionUpgrades="yes"
+        Schedule="afterInstallInitialize"
+        DowngradeErrorMessage="Уже установлена более новая версия [ProductName]. Установка прервана." />
+
+    <!-- Параметры тихой установки (plan.md §4.1):
+         msiexec /i VKO-Agent.msi /qn ENROLL_CODE=VKO-7F3K-92QD ROOM="Серверная"
+         Secure="yes" нужен, чтобы значения дошли до установки с правами системы. -->
+    <Property Id="SERVER_URL" Value="$(var.ServerUrl)" Secure="yes" />
+    <!-- Hidden: значение кода не попадает в подробный журнал msiexec. -->
+    <Property Id="ENROLL_CODE" Secure="yes" Hidden="yes" />
+    <Property Id="ROOM" Secure="yes" />
+    <Property Id="LOG_LEVEL" Value="info" Secure="yes" />
+
+    <Launch
+        Condition="SERVER_URL"
+        Message="Не задан адрес сервера мониторинга. Укажите SERVER_URL=https://имя-сервера при установке." />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="VKO Monitor" />
+    </StandardDirectory>
+    <!-- %ProgramData%\VKO Monitor — то же, что service.DefaultDataDir() в агенте. -->
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="DATAFOLDER" Name="VKO Monitor" />
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Агент мониторинга" Level="1">
+      <ComponentGroupRef Id="AgentComponents" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="AgentComponents">
+      <Component Id="AgentExecutable" Directory="INSTALLFOLDER"
+                 Guid="ab2aacef-28f7-41b5-ac52-755ea9964420">
+        <File Id="vko_agent.exe" Name="vko-agent.exe" Source="$(var.AgentExe)" KeyPath="yes">
+          <!-- Только исходящие: агент никого не слушает (ADR-010). Правило вложено
+               в File, поэтому программой становится сам vko-agent.exe.
+               IgnoreFailure: в расширении WiX v4 исходящее правило падает с
+               0x80070057 (в нём безусловно выставляется EdgeTraversal, что для
+               dir=out недопустимо) — установка из-за этого прерываться не должна.
+               Строка в docs/known-limitations.md. -->
+          <fw:FirewallException
+              Id="AgentOutbound"
+              Name="Мониторинг интернета ВКО (исходящие)"
+              Description="Разрешает агенту мониторинга обращаться к серверу мониторинга и серверу замеров."
+              Outbound="yes"
+              Scope="any"
+              Profile="all"
+              IgnoreFailure="yes" />
+        </File>
+
+        <ServiceInstall
+            Id="AgentService"
+            Name="$(var.ServiceName)"
+            DisplayName="Мониторинг интернета ВКО"
+            Description="Фоновые замеры качества интернет-соединения школы и отправка результатов на сервер мониторинга."
+            Type="ownProcess"
+            Start="auto"
+            ErrorControl="normal"
+            Account="NT AUTHORITY\LocalService"
+            Arguments="run --config &quot;[DATAFOLDER]agent.yaml&quot;"
+            Vital="yes">
+          <!-- «Автоматически (отложенный запуск)»: служба стартует при включении
+               ПК, вход пользователя не нужен (plan.md §4.1). -->
+          <ServiceConfig DelayedAutoStart="yes" OnInstall="yes" OnReinstall="yes" />
+          <!-- Перезапуск после сбоя (1 / 1 / 5 мин) здесь не задаётся: таблицу
+               MsiServiceConfigFailureActions Microsoft сама описывает как
+               работающую не так, как ожидается, и советует вместо неё своё
+               действие: их задаёт ключ service-recovery команды
+               `vko-agent configure` тем же кодом, что и `vko-agent install`. -->
+        </ServiceInstall>
+
+        <ServiceControl
+            Id="AgentServiceControl"
+            Name="$(var.ServiceName)"
+            Start="install"
+            Stop="both"
+            Remove="uninstall"
+            Wait="yes" />
+      </Component>
+
+      <!-- Папка данных: очередь замеров, журнал, device.json и токен. Остаётся
+           после удаления программы, чтобы не потерять неотправленные замеры
+           (ADR-006). LocalService должен иметь право создавать в ней файлы. -->
+      <Component Id="AgentDataFolder" Directory="DATAFOLDER"
+                 Guid="199d9e3d-06b3-40f3-9c07-7af5e2231c54">
+        <CreateFolder>
+          <!-- User="LocalService" без Domain: расширение переводит это имя в
+               известный SID, поэтому правило не зависит от языка Windows.
+               Inheritable: права достаются и очереди, и журналу внутри папки. -->
+          <util:PermissionEx User="LocalService" GenericAll="yes" Inheritable="yes" />
+        </CreateFolder>
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <!-- Конфигурацию пишет сам агент: `vko-agent configure` собирает agent.yaml
+         из параметров установки и сохраняет значения, которых в этот раз не
+         передали (повторная установка не теряет код и кабинет).
+
+         Действие отложенное и без олицетворения — при установке через групповые
+         политики установщик работает от имени системы. Значения параметров
+         доходят до него через CustomActionData: имя свойства в SetProperty
+         совпадает с Id действия — это единственный способ передать свойства в
+         отложенное действие. -->
+    <SetProperty
+        Id="ConfigureAgent"
+        Sequence="execute"
+        Before="ConfigureAgent"
+        Condition="NOT REMOVE"
+        Value="--config &quot;[DATAFOLDER]agent.yaml&quot; --server-url &quot;[SERVER_URL]&quot; --enroll-code &quot;[ENROLL_CODE]&quot; --room &quot;[ROOM]&quot; --log-level &quot;[LOG_LEVEL]&quot; --service-recovery" />
+
+    <CustomAction
+        Id="ConfigureAgent"
+        FileRef="vko_agent.exe"
+        ExeCommand="configure [CustomActionData]"
+        Execute="deferred"
+        Impersonate="no"
+        Return="check"
+        HideTarget="yes" />
+
+    <InstallExecuteSequence>
+      <!-- После InstallServices (файл и служба уже на месте) и до StartServices:
+           служба читает конфигурацию при запуске. -->
+      <Custom Action="ConfigureAgent" Before="StartServices" Condition="NOT REMOVE" />
+    </InstallExecuteSequence>
+  </Fragment>
+</Wix>

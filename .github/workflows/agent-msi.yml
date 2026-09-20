@@ -1,5 +1,6 @@
-# Builds the Windows agent binary. The MSI packaging (WiX v4) and Authenticode signing
-# steps are added in T-49; until then the workflow publishes vko-agent.exe as an artifact.
+# Собирает агент под Windows и установщик VKO-Agent.msi (T-49, plan.md §4.1).
+# Подпись Authenticode не делается: сертификата заказчика пока нет — строка в
+# docs/known-limitations.md, шаг ниже закомментирован и ждёт сертификата.
 name: Agent MSI
 
 permissions:
@@ -7,8 +8,18 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      server_url:
+        description: "Адрес API сервера мониторинга; попадает в agent.yaml как значение по умолчанию"
+        required: false
+        default: "https://monitor.example.kz"
   push:
     tags: ["v*"]
+
+env:
+  # Версия WiX и расширений закреплена: сборка установщика не должна меняться
+  # сама по себе между демо и поставкой.
+  WIX_VERSION: "4.0.6"
 
 jobs:
   build:
@@ -34,6 +45,20 @@ jobs:
             echo "version=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           fi
 
+      # ProductVersion в MSI — только числа x.y.z (major и minor до 255, build до
+      # 65535), поэтому тег v1.2.3 очищается, а сборка без тега получает номер
+      # прогона: обновление поверх должно видеть, что версия выросла.
+      - name: Resolve MSI product version
+        id: msi_version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF#refs/tags/v}"
+            version="${version%%-*}"
+          else
+            version="0.1.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
       - name: Build vko-agent.exe
         env:
           GOOS: windows
@@ -50,5 +75,43 @@ jobs:
           path: agent/dist/vko-agent.exe
           if-no-files-found: error
 
-      # - name: Build MSI (WiX v4) — появится в T-49
-      # - name: Sign MSI (Authenticode) — появится в T-49
+      - name: Install WiX v4
+        run: |
+          # update вместо install: на кэшированном раннере install падает,
+          # если инструмент уже стоит. Версия расширений обязана совпадать с
+          # версией wix и указывается полностью, из трёх частей.
+          dotnet tool update --global wix --version "$WIX_VERSION"
+          wix extension add -g "WixToolset.Util.wixext/$WIX_VERSION"
+          wix extension add -g "WixToolset.Firewall.wixext/$WIX_VERSION"
+          wix --version
+          wix extension list -g
+
+      - name: Build VKO-Agent.msi (WiX v4)
+        run: |
+          server_url="${{ inputs.server_url }}"
+          server_url="${server_url:-${{ vars.AGENT_SERVER_URL }}}"
+          server_url="${server_url:-https://monitor.example.kz}"
+          # -sw1149: core ServiceConfig всегда предупреждает, что таблица
+          # MsiServiceConfig «работает не так, как ожидается». Нас это касается
+          # только для отложенного автозапуска, перезапуск после сбоя задаёт агент.
+          wix build \
+            -arch x64 \
+            -sw1149 \
+            -d "Version=${{ steps.msi_version.outputs.version }}" \
+            -d "AgentExe=dist/vko-agent.exe" \
+            -d "ServerUrl=${server_url}" \
+            -ext WixToolset.Util.wixext \
+            -ext WixToolset.Firewall.wixext \
+            -o dist/VKO-Agent.msi \
+            installer/wix/Package.wxs
+
+      # - name: Sign VKO-Agent.msi (Authenticode) — ждёт сертификата заказчика
+      #   run: |
+      #     signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 \
+      #       /f cert.pfx /p "$CERT_PASSWORD" dist/VKO-Agent.msi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VKO-Agent-${{ steps.version.outputs.version }}-msi
+          path: agent/dist/VKO-Agent.msi
+          if-no-files-found: error

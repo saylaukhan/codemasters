@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -114,4 +116,60 @@ func (c Config) validate() error {
 		return fmt.Errorf("конфигурация: log_level %q — допустимо debug, info, warn, error", c.LogLevel)
 	}
 	return nil
+}
+
+// WriteConfig writes cfg to path as a commented YAML file, creating the
+// parent directory. It is how the MSI custom action creates agent.yaml from
+// the install properties (T-49, plan.md §4.1), so the file stays readable:
+// an administrator edits the same file by hand afterwards.
+func WriteConfig(path string, cfg Config) error {
+	if err := cfg.validate(); err != nil {
+		return err
+	}
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("папка конфигурации %s: %w", dir, err)
+	}
+	// 0600: the enrollment code is in the file. On Windows the mode is not an
+	// ACL — access for the service account comes from the folder (T-49).
+	if err := os.WriteFile(path+".tmp", []byte(renderConfig(cfg)), 0o600); err != nil {
+		return fmt.Errorf("запись конфигурации: %w", err)
+	}
+	if err := os.Rename(path+".tmp", path); err != nil {
+		return fmt.Errorf("запись конфигурации: %w", err)
+	}
+	return nil
+}
+
+// renderConfig builds the YAML text of cfg. The comments repeat agent/dev.yaml
+// so both files read the same.
+func renderConfig(cfg Config) string {
+	var b strings.Builder
+	b.WriteString("# Конфигурация агента «Мониторинг интернета ВКО».\n")
+	b.WriteString("# Файл создан установщиком; правится вручную, служба перечитывает его при перезапуске.\n")
+	b.WriteString("# Пороги, расписание и адрес сервера замеров сюда не пишутся — агент получает их\n")
+	b.WriteString("# с сервера (GET /api/agent/config, ADR-004, ADR-012).\n\n")
+	b.WriteString("# Адрес API сервера мониторинга.\n")
+	b.WriteString("server_url: " + yamlValue(cfg.ServerURL) + "\n\n")
+	b.WriteString("# Кабинет, в котором стоит этот компьютер (попадает в точку мониторинга).\n")
+	b.WriteString("room: " + yamlValue(cfg.Room) + "\n\n")
+	b.WriteString("# Одноразовый код установки для привязки устройства к школе (T-07).\n")
+	b.WriteString("# После регистрации не используется: device_id — в device.json, токен — в device_token.\n")
+	b.WriteString("enroll_code: " + yamlValue(cfg.EnrollCode) + "\n\n")
+	b.WriteString("# Папка состояния, журнала и очереди замеров (queue.db).\n")
+	b.WriteString("data_dir: " + yamlValue(cfg.DataDir) + "\n\n")
+	b.WriteString("# Уровень журнала: debug, info, warn, error.\n")
+	b.WriteString("log_level: " + yamlValue(cfg.LogLevel) + "\n")
+	return b.String()
+}
+
+// yamlValue quotes s the way YAML needs it — a Windows path with backslashes
+// and a Russian room name must survive a round trip through ParseConfig.
+func yamlValue(s string) string {
+	data, err := yaml.Marshal(s)
+	if err != nil {
+		// yaml.Marshal of a string does not fail; quote defensively anyway.
+		return strconv.Quote(s)
+	}
+	return strings.TrimRight(string(data), "\n")
 }

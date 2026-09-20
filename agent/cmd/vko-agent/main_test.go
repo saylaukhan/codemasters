@@ -237,3 +237,68 @@ func TestMeasureOfflineStaysInQueue(t *testing.T) {
 		t.Fatalf("status: exit code %d, stdout %q, stderr %q; want 2 records in the queue", code, stdout, stderr)
 	}
 }
+
+// TestConfigureWritesConfig: the MSI custom action calls `configure` with the
+// install properties; the file it writes must be loadable by the service
+// (T-49, plan.md §4.1).
+func TestConfigureWritesConfig(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agent.yaml")
+	code, stdout, stderr := runCLI(t, "configure",
+		"--config", path,
+		"--server-url", "https://monitor.example.kz",
+		"--enroll-code", "VKO-7F3K-92QD",
+		"--room", "Кабинет 12",
+		"--data-dir", filepath.Dir(path),
+		"--log-level", "warn")
+	if code != exitOK {
+		t.Fatalf("configure: exit code = %d, want %d; stderr: %s", code, exitOK, stderr)
+	}
+	if strings.Contains(stdout, "VKO-7F3K-92QD") {
+		t.Errorf("configure печатает код установки: %q", stdout)
+	}
+
+	cfg, err := service.LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig после configure: %v", err)
+	}
+	if cfg.ServerURL != "https://monitor.example.kz" || cfg.Room != "Кабинет 12" ||
+		cfg.EnrollCode != "VKO-7F3K-92QD" || cfg.LogLevel != "warn" {
+		t.Fatalf("configure записал %+v", cfg)
+	}
+}
+
+// TestConfigureKeepsEnrollCode: on an upgrade the MSI runs `configure` again,
+// and an install property that was not given arrives empty — the code and the
+// room from the first install must survive (T-49).
+func TestConfigureKeepsEnrollCode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agent.yaml")
+	if code, _, stderr := runCLI(t, "configure", "--config", path,
+		"--server-url", "https://monitor.example.kz",
+		"--enroll-code", "VKO-7F3K-92QD", "--room", "Серверная"); code != exitOK {
+		t.Fatalf("первый configure: exit code = %d; stderr: %s", code, stderr)
+	}
+	if code, _, stderr := runCLI(t, "configure", "--config", path,
+		"--server-url", "https://monitor.example.kz",
+		"--enroll-code", "", "--room", ""); code != exitOK {
+		t.Fatalf("повторный configure: exit code = %d; stderr: %s", code, stderr)
+	}
+
+	cfg, err := service.LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.EnrollCode != "VKO-7F3K-92QD" || cfg.Room != "Серверная" {
+		t.Fatalf("повторный configure затёр значения: %+v", cfg)
+	}
+}
+
+func TestConfigureWithoutServerURLFails(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agent.yaml")
+	code, _, stderr := runCLI(t, "configure", "--config", path, "--room", "Серверная")
+	if code != exitError {
+		t.Fatalf("configure без --server-url: exit code = %d, want %d", code, exitError)
+	}
+	if !strings.Contains(stderr, "server_url") {
+		t.Errorf("stderr %q не объясняет, чего не хватает", stderr)
+	}
+}

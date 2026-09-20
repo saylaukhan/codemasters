@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestParseConfigFull(t *testing.T) {
@@ -123,5 +125,62 @@ func TestStateRoundTrip(t *testing.T) {
 	if got.Version != want.Version || !got.StartedAt.Equal(want.StartedAt) ||
 		got.LastMeasurementAt == nil || !got.LastMeasurementAt.Equal(measured) || got.QueueSize != 3 {
 		t.Fatalf("ReadState = %+v, want %+v", got, want)
+	}
+}
+
+// TestWriteConfigRoundTrip: what WriteConfig writes, LoadConfig must read
+// back unchanged — including a Russian room name with quotes, which YAML
+// would otherwise mangle (T-49).
+func TestWriteConfigRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "agent.yaml")
+	want := Config{
+		ServerURL:  "https://monitor.example.kz",
+		Room:       `Кабинет 12 "А"`,
+		EnrollCode: "VKO-7F3K-92QD",
+		DataDir:    filepath.Join(dir, "data"),
+		LogLevel:   "info",
+	}
+	if err := WriteConfig(path, want); err != nil {
+		t.Fatalf("WriteConfig: %v", err)
+	}
+
+	got, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if got != want {
+		t.Fatalf("round trip = %+v, want %+v", got, want)
+	}
+	if _, err := os.Stat(path + ".tmp"); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("временный файл %s.tmp остался", path)
+	}
+}
+
+func TestWriteConfigRejectsInvalid(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agent.yaml")
+	err := WriteConfig(path, Config{ServerURL: "", DataDir: "/var/lib/vko-agent", LogLevel: "info"})
+	if err == nil {
+		t.Fatal("WriteConfig без server_url: ошибки нет")
+	}
+	if _, statErr := os.Stat(path); !errors.Is(statErr, os.ErrNotExist) {
+		t.Errorf("файл %s создан, хотя конфигурация неверна", path)
+	}
+}
+
+// TestRenderConfigKeepsWindowsPath: the MSI passes %ProgramData%\\VKO Monitor,
+// and a backslash in a bare YAML scalar would be read back as an escape. The
+// check is on the YAML text, not on ParseConfig: outside Windows a drive path
+// is not absolute and would be joined with the config directory (T-49).
+func TestRenderConfigKeepsWindowsPath(t *testing.T) {
+	const dataDir = `C:\ProgramData\VKO Monitor`
+	text := renderConfig(Config{ServerURL: "https://monitor.example.kz", DataDir: dataDir, LogLevel: "info"})
+
+	var got Config
+	if err := yaml.Unmarshal([]byte(text), &got); err != nil {
+		t.Fatalf("yaml.Unmarshal: %v", err)
+	}
+	if got.DataDir != dataDir {
+		t.Fatalf("data_dir = %q, want %q", got.DataDir, dataDir)
 	}
 }

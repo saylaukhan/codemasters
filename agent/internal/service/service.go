@@ -258,6 +258,15 @@ func Install(configPath string) error {
 	return nil
 }
 
+// ApplyRecoveryActions sets the restart-after-failure policy on the installed
+// service: 1 min, 1 min, 5 min (plan.md §4.1). Install does it right after
+// registering the service; the MSI calls it separately, because it registers
+// the service itself and the MSI table for these actions is documented by
+// Microsoft as not working as expected (T-49).
+func ApplyRecoveryActions() error {
+	return setRecoveryActions(Name)
+}
+
 // Uninstall stops the service and removes it. The data directory stays:
 // the queue must survive reinstallation (ADR-006).
 func Uninstall() error {
