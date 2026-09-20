@@ -1,7 +1,7 @@
 // Command vko-agent is the CLI of the school internet monitoring agent.
 //
-// Subcommands: install, uninstall, run, status, probe, speed, measure, version. The service, its
-// loop (schedule, measurements, resend) and the config live in internal/service.
+// Subcommands: configure, install, uninstall, run, status, probe, speed, measure, version. The
+// service, its loop (schedule, measurements, resend) and the config live in internal/service.
 package main
 
 import (
@@ -46,6 +46,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	switch args[0] {
+	case "configure":
+		return cmdConfigure(args[1:], stdout, stderr)
 	case "install":
 		return cmdInstall(args[1:], stdout, stderr)
 	case "uninstall":
@@ -76,6 +78,9 @@ func printUsage(w io.Writer) {
 	fmt.Fprint(w, `Использование: vko-agent <команда> [параметры]
 
 Команды:
+  configure --config <путь> --server-url <url> [--enroll-code <код>] [--room <кабинет>]
+            [--data-dir <папка>] [--log-level <уровень>]
+                            создать или обновить файл конфигурации (вызывает установщик MSI)
   install [--config <путь>]  установить и запустить службу VKOMonitorAgent
   uninstall                 остановить и удалить службу (данные остаются)
   run --config <путь>       запустить агента; без службы — до Ctrl+C
@@ -124,6 +129,81 @@ func parseFlags(fs *flag.FlagSet, args []string) (code int, ok bool) {
 		// The flag package has already printed its English error and the usage.
 		fmt.Fprintf(fs.Output(), "%s: неверные параметры: %v\n", fs.Name(), err)
 		return exitUsage, false
+	}
+}
+
+// cmdConfigure creates or updates the agent configuration file from the
+// installation parameters: the MSI custom action calls it with ENROLL_CODE
+// and ROOM from the silent install command line (plan.md §4.1, T-49).
+//
+// An empty value keeps what the existing file has, so a repair or an upgrade
+// does not lose the enrollment code or a room edited by hand. Nothing else is
+// configurable here: thresholds, the schedule and the address of the
+// measurement server come from the server (ADR-004, ADR-012).
+func cmdConfigure(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("configure", stderr)
+	configPath := fs.String("config", service.DefaultConfigPath(), "путь к файлу конфигурации агента (YAML)")
+	serverURL := fs.String("server-url", "", "адрес API сервера мониторинга http(s)://хост")
+	enrollCode := fs.String("enroll-code", "", "одноразовый код установки (T-07)")
+	room := fs.String("room", "", "кабинет, в котором стоит компьютер")
+	dataDir := fs.String("data-dir", "", "папка состояния, журнала и очереди замеров")
+	logLevel := fs.String("log-level", "", "уровень журнала: debug, info, warn, error")
+	recovery := fs.Bool("service-recovery", false, "задать перезапуск службы после сбоя (1 / 1 / 5 мин)")
+	if code, ok := parseFlags(fs, args); !ok {
+		return code
+	}
+
+	abs, err := filepath.Abs(*configPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "configure: %v\n", err)
+		return exitError
+	}
+
+	// A file that does not load yet (first install) or is broken is rewritten
+	// in full; a readable one keeps the values no flag overrides.
+	cfg, err := service.LoadConfig(abs)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		fmt.Fprintf(stderr, "configure: прежняя конфигурация не прочитана, файл будет перезаписан: %v\n", err)
+	}
+	keepNonEmpty(&cfg.ServerURL, *serverURL)
+	keepNonEmpty(&cfg.EnrollCode, *enrollCode)
+	keepNonEmpty(&cfg.Room, *room)
+	keepNonEmpty(&cfg.DataDir, *dataDir)
+	keepNonEmpty(&cfg.LogLevel, *logLevel)
+	if cfg.DataDir == "" {
+		cfg.DataDir = service.DefaultDataDir()
+	}
+	if cfg.LogLevel == "" {
+		cfg.LogLevel = service.DefaultLogLevel
+	}
+
+	if err := service.WriteConfig(abs, cfg); err != nil {
+		fmt.Fprintf(stderr, "configure: %v\n", err)
+		return exitError
+	}
+	// The enrollment code is not printed: the installer log is world-readable.
+	fmt.Fprintf(stdout, "Конфигурация записана: %s (сервер %s, папка данных %s)\n",
+		abs, cfg.ServerURL, cfg.DataDir)
+
+	// The service is already registered by then (the MSI does it itself), so a
+	// failure here leaves a working service without a restart policy — worth a
+	// line in the installer log, not a reason to roll the installation back.
+	if *recovery {
+		if err := service.ApplyRecoveryActions(); err != nil {
+			fmt.Fprintf(stderr, "configure: перезапуск службы после сбоя не задан: %v\n", err)
+		} else {
+			fmt.Fprintln(stdout, "Перезапуск службы после сбоя: 1 / 1 / 5 мин")
+		}
+	}
+	return exitOK
+}
+
+// keepNonEmpty overwrites *dst with value unless value is empty. The MSI
+// custom action always passes every flag, and an unset install property
+// arrives as an empty string.
+func keepNonEmpty(dst *string, value string) {
+	if value != "" {
+		*dst = value
 	}
 }
 
