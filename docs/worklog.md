@@ -36,6 +36,42 @@
 источника времени в планировщике.
 ```
 
+### 2026-09-21 · T-50 · Самообновление агента с проверкой SHA-256 и откатом
+Сделано: таблица `agent_releases` получила рабочий API — `GET/POST/PATCH /api/admin/agent-releases`
+(публикация релиза с версией, ссылкой, SHA-256 и каналом; перевод pilot → stable и отзыв через
+`is_active`; повтор версии — 409 `release_version_taken`), `GET /api/agent/releases/latest` и
+`latest_version` конфигурации выдаются по каналу устройства — новая колонка `devices.update_channel`
+(миграция `20260921_0100_agent_update_channel`, канал меняется в `PATCH /api/admin/devices/{id}` и
+попадает в журнал аудита); пакет `agent/internal/update/` — скачивание MSI потоком в `.part`,
+сверка SHA-256 (несовпадение: файл удаляется, `ErrHashMismatch` в журнале, установки нет), проверка
+подписи через `WinVerifyTrustEx`, установка отдельным процессом `vko-agent update-apply` (msiexec
+службу останавливает, поэтому не из-под неё), запись `update-state.json` и откат на прежний MSI,
+если новая версия не прислала heartbeat за 15 минут; подтверждение — новый необязательный
+`HeartbeatOptions.OnSuccess`. Тесты: `agent/internal/update/update_test.go` (совпадение и
+несовпадение хэша, сравнение версий с «dev», таблица решений отката, файл состояния),
+`agent/internal/api/releases_test.go`, `backend/tests/test_admin_agent_releases.py` (5 тестов,
+включая «чужой не видит» — 403 для всех ролей, кроме администратора). Слияние — 1db61a6.
+Чек-лист: пройден, кроме двух пунктов. Пункт «diff до 400 строк» не выполнен — 2457 строк вставок
+(из них 780 тесты и 59 сгенерированное); резать было некуда: без Go-пакета бэкенд выдаёт релиз
+некому, без бэкенда агенту нечего скачивать. Пункт UI — н/п, экрана в панели нет (строка в
+`docs/known-limitations.md`). `make check` зелёный (EXIT=0): go test все `ok`, включая
+`internal/update`; pytest 299 passed; vitest 128 passed; сборка веба прошла. `make db-reset`
+прогнан — цепочка миграций применяется с нуля, `make seed` отработал. `make openapi` перегенерён,
+`docs/reference/openapi.json` и `web/src/api/generated/schema.ts` в том же слиянии. golangci-lint
+локально не установлен и `make check-agent` его пропустил с предупреждением — прогнан отдельно
+(`golangci-lint run ./...`, 0 замечаний), в CI он ставится сам.
+Не сделано: вживую на Windows не проверено — ни msiexec, ни `WinVerifyTrustEx`, ни откат; только
+`GOOS=windows` сборка и тесты (та же причина, что у MSI в T-49) — строка в
+`docs/known-limitations.md`, прогон на T-58. Первое самообновление откатить нельзя (нет MSI на
+диске), релизы не подписаны, сорвавшаяся версия не пробуется повторно, откат оставляет копию
+updater'а, под systemd самообновления нет, экрана «Релизы агента» в админке нет — по строке на
+каждое в `docs/known-limitations.md`.
+Потрачено / Застрял на: около часа. По дороге нашёлся чужой мигающий тест —
+`agent/internal/service/token_test.go:88` `TestRunConfigRotatesTokenOnRequest` падает примерно раз
+на 30 прогонов и на чистом дереве тоже: он читает `settings.Current().TokenRotationRequired` сразу
+после прихода второго запроса, не дожидаясь, пока `runConfig` применит ответ. Не трогал — это вне
+T-50.
+
 ### 2026-09-20 · T-49 · MSI-установщик (WiX), тихая установка, подпись
 Сделано: `agent/installer/wix/Package.wxs` (WiX v4) — vko-agent.exe в `Program Files\VKO Monitor`,
 папка `%ProgramData%\VKO Monitor` с правами на запись для LocalService (`util:PermissionEx`),
