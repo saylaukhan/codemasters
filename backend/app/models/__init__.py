@@ -5,6 +5,8 @@ compares with the database (``alembic/env.py``).
 """
 
 from app.models.agent_release import AgentRelease
+from app.models.appeal import Appeal
+from app.models.appeal_event import AppealEvent
 from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.connection_type import ConnectionType
@@ -36,6 +38,8 @@ from app.models.user_scope import UserScope
 
 __all__ = [
     "AgentRelease",
+    "Appeal",
+    "AppealEvent",
     "AuditLog",
     "Base",
     "ConnectionType",
