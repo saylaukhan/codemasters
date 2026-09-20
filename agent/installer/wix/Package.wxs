@@ -65,6 +65,42 @@
       <Directory Id="DATAFOLDER" Name="VKO Monitor" />
     </StandardDirectory>
 
+    <!-- Конфигурацию пишет сам агент: `vko-agent configure` собирает agent.yaml
+         из параметров установки и сохраняет значения, которых в этот раз не
+         передали (повторная установка не теряет код и кабинет).
+
+         Объявлено прямо в Package, а не в отдельном Fragment: на Fragment,
+         на который никто не ссылается, линковщик WiX молча не ругается и просто
+         выбрасывает его из MSI, а установщик собирается «успешно» и ставит
+         службу без конфигурации. Проверять — таблицей CustomAction в готовом MSI.
+
+         Действие отложенное и без олицетворения — при установке через групповые
+         политики установщик работает от имени системы. Значения параметров
+         доходят до него через CustomActionData: имя свойства в SetProperty
+         совпадает с Id действия — это единственный способ передать свойства в
+         отложенное действие. -->
+    <SetProperty
+        Id="ConfigureAgent"
+        Sequence="execute"
+        Before="ConfigureAgent"
+        Condition="NOT REMOVE"
+        Value="--config &quot;[DATAFOLDER]agent.yaml&quot; --server-url &quot;[SERVER_URL]&quot; --enroll-code &quot;[ENROLL_CODE]&quot; --room &quot;[ROOM]&quot; --log-level &quot;[LOG_LEVEL]&quot; --service-recovery" />
+
+    <CustomAction
+        Id="ConfigureAgent"
+        FileRef="vko_agent.exe"
+        ExeCommand="configure [CustomActionData]"
+        Execute="deferred"
+        Impersonate="no"
+        Return="check"
+        HideTarget="yes" />
+
+    <InstallExecuteSequence>
+      <!-- После InstallServices (файл и служба уже на месте) и до StartServices:
+           служба читает конфигурацию при запуске. -->
+      <Custom Action="ConfigureAgent" Before="StartServices" Condition="NOT REMOVE" />
+    </InstallExecuteSequence>
+
     <Feature Id="Main" Title="Агент мониторинга" Level="1">
       <ComponentGroupRef Id="AgentComponents" />
     </Feature>
@@ -136,36 +172,4 @@
     </ComponentGroup>
   </Fragment>
 
-  <Fragment>
-    <!-- Конфигурацию пишет сам агент: `vko-agent configure` собирает agent.yaml
-         из параметров установки и сохраняет значения, которых в этот раз не
-         передали (повторная установка не теряет код и кабинет).
-
-         Действие отложенное и без олицетворения — при установке через групповые
-         политики установщик работает от имени системы. Значения параметров
-         доходят до него через CustomActionData: имя свойства в SetProperty
-         совпадает с Id действия — это единственный способ передать свойства в
-         отложенное действие. -->
-    <SetProperty
-        Id="ConfigureAgent"
-        Sequence="execute"
-        Before="ConfigureAgent"
-        Condition="NOT REMOVE"
-        Value="--config &quot;[DATAFOLDER]agent.yaml&quot; --server-url &quot;[SERVER_URL]&quot; --enroll-code &quot;[ENROLL_CODE]&quot; --room &quot;[ROOM]&quot; --log-level &quot;[LOG_LEVEL]&quot; --service-recovery" />
-
-    <CustomAction
-        Id="ConfigureAgent"
-        FileRef="vko_agent.exe"
-        ExeCommand="configure [CustomActionData]"
-        Execute="deferred"
-        Impersonate="no"
-        Return="check"
-        HideTarget="yes" />
-
-    <InstallExecuteSequence>
-      <!-- После InstallServices (файл и служба уже на месте) и до StartServices:
-           служба читает конфигурацию при запуске. -->
-      <Custom Action="ConfigureAgent" Before="StartServices" Condition="NOT REMOVE" />
-    </InstallExecuteSequence>
-  </Fragment>
 </Wix>
