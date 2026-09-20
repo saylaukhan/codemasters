@@ -246,6 +246,12 @@ async def test_working_hours_are_set_per_school_and_judge_its_silence(
     await create_settings(session)
     oblast = bearer(await create_user(session, "oblast"))
     mondays = {"weekdays": ["mon"], "start": "09:00:00", "end": "13:00:00"}
+    # A computer of each school that has never reported: the schools differ by their hours
+    # only. A school without a computer at all says nothing about its line («Нет данных», T-44).
+    for silent in (school, other):
+        await register_device(
+            session, await primary_point(session, silent), device_uid=silent.school_code
+        )
 
     updated = ok(
         await api_client.patch(

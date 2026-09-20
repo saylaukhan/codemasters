@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 
 import type { IncidentStatus } from '../../api/types'
+import { useProviderHint } from '../../app/useProviderHint'
 import styles from '../../components/incidents/Incident.module.css'
 import {
   isFiltered,
@@ -30,6 +31,7 @@ import {
   INCIDENT_STATUS_LABELS,
   INCIDENT_STATUS_ORDER,
   INCIDENT_VIEW_LABELS,
+  PROVIDER_SCOPE_HINTS,
   SECTION_LABELS,
   type IncidentViewKey,
 } from '../../lib/labels'
@@ -62,6 +64,7 @@ export function IncidentsPage() {
   const [view, setView] = useIncidentListView()
   const [mode, setMode] = useState<IncidentViewKey>(initialIncidentView)
   const incidents = useIncidents(mode === 'board' ? { ...view, page: 1, pageSize: BOARD_PAGE_SIZE } : view)
+  const providerHint = useProviderHint(PROVIDER_SCOPE_HINTS.incidents)
 
   const chooseMode = (next: IncidentViewKey) => {
     setMode(next)
@@ -87,7 +90,7 @@ export function IncidentsPage() {
 
   return (
     <>
-      <PageHeader title={SECTION_LABELS.incidents} />
+      <PageHeader title={SECTION_LABELS.incidents} subtitle={providerHint} />
       <div className={styles.toolbar}>
         <SearchInput
           className={styles.search}

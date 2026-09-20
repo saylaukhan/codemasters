@@ -1,11 +1,12 @@
 import { useNotificationProvider } from '@refinedev/antd'
 import { Authenticated, Refine, type ResourceProps } from '@refinedev/core'
-import routerProvider, { CatchAllNavigate, DocumentTitleHandler, NavigateToResource } from '@refinedev/react-router'
+import routerProvider, { CatchAllNavigate, DocumentTitleHandler } from '@refinedev/react-router'
 import { BrowserRouter, Outlet, Route, Routes } from 'react-router'
 
 import { APP_NAME } from '../lib/app-info'
 import { SECTION_LABELS } from '../lib/labels'
 import { LoginPage } from '../pages/login/LoginPage'
+import { LandingRoute } from '../pages/section/LandingRoute'
 import { NotFoundPage } from '../pages/section/NotFoundPage'
 import { SectionRoute } from '../pages/section/SectionRoute'
 import { AppLayout } from './AppLayout'
@@ -47,7 +48,7 @@ export function App() {
                 </Authenticated>
               }
             >
-              <Route index element={<NavigateToResource resource="overview" />} />
+              <Route index element={<LandingRoute />} />
               {SECTIONS.map((section) => (
                 <Route key={section.key} path={`${section.path}/*`} element={<SectionRoute section={section} />} />
               ))}
@@ -56,7 +57,7 @@ export function App() {
             <Route
               element={
                 <Authenticated key="login" fallback={<Outlet />}>
-                  <NavigateToResource resource="overview" />
+                  <LandingRoute />
                 </Authenticated>
               }
             >

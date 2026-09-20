@@ -269,6 +269,12 @@ export const SECTION_LABELS = {
 
 export type SectionKey = keyof typeof SECTION_LABELS
 
+/** Caption of a screen in the provider cabinet (T-44, ТЗ п. 16): his lists hold only his own lines. */
+export const PROVIDER_SCOPE_HINTS = {
+  schools: 'Показаны только школы с вашими линиями',
+  incidents: 'Показаны только инциденты ваших линий',
+} as const
+
 /** Tabs of «Администрирование» (T-34): the key is the path under /admin. */
 export const ADMIN_TAB_LABELS = {
   schools: 'Школы',
