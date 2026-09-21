@@ -109,6 +109,31 @@ async def test_the_worst_row_comes_first_whatever_its_age(
     assert (page["total"], cut["total"], len(cut["items"])) == (3, 3, 1)
 
 
+async def test_the_unassigned_window_comes_from_the_settings(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """The window is a setting, not a constant of the code (ТЗ п. 11, п. 20; ADR-004).
+
+    An incident opened 30 h ago and still without a responsible person asks for one by the
+    default 24 h and stops asking as soon as an administrator gives the districts two days.
+    """
+    school_a, _ = await two_districts(session)
+    oblast = bearer(await create_user(session, "oblast"))
+    await an_incident(session, school_a, started_at=WORKDAY - timedelta(hours=30))
+
+    qualified = await get(api_client, ATTENTION, oblast)
+    settings = await session.get(SystemSettings, 1)
+    assert settings is not None
+    settings.attention_incident_unassigned_hours = 48
+    await session.flush()
+    raised = await get(api_client, ATTENTION, oblast)
+
+    # The critical school of the other district stays either way: only the incident moves.
+    assert [item["kind"] for item in qualified["items"]] == ["school", "incident"]
+    assert [item["kind"] for item in raised["items"]] == ["school"]
+    assert (qualified["total"], raised["total"]) == (2, 1)
+
+
 async def test_the_no_answer_window_comes_from_the_settings(
     session: AsyncSession, api_client: AsyncClient
 ) -> None:
