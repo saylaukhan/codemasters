@@ -202,6 +202,8 @@
   --control-height-s: 32px;
   --control-height-m: 38px;
   --control-height-l: 44px;
+  /* Chip of the filter bar, DESIGN.md §3.9: between Small and the normal control. */
+  --chip-height: 36px;
 
   /* layout (DESIGN.md §2.2, §9) and fixed component sizes (§3) */
   --header-height: 64px;
@@ -224,6 +226,13 @@
   --icon-md: 20px;
   --icon-empty: 48px;
   --avatar-size: 32px;
+  /* Day strip of the school cabinet, DESIGN.md §3.27: 40px cells, 32 on a phone. */
+  --day-cell-height: 40px;
+  --day-cell-radius: 4px;
+  /* Bar «fact against the threshold», DESIGN.md §3.10: 8px track with 2×14 ticks. */
+  --fact-bar-height: 8px;
+  --fact-tick-width: 2px;
+  --fact-tick-height: 14px;
   --border-width: 1px;
   --focus-ring-width: 2px;
   --touch-target: 44px;
@@ -322,6 +331,7 @@
   :root {
     --card-padding: 16px 18px;
     --control-height-m: 44px;
+    --day-cell-height: 32px;
   }
 }
 

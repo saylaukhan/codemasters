@@ -369,7 +369,7 @@ export const SECTION_LABELS = {
   analytics: 'Аналитика',
   incidents: 'Инциденты',
   appeals: 'Обращения',
-  exports: 'Экспорт',
+  exports: 'Отчёты и экспорт',
   admin: 'Администрирование',
 } as const
 
@@ -531,3 +531,40 @@ export const AUDIT_EMPTY_VALUE_LABEL = 'пусто'
 
 /** Yes-or-no value of a changed field in the audit log. */
 export const AUDIT_BOOLEAN_LABELS = { true: 'да', false: 'нет' } as const
+
+/** Forms of «школа» for a counted number: the status strip prints «312 школ», «21 школа» (§3.10). */
+export const SCHOOL_COUNT_FORMS = ['школа', 'школы', 'школ'] as const
+
+/** Change of a status column over the last day (DESIGN.md §3.10): «▲ 3 за сутки», «без изменений». */
+export const DAY_DELTA_LABELS = {
+  up: '▲',
+  down: '▼',
+  period: 'за сутки',
+  none: 'без изменений',
+} as const
+
+/** Filter bar, DESIGN.md §3.9: the chip clears its own value, the link clears the whole bar. */
+export const FILTER_BAR_LABELS = {
+  reset: 'Сбросить',
+  clear: 'Очистить фильтр',
+} as const
+
+/** Bar «fact against the threshold» under a metric tile (DESIGN.md §3.10, §3.27). */
+export const FACT_BAR_LABELS = {
+  normFrom: 'норма от',
+  normTo: 'норма до',
+  contract: 'по договору',
+  lowerIsBetter: 'чем меньше, тем лучше',
+} as const
+
+/** Controls of `ResponsiveTable` (DESIGN.md §3.12): the phone sorts with a select above the list. */
+export const RESPONSIVE_TABLE_LABELS = {
+  sort: 'Сортировка',
+  defaultOrder: 'По умолчанию',
+} as const
+
+/** Button that opens the navigation drawer at 1024px and narrower (DESIGN.md §3.5, §9.3). */
+export const NAVIGATION_LABELS = {
+  open: 'Открыть меню',
+  title: 'Разделы',
+} as const

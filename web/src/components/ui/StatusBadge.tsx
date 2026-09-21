@@ -20,11 +20,21 @@ export function ConnectionStatusBadge({ status }: { status: SchoolStatus }) {
   )
 }
 
+interface IncidentStatusBadgeProps {
+  status: IncidentStatus
+  /**
+   * Dictionary to read the caption from. The school cabinet says the same six statuses in its own
+   * words — «У поставщика», «Ждём ответа» (DESIGN.md §4.2) — so the caller passes that dictionary
+   * instead of a string of its own (ADR-013).
+   */
+  labels?: Record<IncidentStatus, string>
+}
+
 /** Status of an incident or an appeal: caption without a dot (DESIGN.md §3.11, §4.2). */
-export function IncidentStatusBadge({ status }: { status: IncidentStatus }) {
+export function IncidentStatusBadge({ status, labels = INCIDENT_STATUS_LABELS }: IncidentStatusBadgeProps) {
   return (
     <span className={styles.badge} data-status={status}>
-      {INCIDENT_STATUS_LABELS[status]}
+      {labels[status]}
     </span>
   )
 }
