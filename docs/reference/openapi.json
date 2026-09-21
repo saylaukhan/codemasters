@@ -1097,7 +1097,7 @@
           "dashboard"
         ],
         "summary": "Сводка главного экрана: KPI",
-        "description": "Восемь KPI из ТЗ п. 4 по школам в области видимости, отобранным фильтрами; status — статус школы на момент period_to (ADR-004), как на карте. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Замеры, средние и проблемные устройства — за период, по основным линиям, без Wi-Fi (ADR-012). status_counts считается до фильтра по статусу, поэтому сумма пяти чисел не меняется при клике по колонке полосы; schools_total_count включает отключённые школы. previous — те же показатели за предыдущий период такой же длины по тем же школам; null, если за тот период не было ни замеров, ни heartbeat.",
+        "description": "Показатели ТЗ п. 4 по школам в области видимости, отобранным фильтрами; status — статус школы на момент period_to (ADR-004), как на карте. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Замеры, средние и проблемные устройства — за период, по основным линиям, без Wi-Fi (ADR-012). status_counts считается до фильтра по статусу, поэтому сумма пяти чисел не меняется при клике по колонке полосы; schools_total_count включает отключённые школы. previous — те же показатели за предыдущий период такой же длины по тем же школам; null, если за тот период не было ни замеров, ни heartbeat.",
         "operationId": "get_dashboard_summary",
         "security": [
           {
@@ -10135,7 +10135,7 @@
           "previous"
         ],
         "title": "DashboardSummary",
-        "description": "KPIs in the order of ТЗ п. 4 for the applied period, with the status strip and the deltas.\n\n``previous`` covers the period of the same length that ends at ``period_from``, counted over\nthe same schools; it is null while that period holds neither a measurement nor a heartbeat,\nand the panel says «первые данные» instead of a delta (docs/design/README.md §4.1)."
+        "description": "The KPIs of ТЗ п. 4 for the applied period, with the status strip and the previous period.\n\nThe period-dependent half is inherited, so the very same six numbers describe ``previous``:\nthe period of equal length that ends at ``period_from``, counted over the same schools. It is\nnull while that period holds neither a measurement nor a heartbeat, and the panel says\n«первые данные» instead of a delta (docs/design/README.md §4.1)."
       },
       "DeviceDetail": {
         "properties": {

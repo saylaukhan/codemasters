@@ -12,13 +12,12 @@ from collections.abc import Collection
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     Appeal,
     Device,
-    Heartbeat,
     Incident,
     Line,
     Measurement,
@@ -32,7 +31,7 @@ from app.schemas.statuses import IncidentMetric, SchoolStatus
 from app.services.appeals.send import SENT_STATUS
 from app.services.overview import OverviewFilters, narrow, school_selection
 from app.services.settings import system_settings
-from app.services.status import WIFI
+from app.services.status import WIFI, last_signal
 
 # Severity of a row and the order of the list: the lower, the worse (docs/design/README.md §4.1).
 SEVERITY: dict[AttentionReason, int] = {
@@ -44,6 +43,9 @@ SEVERITY: dict[AttentionReason, int] = {
 
 # Status of a school that puts it into the list, and the reason it is there for.
 SCHOOL_REASONS: dict[SchoolStatus, AttentionReason] = {"offline": "offline", "critical": "critical"}
+
+# The same statuses as a filter for ``narrow``, spelled out instead of read off the keys above.
+ATTENTION_STATUSES: tuple[SchoolStatus, ...] = ("offline", "critical")
 
 # Statuses that take an incident off the list: it is answered, not waiting (ТЗ п. 19, ADR-007).
 SETTLED_STATUSES = ("resolved", "closed")
@@ -70,22 +72,17 @@ async def school_items(
     """
     if not statuses:
         return []
+    school_ids = list(statuses)
     # The first main line of a school names its provider, as the popover of the map does.
     main_line = (
         select(Line.school_id, Line.provider_id)
-        .where(Line.status == "main")
+        .where(Line.status == "main", Line.school_id.in_(school_ids))
         .distinct(Line.school_id)
         .order_by(Line.school_id, Line.id)
         .subquery()
     )
-    heard = (
-        select(func.max(Heartbeat.ts))
-        .where(Heartbeat.device_id == Device.id, Heartbeat.ts <= now)
-        .scalar_subquery()
-    )
-    seen = func.coalesce(case((Device.last_seen_at <= now, Device.last_seen_at)), heard)
     last_seen = (
-        select(func.max(seen))
+        select(func.max(last_signal(now)))
         .select_from(Device)
         .join(MonitoringPoint, MonitoringPoint.id == Device.monitoring_point_id)
         .where(MonitoringPoint.school_id == School.id, Device.status == "active")
@@ -117,7 +114,7 @@ async def school_items(
         .join(Region, Region.id == School.region_id)
         .outerjoin(main_line, main_line.c.school_id == School.id)
         .outerjoin(Provider, Provider.id == main_line.c.provider_id)
-        .where(School.id.in_(statuses))
+        .where(School.id.in_(school_ids))
     )
     return [
         AttentionItem(
@@ -253,7 +250,7 @@ async def attention_list(
     items: list[AttentionItem] = []
     if statuses:
         school_ids = list(statuses)
-        items += await school_items(session, narrow(statuses, tuple(SCHOOL_REASONS)), now=now)
+        items += await school_items(session, narrow(statuses, ATTENTION_STATUSES), now=now)
         items += await incident_items(
             session,
             school_ids,

@@ -246,33 +246,34 @@ async def dashboard_summary(
     from one request (docs/design/README.md §4.1, T-60).
     """
     all_statuses = await school_selection(session, filters, now=period_to)
-    counts = status_counts(all_statuses)
-    total_in_registry = await schools_in_registry(session, filters)
     school_ids = list(narrow(all_statuses, filters.statuses))
-    common = {
-        "period_from": period_from,
-        "period_to": period_to,
-        "schools_count": len(school_ids),
-        "schools_total_count": total_in_registry,
-        "status_counts": counts,
-    }
-    if not school_ids:
-        return DashboardSummary.model_validate(
-            no_measurements().model_dump() | common | {"devices_count": 0, "previous": None},
+    current = no_measurements()
+    previous: DashboardPeriodKpis | None = None
+    devices_count = 0
+    if school_ids:
+        current = await period_kpis(
+            session, school_ids, period_from=period_from, period_to=period_to
         )
-
-    current = await period_kpis(session, school_ids, period_from=period_from, period_to=period_to)
-    length = period_to - period_from
-    earlier = await period_kpis(
-        session, school_ids, period_from=period_from - length, period_to=period_from
-    )
-    return DashboardSummary.model_validate(
-        current.model_dump()
-        | common
-        | {
-            "devices_count": await session.scalar(registered_devices(school_ids)) or 0,
-            "previous": earlier if has_data(earlier) else None,
-        },
+        length = period_to - period_from
+        earlier = await period_kpis(
+            session, school_ids, period_from=period_from - length, period_to=period_from
+        )
+        previous = earlier if has_data(earlier) else None
+        devices_count = await session.scalar(registered_devices(school_ids)) or 0
+    return DashboardSummary(
+        period_from=period_from,
+        period_to=period_to,
+        schools_count=len(school_ids),
+        schools_total_count=await schools_in_registry(session, filters),
+        devices_count=devices_count,
+        status_counts=status_counts(all_statuses),
+        active_devices_count=current.active_devices_count,
+        measurements_count=current.measurements_count,
+        avg_download_mbps=current.avg_download_mbps,
+        avg_upload_mbps=current.avg_upload_mbps,
+        avg_ping_ms=current.avg_ping_ms,
+        problem_devices_count=current.problem_devices_count,
+        previous=previous,
     )
 
 

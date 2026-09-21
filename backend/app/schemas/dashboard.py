@@ -1,5 +1,5 @@
-"""Overview of the main screen: the eight KPIs of ТЗ п. 4 (plan.md §11, T-22) and the rows that
-ask for a person now (docs/design/README.md §4.1, T-60)."""
+"""Overview of the main screen: the KPIs of ТЗ п. 4 (plan.md §11, T-22) and the rows that ask
+for a person now (docs/design/README.md §4.1, T-60)."""
 
 from datetime import datetime
 from typing import Literal
@@ -50,11 +50,12 @@ class DashboardPeriodKpis(BaseModel):
 
 
 class DashboardSummary(DashboardPeriodKpis):
-    """KPIs in the order of ТЗ п. 4 for the applied period, with the status strip and the deltas.
+    """The KPIs of ТЗ п. 4 for the applied period, with the status strip and the previous period.
 
-    ``previous`` covers the period of the same length that ends at ``period_from``, counted over
-    the same schools; it is null while that period holds neither a measurement nor a heartbeat,
-    and the panel says «первые данные» instead of a delta (docs/design/README.md §4.1).
+    The period-dependent half is inherited, so the very same six numbers describe ``previous``:
+    the period of equal length that ends at ``period_from``, counted over the same schools. It is
+    null while that period holds neither a measurement nor a heartbeat, and the panel says
+    «первые данные» instead of a delta (docs/design/README.md §4.1).
     """
 
     period_from: datetime
