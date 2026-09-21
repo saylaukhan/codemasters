@@ -9,13 +9,16 @@ are the column codes (ADR-014, T-30). A "problem" measurement is ``unstable``, `
 from datetime import datetime
 from typing import Literal, Self
 
-from pydantic import AwareDatetime, BaseModel, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, Field, ValidationError, model_validator
 
 from app.schemas.pagination import Page
 from app.schemas.statuses import QualityStatus
 
 # What is exported: measurements (T-30), one row per school (T-31), PDF report of a school (T-32).
 type ExportMode = Literal["raw", "aggregates", "school_report"]
+
+# What an estimate counts (T-64): the PDF report of a school is one file, not a count of rows.
+type ExportEstimateMode = Literal["raw", "aggregates"]
 
 # File format; json is an array of objects keyed by the column codes.
 type ExportFormat = Literal["xlsx", "csv", "json", "pdf"]
@@ -112,6 +115,60 @@ class ExportCreate(BaseModel):
         if len(set(self.columns)) != len(self.columns):
             raise ValueError("колонки не должны повторяться")
         return self
+
+
+class ExportEstimateQuery(BaseModel):
+    """Selection of ``GET /api/exports/estimate``: the filters of ``ExportCreate`` without the
+    format and the columns, which change no count (T-64, DESIGN.md §3.24)."""
+
+    mode: ExportEstimateMode
+    period_from: AwareDatetime = Field(description="Начало периода по measured_at, включительно")
+    period_to: AwareDatetime = Field(description="Конец периода, не включается")
+    school_ids: list[int] = Field(
+        default_factory=list, description="Пусто — все школы в области видимости"
+    )
+    device_ids: list[int] = Field(
+        default_factory=list, description="Только raw: ПК выбранных школ; пусто — все"
+    )
+    statuses: list[QualityStatus] = Field(
+        default_factory=list, description="Только raw: статусы замера; пусто — все"
+    )
+
+    def selection(self) -> ExportCreate:
+        """The same request ``POST /api/exports`` takes: json is a format of both modes, and
+        the columns of a raw file change no row count."""
+        return ExportCreate(
+            mode=self.mode,
+            format="json",
+            period_from=self.period_from,
+            period_to=self.period_to,
+            school_ids=self.school_ids,
+            device_ids=self.device_ids,
+            statuses=self.statuses,
+        )
+
+    @model_validator(mode="after")
+    def check_request(self) -> Self:
+        """The rules of ``ExportCreate`` itself: the period and the raw-only filters."""
+        try:
+            self.selection()
+        except ValidationError as error:
+            # Message of a model validator is «Value error, <text>»; the request sees the text.
+            raise ValueError(error.errors()[0]["msg"].removeprefix("Value error, ")) from None
+        return self
+
+
+class ExportEstimate(BaseModel):
+    """How many rows the file of the selection would have, before it is built (T-64)."""
+
+    mode: ExportEstimateMode
+    period_from: datetime = Field(description="Начало периода запроса, включительно")
+    period_to: datetime = Field(description="Конец периода запроса, не включается")
+    rows_count: int = Field(ge=0, description="Строк в файле: замеров (raw) или школ (aggregates)")
+    exact: bool = Field(
+        description="true — число точное (aggregates); false — оценка по дневным агрегатам: "
+        "Wi-Fi в них не учитывается, а задетые периодом сутки считаются целиком (raw)"
+    )
 
 
 class ExportJob(BaseModel):

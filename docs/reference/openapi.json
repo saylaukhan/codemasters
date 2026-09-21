@@ -5377,6 +5377,129 @@
         }
       }
     },
+    "/api/exports/estimate": {
+      "get": {
+        "tags": [
+          "exports"
+        ],
+        "summary": "Сколько строк будет в файле: оценка до формирования",
+        "description": "Сводка конструктора «Будет выгружено ≈ N строк» (DESIGN.md §3.24) с теми же фильтрами, что POST /api/exports: режим, период, school_ids и — только для raw — device_ids и statuses; для aggregates они, как и в POST, 422. Режим school_report не оценивается: PDF-отчёт строится по одной школе из её карточки (T-32). Неизвестные или вне области видимости school_ids и device_ids — 422 (ADR-008). Считается по дневным агрегатам m_daily, а не по measurements: для aggregates это число школ в файле и оно точное (exact=true), для raw — оценка (exact=false), потому что Wi‑Fi в агрегаты не входит (ADR-012), а задетые периодом сутки считаются целиком.",
+        "operationId": "estimate_export",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ExportEstimateMode"
+            }
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Начало периода по measured_at, включительно",
+              "title": "Period From"
+            },
+            "description": "Начало периода по measured_at, включительно"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Конец периода, не включается",
+              "title": "Period To"
+            },
+            "description": "Конец периода, не включается"
+          },
+          {
+            "name": "school_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "Пусто — все школы в области видимости",
+              "title": "School Ids"
+            },
+            "description": "Пусто — все школы в области видимости"
+          },
+          {
+            "name": "device_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "Только raw: ПК выбранных школ; пусто — все",
+              "title": "Device Ids"
+            },
+            "description": "Только raw: ПК выбранных школ; пусто — все"
+          },
+          {
+            "name": "statuses",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/QualityStatus"
+              },
+              "description": "Только raw: статусы замера; пусто — все",
+              "title": "Statuses"
+            },
+            "description": "Только raw: статусы замера; пусто — все"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportEstimate"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/exports/{export_id}": {
       "get": {
         "tags": [
@@ -10342,6 +10465,53 @@
         ],
         "title": "ExportCreate",
         "description": "Export request: mode, format, period, filters and columns (ТЗ п. 9, DESIGN.md §3.24)."
+      },
+      "ExportEstimate": {
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/ExportEstimateMode"
+          },
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From",
+            "description": "Начало периода запроса, включительно"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To",
+            "description": "Конец периода запроса, не включается"
+          },
+          "rows_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rows Count",
+            "description": "Строк в файле: замеров (raw) или школ (aggregates)"
+          },
+          "exact": {
+            "type": "boolean",
+            "title": "Exact",
+            "description": "true — число точное (aggregates); false — оценка по дневным агрегатам: Wi-Fi в них не учитывается, а задетые периодом сутки считаются целиком (raw)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "period_from",
+          "period_to",
+          "rows_count",
+          "exact"
+        ],
+        "title": "ExportEstimate",
+        "description": "How many rows the file of the selection would have, before it is built (T-64)."
+      },
+      "ExportEstimateMode": {
+        "type": "string",
+        "enum": [
+          "raw",
+          "aggregates"
+        ]
       },
       "ExportFormat": {
         "type": "string",

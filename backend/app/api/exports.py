@@ -11,7 +11,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,9 +20,17 @@ from app.core.db import get_session
 from app.core.deps import PageParams, page_params
 from app.core.errors import ApiError
 from app.schemas.errors import Problem
-from app.schemas.exports import ExportCreate, ExportFormat, ExportJob, ExportJobPage
+from app.schemas.exports import (
+    ExportCreate,
+    ExportEstimate,
+    ExportEstimateQuery,
+    ExportFormat,
+    ExportJob,
+    ExportJobPage,
+)
 from app.services.exports import create_export as build_export
 from app.services.exports import fail_export, owned_export, user_exports
+from app.services.exports.estimate import export_estimate
 from app.services.exports.files import MEDIA_TYPES
 
 router = APIRouter(
@@ -101,6 +109,28 @@ async def list_exports(
     user: Annotated[AuthUser, Depends(current_user)],
 ) -> ExportJobPage:
     return await user_exports(session, user.id, params, now=datetime.now(UTC))
+
+
+@router.get(
+    "/estimate",
+    summary="Сколько строк будет в файле: оценка до формирования",
+    description=(
+        "Сводка конструктора «Будет выгружено ≈ N строк» (DESIGN.md §3.24) с теми же "
+        "фильтрами, что POST /api/exports: режим, период, school_ids и — только для raw — "
+        "device_ids и statuses; для aggregates они, как и в POST, 422. Режим school_report "
+        "не оценивается: PDF-отчёт строится по одной школе из её карточки (T-32). "
+        "Неизвестные или вне области видимости school_ids и device_ids — 422 (ADR-008). "
+        "Считается по дневным агрегатам m_daily, а не по measurements: для aggregates это "
+        "число школ в файле и оно точное (exact=true), для raw — оценка (exact=false), "
+        "потому что Wi‑Fi в агрегаты не входит (ADR-012), а задетые периодом сутки "
+        "считаются целиком."
+    ),
+)
+async def estimate_export(
+    query: Annotated[ExportEstimateQuery, Query()],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ExportEstimate:
+    return await export_estimate(session, query)
 
 
 @router.get(
