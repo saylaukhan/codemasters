@@ -1,6 +1,9 @@
 """Shared fixtures: a disposable PostgreSQL 16 + TimescaleDB + PostGIS migrated to head and
 an HTTP client of the application bound to it.
 
+The rate limit of the agent API (T-51) counts in ``MemoryCounter`` instead of Redis: tests
+need no broker, and a test of the limit narrows the settings and reads the counter back.
+
 The container runs the image of the ``db`` service from docker-compose.yml, so the schema is
 tested on the same extensions it runs on. Docker is required; the container starts only for
 tests that request a database fixture and lives for the whole test session.
@@ -15,6 +18,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
+from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from testcontainers.community.postgres import PostgresContainer
 
@@ -65,13 +69,43 @@ async def session(database_url: str) -> AsyncIterator[AsyncSession]:
     await engine.dispose()
 
 
+class MemoryCounter:
+    """Counter of ``RateLimitMiddleware`` for tests: a window per key, without Redis (T-51).
+
+    The window never expires by itself — one test is shorter than any of them — so the seconds
+    it reports left are the whole window. ``fails`` turns the counter into a Redis that does
+    not answer.
+    """
+
+    def __init__(self) -> None:
+        self.hits: dict[str, int] = {}
+        self.fails = False
+
+    async def __call__(self, key: str, window_s: int) -> tuple[int, int]:
+        if self.fails:
+            raise RedisError("счётчик недоступен")
+        self.hits[key] = self.hits.get(key, 0) + 1
+        return self.hits[key], window_s
+
+
 @pytest.fixture
-async def api_client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
+def rate_limit_counter() -> MemoryCounter:
+    """Counter the application of ``api_client`` counts its rate limit in (T-51)."""
+    return MemoryCounter()
+
+
+@pytest.fixture
+async def api_client(
+    session: AsyncSession, rate_limit_counter: MemoryCounter
+) -> AsyncIterator[AsyncClient]:
     """Application answering over ASGI on the session of the test: rows an endpoint writes are
     visible to the test and disappear with its transaction; so do the audit records."""
     application = create_app()
     application.dependency_overrides[get_session] = lambda: session
     application.state.audit_sessions = lambda: nullcontext(session)
+    # The rate limit of T-51 counts in memory instead of Redis: the limits themselves are wide
+    # enough for any test, and a test of the limit narrows them on the settings.
+    application.state.rate_limit_counter = rate_limit_counter
     transport = ASGITransport(app=application)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         yield client

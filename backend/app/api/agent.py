@@ -4,6 +4,8 @@ measurements, outages.
 All endpoints except registration require ``Authorization: Device <token>``: ``current_device``
 answers 401 without a valid token and 403 for a blocked device (ADR-005). The school and the
 line of a request are derived from the device binding, never taken from the body (ТЗ п. 12).
+How often one agent may call is bounded before routing (``app/core/ratelimit.py``, T-51), and
+the ranges its numbers must fit into live in ``app/schemas/agent.py``.
 """
 
 import logging
@@ -52,10 +54,25 @@ from app.services.agent_releases import latest_release
 from app.services.settings import NOT_CONFIGURED_DETAIL
 from app.services.status import Evaluation, evaluate, line_rules
 
+# Every endpoint of the agent is bounded by the rate limit (``app/core/ratelimit.py``, T-51).
+RATE_LIMITED: dict[int | str, dict[str, Any]] = {
+    429: {
+        "model": Problem,
+        "description": "Превышен лимит запросов: повторить не раньше, чем через Retry-After",
+        "headers": {
+            "Retry-After": {
+                "description": "Пауза в секундах до следующего запроса",
+                "schema": {"type": "integer"},
+            }
+        },
+    },
+}
+
 # Every endpoint of the agent but registration answers these two (ADR-005).
 DEVICE_RESPONSES: dict[int | str, dict[str, Any]] = {
     401: {"model": Problem, "description": "Токен устройства отсутствует или недействителен"},
     403: {"model": Problem, "description": "Устройство заблокировано"},
+    **RATE_LIMITED,
 }
 
 router = APIRouter(tags=["agent"])
@@ -82,6 +99,7 @@ logger = logging.getLogger(__name__)
             "model": Problem,
             "description": "Устройство зарегистрировано в другой школе или у школы нет точки",
         },
+        **RATE_LIMITED,
     },
 )
 async def register_device(

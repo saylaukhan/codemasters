@@ -56,7 +56,7 @@ async def test_outage_is_stored_once_and_a_resent_one_is_a_conflict(
 ) -> None:
     school = await create_school(session)
     device, token = await register_device(session, await primary_point(session, school))
-    started_at = datetime(2026, 9, 18, 5, 0, tzinfo=UTC)
+    started_at = datetime.now(UTC).replace(microsecond=0) - timedelta(days=1)
     outage = {
         "started_at": started_at.isoformat(),
         "ended_at": (started_at + timedelta(minutes=20)).isoformat(),

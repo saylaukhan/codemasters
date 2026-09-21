@@ -3,7 +3,8 @@
 Errors leave the API as ``application/problem+json`` (``app/core/errors.py``, ADR-009); the
 OpenAPI contract is built by ``app/core/openapi.py``. Routers of ``app/api`` are contract stubs
 until their tasks land. ``AuditMiddleware`` writes changing actions and rejected agent requests
-to ``audit_log`` (``app/auth/audit.py``, ADR-008).
+to ``audit_log`` (``app/auth/audit.py``, ADR-008); ``RateLimitMiddleware`` bounds how often one
+agent may call (``app/core/ratelimit.py``, T-51).
 """
 
 from datetime import UTC, datetime
@@ -13,6 +14,7 @@ from app.api import API_PREFIX, api_router
 from app.auth.audit import AuditMiddleware
 from app.core.errors import register_error_handlers
 from app.core.openapi import ContractApp, operation_id
+from app.core.ratelimit import RateLimitMiddleware
 from app.schemas.health import HealthResponse
 
 
@@ -29,6 +31,9 @@ def create_app() -> ContractApp:
     )
     register_error_handlers(application)
     application.add_middleware(AuditMiddleware)
+    # Added last, so it wraps the audit: a request over the limit is refused before routing and
+    # writes the record of its refusal itself (``app/core/ratelimit.py``, T-51).
+    application.add_middleware(RateLimitMiddleware)
 
     @application.get(f"{API_PREFIX}/health", response_model=HealthResponse, tags=["health"])
     async def health() -> HealthResponse:

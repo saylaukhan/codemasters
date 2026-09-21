@@ -18,6 +18,7 @@ from app.core.db import get_session
 from app.core.errors import ApiError
 from app.main import create_app
 from app.models import AuditLog
+from tests.conftest import MemoryCounter
 from tests.factories import bearer, create_school, create_user, primary_point, register_device
 
 
@@ -55,6 +56,7 @@ async def client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
 
     application.dependency_overrides[get_session] = lambda: session
     application.state.audit_sessions = lambda: nullcontext(session)
+    application.state.rate_limit_counter = MemoryCounter()
     transport = ASGITransport(app=application)
     async with AsyncClient(transport=transport, base_url="http://testserver") as test_client:
         yield test_client
@@ -117,7 +119,7 @@ async def test_rejected_agent_requests_are_transfer_errors(
 ) -> None:
     school = await create_school(session)
     device, token = await register_device(session, await primary_point(session, school))
-    started_at = datetime(2026, 9, 18, 5, 0, tzinfo=UTC)
+    started_at = datetime.now(UTC) - timedelta(days=1)
     outage = {
         "started_at": started_at.isoformat(),
         "ended_at": (started_at + timedelta(minutes=5)).isoformat(),

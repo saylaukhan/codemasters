@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     llm_url: str = ""
     telegram_bot_token: str = ""
 
+    # Rate limit of the agent API (T-51): requests one device, and one address without a token
+    # (registration), may send inside one window. 0 turns the limit off.
+    agent_rate_limit: int = 120
+    agent_register_rate_limit: int = 20
+    agent_rate_limit_window_s: int = 60
+
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
