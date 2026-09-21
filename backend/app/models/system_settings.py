@@ -62,6 +62,11 @@ class SystemSettings(TimestampMixin, Base):
     enrollment_code_ttl_days: Mapped[int] = mapped_column(server_default=text("7"))
     # A resolved incident is closed after this many hours (ADR-007, T-40).
     incident_auto_close_hours: Mapped[int] = mapped_column(server_default=text("24"))
+    # Windows of «Требуют внимания» of the main screen (T-60, docs/design/README.md §4.1, §6.3):
+    # an open incident left without a responsible person for this long, and an appeal the
+    # provider has not moved for this long, ask for a person.
+    attention_incident_unassigned_hours: Mapped[int] = mapped_column(server_default=text("24"))
+    attention_appeal_no_answer_hours: Mapped[int] = mapped_column(server_default=text("48"))
     # Days an agent keeps a measurement in its SQLite queue, and the depth of history the server
     # accepts from it: the agent gets it from GET /api/agent/config, nothing is hard-coded on
     # either side (ТЗ п. 11, п. 20; ADR-004, ADR-006).

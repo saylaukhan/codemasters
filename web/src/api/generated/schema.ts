@@ -300,9 +300,29 @@ export interface paths {
         };
         /**
          * Сводка главного экрана: KPI
-         * @description Восемь KPI из ТЗ п. 4 по школам в области видимости, отобранным фильтрами; status — статус школы на момент period_to (ADR-004), как на карте. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Замеры, средние и проблемные устройства — за период, по основным линиям, без Wi-Fi (ADR-012).
+         * @description Показатели ТЗ п. 4 по школам в области видимости, отобранным фильтрами; status — статус школы на момент period_to (ADR-004), как на карте. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Замеры, средние и проблемные устройства — за период, по основным линиям, без Wi-Fi (ADR-012). status_counts считается до фильтра по статусу, поэтому сумма пяти чисел не меняется при клике по колонке полосы; schools_total_count включает отключённые школы. previous — те же показатели за предыдущий период такой же длины по тем же школам; null, если за тот период не было ни замеров, ни heartbeat.
          */
         get: operations["get_dashboard_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Требуют внимания: школы, инциденты и обращения, которые ждут человека
+         * @description Школы со статусом «Нет соединения» и «Критично» на момент period_to, инциденты без ответственного и обращения «Передан поставщику» без движения дольше окон из настроек (attention_incident_unassigned_hours, attention_appeal_no_answer_hours). Фильтры отбирают школы так же, как GET /api/dashboard/summary. Порядок: severity по возрастанию, затем since от старого к новому; total — число строк до ограничения limit, для подписи «Ещё N школ».
+         */
+        get: operations["get_attention"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2053,6 +2073,72 @@ export interface components {
              */
             comment?: string | null;
         };
+        /**
+         * AttentionItem
+         * @description One row of «Требуют внимания»: what is wrong, where, and since when (§4.1).
+         */
+        AttentionItem: {
+            kind: components["schemas"]["AttentionKind"];
+            reason: components["schemas"]["AttentionReason"];
+            /**
+             * Severity
+             * @description Ключ сортировки, меньше — хуже: 1 «Нет соединения», 2 «Критично», 3 инцидент без ответственного, 4 обращение без ответа
+             */
+            severity: number;
+            /** School Id */
+            school_id: number;
+            /** School Code */
+            school_code: string;
+            /** School Name */
+            school_name: string;
+            /** Region Name */
+            region_name: string;
+            /**
+             * Provider Name
+             * @description Поставщик: у школы — основной линии, у инцидента и обращения — их линии
+             */
+            provider_name: string | null;
+            /** @description Статус школы; null у строки инцидента и обращения */
+            status: components["schemas"]["SchoolStatus"] | null;
+            /** Incident Id */
+            incident_id: number | null;
+            /** Incident Number */
+            incident_number: string | null;
+            /** Appeal Id */
+            appeal_id: number | null;
+            /** Appeal Number */
+            appeal_number: string | null;
+            /** @description Первое основание инцидента: из него строится причина словами (§4.1) */
+            metric: components["schemas"]["IncidentMetric"] | null;
+            /**
+             * Since
+             * Format: date-time
+             * @description Школа — когда её в последний раз слышали или мерили, иначе period_to; инцидент — started_at; обращение — sent_at
+             */
+            since: string;
+        };
+        /** @enum {string} */
+        AttentionKind: "school" | "incident" | "appeal";
+        /**
+         * AttentionPage
+         * @description Rows that ask for a person at ``period_to``, the worst first (§4.1).
+         */
+        AttentionPage: {
+            /**
+             * Period To
+             * Format: date-time
+             */
+            period_to: string;
+            /**
+             * Total
+             * @description Сколько строк до ограничения limit: подпись «Ещё N школ»
+             */
+            total: number;
+            /** Items */
+            items: components["schemas"]["AttentionItem"][];
+        };
+        /** @enum {string} */
+        AttentionReason: "offline" | "critical" | "incident_unassigned" | "appeal_unanswered";
         /** @enum {string} */
         AuditAction: "login_success" | "login_failure" | "create" | "update" | "block" | "unblock" | "password_reset" | "status_change" | "export" | "transfer_error";
         /** @enum {string} */
@@ -2236,32 +2322,12 @@ export interface components {
             permissions: string[];
         };
         /**
-         * DashboardSummary
-         * @description KPIs in the order of ТЗ п. 4 for the applied period.
+         * DashboardPeriodKpis
+         * @description KPIs that depend on the period, so the previous period of equal length also answers them.
          *
          *     Measurement values cover main lines only, without Wi-Fi (ADR-012).
          */
-        DashboardSummary: {
-            /**
-             * Period From
-             * Format: date-time
-             */
-            period_from: string;
-            /**
-             * Period To
-             * Format: date-time
-             */
-            period_to: string;
-            /**
-             * Schools Count
-             * @description Подключённые школы: активные школы по фильтрам
-             */
-            schools_count: number;
-            /**
-             * Devices Count
-             * @description Зарегистрированные компьютеры, кроме заблокированных
-             */
-            devices_count: number;
+        DashboardPeriodKpis: {
             /**
              * Active Devices Count
              * @description Устройства, выходившие на связь за период: heartbeat или замер
@@ -2292,6 +2358,76 @@ export interface components {
              * @description Устройства, чей последний замер за период — unstable, critical или offline
              */
             problem_devices_count: number;
+        };
+        /**
+         * DashboardSummary
+         * @description The KPIs of ТЗ п. 4 for the applied period, with the status strip and the previous period.
+         *
+         *     The period-dependent half is inherited, so the very same six numbers describe ``previous``:
+         *     the period of equal length that ends at ``period_from``, counted over the same schools. It is
+         *     null while that period holds neither a measurement nor a heartbeat, and the panel says
+         *     «первые данные» instead of a delta (docs/design/README.md §4.1).
+         */
+        DashboardSummary: {
+            /**
+             * Active Devices Count
+             * @description Устройства, выходившие на связь за период: heartbeat или замер
+             */
+            active_devices_count: number;
+            /**
+             * Measurements Count
+             * @description Замеры за период
+             */
+            measurements_count: number;
+            /**
+             * Avg Download Mbps
+             * @description null — замеров за период нет
+             */
+            avg_download_mbps: number | null;
+            /**
+             * Avg Upload Mbps
+             * @description null — замеров за период нет
+             */
+            avg_upload_mbps: number | null;
+            /**
+             * Avg Ping Ms
+             * @description null — замеров за период нет
+             */
+            avg_ping_ms: number | null;
+            /**
+             * Problem Devices Count
+             * @description Устройства, чей последний замер за период — unstable, critical или offline
+             */
+            problem_devices_count: number;
+            /**
+             * Period From
+             * Format: date-time
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             */
+            period_to: string;
+            /**
+             * Schools Count
+             * @description Подключённые школы: активные школы по фильтрам
+             */
+            schools_count: number;
+            /**
+             * Schools Total Count
+             * @description Школы тех же фильтров вместе с отключёнными: подпись «350 из 366 в реестре»
+             */
+            schools_total_count: number;
+            /**
+             * Devices Count
+             * @description Зарегистрированные компьютеры, кроме заблокированных
+             */
+            devices_count: number;
+            /** @description Школы по статусам на period_to, до применения фильтра по статусу */
+            status_counts: components["schemas"]["SchoolStatusCounts"];
+            /** @description Те же показатели за предыдущий период той же длины; null — данных за него нет */
+            previous: components["schemas"]["DashboardPeriodKpis"] | null;
         };
         /**
          * DeviceDetail
@@ -4449,6 +4585,29 @@ export interface components {
         /** @enum {string} */
         SchoolStatus: "normal" | "unstable" | "critical" | "offline" | "no_data";
         /**
+         * SchoolStatusCounts
+         * @description Schools per status at ``period_to`` (ТЗ п. 13, ADR-004).
+         *
+         *     Counted over the schools the district, provider and connection-type filters select, before
+         *     the status filter narrows them: the five numbers always sum to the same selection, so a
+         *     click on a column of the status strip does not rewrite the strip (docs/design/README.md §4.1).
+         */
+        SchoolStatusCounts: {
+            /** Normal */
+            normal: number;
+            /** Unstable */
+            unstable: number;
+            /** Critical */
+            critical: number;
+            /** Offline */
+            offline: number;
+            /**
+             * No Data
+             * @description Показ, а не статус качества (ТЗ п. 13, ADR-004)
+             */
+            no_data: number;
+        };
+        /**
          * SchoolUpdate
          * @description Changes of a school; ``is_active = false`` deactivates it and keeps its history.
          */
@@ -4545,6 +4704,18 @@ export interface components {
              * @example 30
              */
             agent_queue_retention_days: number;
+            /**
+             * Attention Incident Unassigned Hours
+             * @description Инцидент без ответственного дольше стольких часов попадает в «Требуют внимания» главного экрана (T-60)
+             * @example 24
+             */
+            attention_incident_unassigned_hours: number;
+            /**
+             * Attention Appeal No Answer Hours
+             * @description Обращение «Передан поставщику» без движения дольше стольких часов считается оставшимся без ответа (T-60)
+             * @example 48
+             */
+            attention_appeal_no_answer_hours: number;
         };
         /**
          * SettingsUpdate
@@ -4579,6 +4750,10 @@ export interface components {
             incident_auto_close_hours?: number;
             /** Agent Queue Retention Days */
             agent_queue_retention_days?: number;
+            /** Attention Incident Unassigned Hours */
+            attention_incident_unassigned_hours?: number;
+            /** Attention Appeal No Answer Hours */
+            attention_appeal_no_answer_hours?: number;
         };
         /**
          * SpeedtestServers
@@ -5850,6 +6025,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardSummary"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_attention: {
+        parameters: {
+            query?: {
+                region_id?: number | null;
+                provider_id?: number | null;
+                connection_type_id?: number | null;
+                /** @description Момент, на который собирается список; по умолчанию — текущий */
+                period_to?: string | null;
+                /** @description Сколько строк вернуть */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttentionPage"];
                 };
             };
             /** @description Ошибка валидации запроса */

@@ -34,6 +34,8 @@ const FIELDS = [
   'exportSyncMaxRows',
   'exportRetentionDays',
   'incidentAutoCloseHours',
+  'attentionIncidentUnassignedHours',
+  'attentionAppealNoAnswerHours',
 ]
 
 const valuesOf = ({ speedtest, defaultWorkingHours, ...rest }: SettingsDetail): SettingsValues => ({
@@ -162,6 +164,16 @@ function SettingsForm({ settings }: { settings: SettingsDetail }) {
             />
             <NumberField name="contractMismatchWindowDays" label="Окно несоответствия договору, дней" />
             <NumberField name="incidentAutoCloseHours" label="Закрывать решённый инцидент через, ч" />
+            <NumberField
+              name="attentionIncidentUnassignedHours"
+              label="Инцидент без ответственного, ч"
+              extra="Через столько часов инцидент без ответственного попадает в «Требуют внимания» на главной."
+            />
+            <NumberField
+              name="attentionAppealNoAnswerHours"
+              label="Обращение без ответа, ч"
+              extra="Через столько часов обращение «Передан поставщику» считается оставшимся без ответа."
+            />
           </section>
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>Агент и выгрузки</h3>
