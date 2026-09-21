@@ -36,7 +36,7 @@
 источника времени в планировщике.
 ```
 
-### 2026-09-21 · Прогон LOCAL-CHECKS.md пп. 1–4 и 6: `make check` зелёный, аналитика вне бюджета (черновик агента)
+### 2026-09-21 · Прогон LOCAL-CHECKS.md пп. 1–6: `make check` зелёный, аналитика вне бюджета (черновик агента)
 Черновик по правилу «агент может подготовить черновик, отвечает за запись автор»: всё ниже
 выполнено и выведено в сессии, слияния ещё нет — хэш проставляет автор.
 
@@ -168,8 +168,33 @@ provision dashboards» без единой ошибки. Причина — bind
 без суффикса `:z`, файлы остаются `unlabeled_t`. Для прогона метки проставлены разово
 (`docker run -v …:z`), сам `docker-compose.yml` не правился — это **T-61**.
 
-Не сделано: п. 5 (восстановление pgBackRest) — трогает рабочую базу, нужно решение человека;
-п. 8 (`.deb` / `.rpm`) — нет `nfpm`, а поставить пакет всё равно нечем: хост не Debian и `sudo`
+**П. 5 — pgBackRest: восстановление прогнать не удалось, потому что бэкапа не существует.**
+`docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d` оставляет
+`pgbackrest` в `Restarting (55)`, а `archive_command` базы падает на каждом сегменте —
+`pg_stat_archiver` за первые минуты: `archived_count 0`, `failed_count 6`. Три независимых
+причины, каждая проверена отдельным запуском:
+
+1. Образ `timescale/timescaledb-ha:pg16` жёстко задаёт
+   `PGBACKREST_CONFIG=/home/postgres/pgdata/backup/pgbackrest.conf` (и `PGBACKREST_STANZA=poddb`).
+   Проект монтирует конфиг в `/etc/pgbackrest/pgbackrest.conf` и переменную не переопределяет —
+   `[055]: unable to open missing file … for read`.
+2. С исправленным путём `stanza-create` всё равно падает: `pg1-user=postgres` и
+   `pg1-database=postgres` из `deploy/pgbackrest/pgbackrest.conf` не существуют, база создана с
+   `POSTGRES_USER` / `POSTGRES_DB` — `FATAL: role "postgres" does not exist`, затем
+   `[056]: unable to find primary cluster`. С `--pg1-user` и `--pg1-database` по факту
+   `stanza-create` прошёл успешно, а `check` упёрся уже в неработающий `archive_command`.
+3. `PGBACKREST_BACKUP_AT` попадает в пространство имён переменных pgBackRest и читается им как
+   опция: `WARN: environment contains invalid option 'backup-at'`.
+
+Поправить `archive_command` на живой базе не вышло: `ALTER SYSTEM` бессилен, в
+`docker-compose.backup.yml` он задан ключом `-c`, а ключ командной строки старше
+`postgresql.auto.conf`. Править сам compose без человека нельзя (`AGENTS.md` §1), поэтому
+прогон остановлен здесь. Backup-стек погашен, `db` пересоздан по базовому `docker-compose.yml`,
+`archive_mode` снова `off` — иначе WAL копился бы молча (за прогон набралось 449 МБ / 29
+сегментов). Базы целы: `vko_monitor` — 356 школ, `vko_sim` — 360 000 замеров, `alembic_version`
+у обеих `9a1c5e7b3d08`. Заведена **T-63**.
+
+Не сделано: само восстановление из бэкапа (п. 5) — нечего восстанавливать, см. T-63; п. 8 (`.deb` / `.rpm`) — нет `nfpm`, а поставить пакет всё равно нечем: хост не Debian и `sudo`
 агенту запрещён; п. 7 (агент на чистом Windows) — такой машины нет; п. 9 (контрольный прогон
 демо) опирается на пп. 7 и 8 и потому не начинался. `golangci-lint` не установлен, и этот шаг
 `check-agent` пропущен самим Makefile. Панель на данных симулятора смотрели только по API: в
@@ -180,7 +205,7 @@ provision dashboards» без единой ошибки. Причина — bind
 
 Найденные дефекты: **T-59** (аналитика на generic plan под RLS), **T-60** (часовой пояс
 системы нельзя изменить из панели, хотя admin-guide §4 обещает поле), **T-61** (тома compose
-без `:z`), **T-62** (панель доли ошибок). Строки в
+без `:z`), **T-62** (панель доли ошибок), **T-63** (pgBackRest не снимает бэкапов). Строки в
 `docs/known-limitations.md` обновлены и добавлены в этом же слиянии.
 
 Потрачено / Застрял на: ~3 ч, из них ~50 мин — регистрация 1000 ПК под лимитом частоты.

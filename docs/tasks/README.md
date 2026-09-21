@@ -1064,3 +1064,42 @@ RHEL / Rocky / AlmaLinux / Fedora упрётся в это на первом ж�
 **Зависит от:** T-54
 **Сделано, когда:** на стенде без единой 5xx панель показывает `0 %`, а не «No data»;
 остальные шесть панелей не затронуты.
+
+### T-63 · pgBackRest на `timescale/timescaledb-ha:pg16` не снимает ни одного бэкапа · M · v1
+**Статус:** todo
+**Зачем:** найдено прогоном п. 5 `LOCAL-CHECKS.md` (2026-09-21, `docs/worklog.md`).
+`docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d` оставляет контейнер
+`pgbackrest` в `Restarting (55)`, а `archive_command` базы падает на каждом сегменте:
+`pg_stat_archiver` — `archived_count 0`, `failed_count 6` за первые минуты. Бэкапа нет, значит
+и восстанавливать нечего: раздел «Восстановление» в `deploy/pgbackrest/README.md` прогнать
+невозможно. При этом `archive_mode=on` уже включён, и PostgreSQL копит WAL — та самая тихая
+утечка диска, о которой предупреждает шапка `docker-compose.backup.yml`. Три независимых
+причины, каждая проверена отдельно:
+
+1. Образ жёстко задаёт `PGBACKREST_CONFIG=/home/postgres/pgdata/backup/pgbackrest.conf`
+   (и `PGBACKREST_STANZA=poddb`). Проект монтирует свой конфиг в
+   `/etc/pgbackrest/pgbackrest.conf` и переменную не переопределяет ни у `db`, ни у
+   `pgbackrest` — файл не читается вовсе, команда падает с
+   `[055]: unable to open missing file … for read`.
+2. `deploy/pgbackrest/pgbackrest.conf` задаёт `pg1-user=postgres` и `pg1-database=postgres`,
+   но база создаётся с `POSTGRES_USER` / `POSTGRES_DB` из `.env`, и роли `postgres` в ней нет:
+   `FATAL: role "postgres" does not exist`. С исправленным путём к конфигу `stanza-create`
+   всё равно падает — `[056]: unable to find primary cluster`; с
+   `--pg1-user=<POSTGRES_USER> --pg1-database=<POSTGRES_DB>` проходит успешно.
+3. `PGBACKREST_BACKUP_AT` попадает в пространство имён переменных pgBackRest, и тот читает её
+   как опцию: `WARN: environment contains invalid option 'backup-at'`. Переменную надо назвать
+   вне префикса `PGBACKREST_`.
+
+Поправить `archive_command` на живой базе через `ALTER SYSTEM` нельзя: в
+`docker-compose.backup.yml` он задан ключом `-c`, а ключ командной строки старше
+`postgresql.auto.conf`.
+**Где:** `docker-compose.backup.yml` (env `PGBACKREST_CONFIG` для `db` и `pgbackrest`, имя
+переменной расписания), `deploy/pgbackrest/pgbackrest.conf` (`pg1-user`, `pg1-database`),
+`deploy/pgbackrest/backup.sh` (`pg_isready` тоже ходит от имени `postgres`),
+`deploy/pgbackrest/README.md` (раздел «Проверка»).
+**Зависит от:** T-53
+**Сделано, когда:** `docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d`
+даёт `pgbackrest` в `Up`, `pgbackrest --stanza=vko check` проходит, `pg_stat_archiver` растёт
+по `archived_count` и не растёт по `failed_count`; `make backup` кладёт полный бэкап, и раздел
+«Восстановление» `deploy/pgbackrest/README.md` проходится целиком с восстановлением на точку во
+времени; отчёт — в `docs/worklog.md`, как требует «Сделано, когда» T-53.
