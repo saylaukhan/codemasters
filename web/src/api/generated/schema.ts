@@ -1056,6 +1056,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/exports/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Сколько строк будет в файле: оценка до формирования
+         * @description Сводка конструктора «Будет выгружено ≈ N строк» (DESIGN.md §3.24) с теми же фильтрами, что POST /api/exports: режим, период, school_ids и — только для raw — device_ids и statuses; для aggregates они, как и в POST, 422. Режим school_report не оценивается: PDF-отчёт строится по одной школе из её карточки (T-32). Неизвестные или вне области видимости school_ids и device_ids — 422 (ADR-008). Считается по дневным агрегатам m_daily, а не по measurements: для aggregates это число школ в файле и оно точное (exact=true), для raw — оценка (exact=false), потому что Wi‑Fi в агрегаты не входит (ADR-012), а задетые периодом сутки считаются целиком.
+         */
+        get: operations["estimate_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/exports/{export_id}": {
         parameters: {
             query?: never;
@@ -2724,6 +2744,37 @@ export interface components {
              */
             columns: components["schemas"]["ExportColumn"][];
         };
+        /**
+         * ExportEstimate
+         * @description How many rows the file of the selection would have, before it is built (T-64).
+         */
+        ExportEstimate: {
+            mode: components["schemas"]["ExportEstimateMode"];
+            /**
+             * Period From
+             * Format: date-time
+             * @description Начало периода запроса, включительно
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец периода запроса, не включается
+             */
+            period_to: string;
+            /**
+             * Rows Count
+             * @description Строк в файле: замеров (raw) или школ (aggregates)
+             */
+            rows_count: number;
+            /**
+             * Exact
+             * @description true — число точное (aggregates); false — оценка по дневным агрегатам: Wi-Fi в них не учитывается, а задетые периодом сутки считаются целиком (raw)
+             */
+            exact: boolean;
+        };
+        /** @enum {string} */
+        ExportEstimateMode: "raw" | "aggregates";
         /** @enum {string} */
         ExportFormat: "xlsx" | "csv" | "json" | "pdf";
         /**
@@ -8464,6 +8515,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    estimate_export: {
+        parameters: {
+            query: {
+                mode: components["schemas"]["ExportEstimateMode"];
+                /** @description Начало периода по measured_at, включительно */
+                period_from: string;
+                /** @description Конец периода, не включается */
+                period_to: string;
+                /** @description Пусто — все школы в области видимости */
+                school_ids?: number[];
+                /** @description Только raw: ПК выбранных школ; пусто — все */
+                device_ids?: number[];
+                /** @description Только raw: статусы замера; пусто — все */
+                statuses?: components["schemas"]["QualityStatus"][];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportEstimate"];
                 };
             };
             /** @description Ошибка валидации запроса */
