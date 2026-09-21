@@ -84,8 +84,8 @@ func printUsage(w io.Writer) {
 Команды:
   configure --config <путь> --server-url <url> [--enroll-code <код>] [--room <кабинет>]
             [--data-dir <папка>] [--log-level <уровень>]
-                            создать или обновить файл конфигурации (вызывает установщик MSI)
-  install [--config <путь>]  установить и запустить службу VKOMonitorAgent
+                            создать или обновить файл конфигурации (вызывают установщики)
+  install [--config <путь>]  установить и запустить службу агента
   uninstall                 остановить и удалить службу (данные остаются)
   run --config <путь>       запустить агента; без службы — до Ctrl+C
   status [--config <путь>]  показать состояние службы, последний замер и очередь
@@ -140,7 +140,9 @@ func parseFlags(fs *flag.FlagSet, args []string) (code int, ok bool) {
 
 // cmdConfigure creates or updates the agent configuration file from the
 // installation parameters: the MSI custom action calls it with ENROLL_CODE
-// and ROOM from the silent install command line (plan.md §4.1, T-49).
+// and ROOM from the silent install command line (plan.md §4.1, T-49), and the
+// postinstall of the Linux package with the same values from its environment
+// (installer/linux, T-52).
 //
 // An empty value keeps what the existing file has, so a repair or an upgrade
 // does not lose the enrollment code or a room edited by hand. Nothing else is

@@ -8,8 +8,11 @@ import (
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
-// windowsUserName runs the service as LocalService: minimal rights (plan.md §4.1).
-const windowsUserName = `NT AUTHORITY\LocalService`
+// Name of the Windows service; the MSI (installer/wix) registers the same name.
+const Name = "VKOMonitorAgent"
+
+// serviceUserName runs the service as LocalService: minimal rights (plan.md §4.1).
+func serviceUserName() string { return `NT AUTHORITY\LocalService` }
 
 // setRecoveryActions restarts the service after a crash in 1 min, 1 min and
 // 5 min (plan.md §4.1). kardianos/service can set only a single action.

@@ -40,7 +40,7 @@ HTTPS/TLS отправляет результаты в API, а тот сохра
 
 | Слой | Технология |
 |---|---|
-| Агент | Go 1.23, служба Windows (`kardianos/service`) и systemd на Linux, SQLite-очередь, установщик MSI (WiX v4) |
+| Агент | Go 1.23, служба Windows (`kardianos/service`) и systemd на Linux, SQLite-очередь, установщики MSI (WiX v4) и `.deb` / `.rpm` (nfpm) |
 | Замеры | свой LibreSpeed-сервер (основной) + ndt7 (резерв), оба в Казахстане |
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic v2 |
 | Фоновые задачи | Redis + Celery (+ Celery Beat) |
@@ -55,7 +55,7 @@ HTTPS/TLS отправляет результаты в API, а тот сохра
 Папки с кодом созданы в T-01 (каркас: дымовые тесты, `make check`, compose, CI); функции появляются по задачам из `docs/tasks/README.md`.
 
 ```text
-agent/               Go — агент: служба Windows / systemd, замеры, очередь, MSI
+agent/               Go — агент: служба Windows / systemd, замеры, очередь, MSI и пакет Linux
 backend/             Python — FastAPI, модели, миграции Alembic, Celery, тесты
 web/                 React + TypeScript + Vite — веб-панель
 simulator/           симулятор агентов: 350 школ, 1000 ПК, 3 месяца истории
