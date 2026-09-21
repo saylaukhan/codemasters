@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import type { IncidentListItem } from '../../api/types'
 import { incidentCardPath, schoolCardPath } from '../../app/sections'
 import { formatDateTime, NO_VALUE } from '../../lib/format'
-import { LINE_STATUS_LABELS } from '../../lib/labels'
+import { INCIDENT_COLUMN_LABELS, LINE_STATUS_LABELS, TABLE_PAGINATION_LABELS } from '../../lib/labels'
 import { PAGE_SIZES } from '../schools/useSchoolListView'
 import { IncidentStatusBadge } from '../ui/StatusBadge'
 import styles from './Incident.module.css'
@@ -15,7 +15,7 @@ type Column = NonNullable<TableProps<IncidentListItem>['columns']>[number]
 
 const NUMBER: Column = {
   key: 'number',
-  title: 'Номер',
+  title: INCIDENT_COLUMN_LABELS.number,
   fixed: 'left',
   render: (_, item) => (
     <Link className={styles.code} to={incidentCardPath(item.id)}>
@@ -26,7 +26,7 @@ const NUMBER: Column = {
 
 const SCHOOL: Column = {
   key: 'school',
-  title: 'Школа',
+  title: INCIDENT_COLUMN_LABELS.school,
   render: (_, item) => (
     <span className={styles.stack}>
       <Link to={schoolCardPath(item.schoolId)}>{item.schoolName}</Link>
@@ -36,10 +36,10 @@ const SCHOOL: Column = {
 }
 
 const REST: Column[] = [
-  { key: 'status', title: 'Статус', render: (_, item) => <IncidentStatusBadge status={item.status} /> },
+  { key: 'status', title: INCIDENT_COLUMN_LABELS.status, render: (_, item) => <IncidentStatusBadge status={item.status} /> },
   {
     key: 'line',
-    title: 'Линия и поставщик',
+    title: INCIDENT_COLUMN_LABELS.line,
     render: (_, item) => (
       <span className={styles.stack}>
         <span>{LINE_STATUS_LABELS[item.lineStatus]}</span>
@@ -47,15 +47,15 @@ const REST: Column[] = [
       </span>
     ),
   },
-  { key: 'basis', title: 'Основания', render: (_, item) => basisCaption(item.basisMetrics) },
+  { key: 'basis', title: INCIDENT_COLUMN_LABELS.basis, render: (_, item) => basisCaption(item.basisMetrics) },
   {
     key: 'started',
-    title: 'Начало',
+    title: INCIDENT_COLUMN_LABELS.startedAt,
     render: (_, item) => <span className={styles.number}>{formatDateTime(item.startedAt)}</span>,
   },
   {
     key: 'duration',
-    title: 'Длительность',
+    title: INCIDENT_COLUMN_LABELS.duration,
     align: 'right',
     render: (_, item) => (
       <span className={item.durationS === null ? `${styles.number} ${styles.muted}` : styles.number}>
@@ -63,7 +63,7 @@ const REST: Column[] = [
       </span>
     ),
   },
-  { key: 'responsible', title: 'Ответственный', render: (_, item) => item.responsibleUserName ?? NO_VALUE },
+  { key: 'responsible', title: INCIDENT_COLUMN_LABELS.responsible, render: (_, item) => item.responsibleUserName ?? NO_VALUE },
 ]
 
 interface IncidentTableProps {
@@ -109,7 +109,7 @@ export function IncidentTable({
           total,
           pageSizeOptions: PAGE_SIZES.map(String),
           showSizeChanger: true,
-          showTotal: (count, [from, to]) => `${from}–${to} из ${count}`,
+          showTotal: (count, [from, to]) => TABLE_PAGINATION_LABELS.total(from, to, count),
         }
       }
       onChange={(next) => {

@@ -32,6 +32,6 @@
   }
 
   .map {
-    height: 50vh;
+    height: var(--map-compact-height);
   }
 }

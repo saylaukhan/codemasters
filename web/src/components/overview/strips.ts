@@ -46,7 +46,9 @@ function delta(
 ): Delta {
   if (value === null) return undefined
   if (earlier === null || earlier === undefined) return { text: OVERVIEW_LABELS.firstData, tone: 'neutral' }
-  const change = value - earlier
+  // Rounded first: a change the strip would print as «0» is «без изменений», not a coloured arrow.
+  const step = 10 ** fractionDigits
+  const change = Math.round((value - earlier) * step) / step
   if (change === 0) return { text: DAY_DELTA_LABELS.none, tone: 'neutral' }
   const arrow = change > 0 ? DAY_DELTA_LABELS.up : DAY_DELTA_LABELS.down
   const better = betterWhen === 'more' ? change > 0 : change < 0

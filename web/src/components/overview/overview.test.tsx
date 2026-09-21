@@ -16,8 +16,13 @@ const summaryOf = (counts: Partial<SchoolStatusCounts>): DashboardSummary =>
   }) as DashboardSummary
 
 describe('overviewVerdict (DESIGN.md §3.28)', () => {
-  it('counts the normal schools against the judged ones', () => {
+  it('counts the normal schools against the whole selection', () => {
     const verdict = overviewVerdict(summaryOf({ normal: 312, unstable: 21, critical: 9, offline: 8 }))
+    expect(verdict).toBe('312 школ из 350 сегодня в норме')
+  })
+
+  it('keeps the schools without data in the total, as «Подключённые школы» does', () => {
+    const verdict = overviewVerdict(summaryOf({ normal: 312, unstable: 21, critical: 9, offline: 4, noData: 4 }))
     expect(verdict).toBe('312 школ из 350 сегодня в норме')
   })
 
@@ -26,7 +31,7 @@ describe('overviewVerdict (DESIGN.md §3.28)', () => {
   })
 
   it('does not divide by zero when the filters select no school', () => {
-    expect(overviewVerdict(summaryOf({ noData: 4 }))).toBe('Школ по заданным фильтрам нет')
+    expect(overviewVerdict(summaryOf({}))).toBe('Школ по заданным фильтрам нет')
   })
 
   it('has a sentence for the loading state, not an empty title', () => {
@@ -109,8 +114,8 @@ describe('AttentionCard (DESIGN.md §3.28)', () => {
   it('says the reason in words and the district with the provider', () => {
     expect(html).toContain('Нет связи')
     expect(html).toContain('Катон-Карагайский район · Алтай-Нет')
-    expect(html).toContain('Ping')
-    expect(html).toContain('без ответственного с 18.09.2026')
+    expect(html).toContain('Отклик')
+    expect(html).toContain('без ответственного с 18.09')
   })
 
   it('counts the rest of the rows the card did not show', () => {

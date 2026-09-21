@@ -10,7 +10,7 @@ import { AttentionCard } from '../../components/overview/AttentionCard'
 import { OverviewSection } from '../../components/overview/OverviewSection'
 import { useDashboardAttention, useDashboardSummary } from '../../components/overview/queries'
 import { kpiStripItems, noDataFootnote, statusStripItems } from '../../components/overview/strips'
-import { judgedSchools, overviewVerdict } from '../../components/overview/verdict'
+import { overviewVerdict, selectedSchools } from '../../components/overview/verdict'
 import { ContentSkeleton } from '../../components/ui/ContentSkeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
@@ -45,7 +45,7 @@ export function OverviewPage() {
 
   const data = summary.data
   const scope = options.data?.regions.find((region) => region.id === filters.regionId)?.name
-  const judged = data ? judgedSchools(data) : 0
+  const judged = data ? selectedSchools(data) : 0
   const context = data
     ? OVERVIEW_LABELS.context(
         scope ?? WHOLE_OBLAST_SCOPE_LABEL,
@@ -54,6 +54,7 @@ export function OverviewPage() {
       )
     : (scope ?? WHOLE_OBLAST_SCOPE_LABEL)
 
+  // One query, one error block (DESIGN.md §2.7): it stands in the strip and the KPIs step aside.
   const summaryError = summary.isError ? (
     <ErrorState error={summary.error} onRetry={() => void summary.refetch()} />
   ) : null
@@ -93,10 +94,11 @@ export function OverviewPage() {
           </OverviewSection>
           <AttentionCard attention={attention} className={styles.attentionCard} />
         </div>
-        <OverviewSection title={OVERVIEW_LABELS.kpi} note={OVERVIEW_LABELS.kpiCompare} card={false}>
-          {summaryError ??
-            (data ? <KpiStrip items={kpiStripItems(data)} label={OVERVIEW_LABELS.kpi} /> : <ContentSkeleton rows={4} />)}
-        </OverviewSection>
+        {!summary.isError && (
+          <OverviewSection title={OVERVIEW_LABELS.kpi} note={OVERVIEW_LABELS.kpiCompare} card={false}>
+            {data ? <KpiStrip items={kpiStripItems(data)} label={OVERVIEW_LABELS.kpi} /> : <ContentSkeleton rows={4} />}
+          </OverviewSection>
+        )}
         <OverviewSection
           title={OVERVIEW_LABELS.incidents}
           link={{ to: '/incidents', label: OVERVIEW_LABELS.incidentsAll }}

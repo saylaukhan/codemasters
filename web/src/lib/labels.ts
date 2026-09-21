@@ -118,6 +118,23 @@ export const APPEAL_LABELS = {
   noTargetHint: 'Откройте черновик кнопкой «Создать обращение» в карточке инцидента или школы.',
 } as const
 
+/** Columns of the incident list (T-41), header of `IncidentTable`. */
+export const INCIDENT_COLUMN_LABELS = {
+  number: 'Номер',
+  school: 'Школа',
+  status: 'Статус',
+  line: 'Линия и поставщик',
+  basis: 'Основания',
+  startedAt: 'Начало',
+  duration: 'Длительность',
+  responsible: 'Ответственный',
+} as const
+
+/** Footer of a paged table: «1–25 из 143». */
+export const TABLE_PAGINATION_LABELS = {
+  total: (from: number, to: number, count: number) => `${from}–${to} из ${count}`,
+} as const
+
 /** Columns of the appeal list (T-48). */
 export const APPEAL_COLUMN_LABELS = {
   number: 'Номер',
@@ -621,6 +638,19 @@ export const ATTENTION_REASON_LABELS: Record<AttentionReason, string> = {
   critical: SCHOOL_STATUS_LABELS.critical,
   incident_unassigned: 'Инцидент',
   appeal_unanswered: 'Обращение без ответа',
+}
+
+/**
+ * Metric of an incident row of «Требуют внимания», in the words of `Main.html`: the English terms
+ * of `INCIDENT_METRIC_LABELS` belong to the incident card, not to this list (docs/design §4.1).
+ */
+export const ATTENTION_METRIC_LABELS: Record<IncidentMetric, string> = {
+  download_mbps: 'Загрузка',
+  upload_mbps: 'Отдача',
+  ping_ms: 'Отклик',
+  jitter_ms: 'Дрожание',
+  packet_loss_pct: 'Потери',
+  no_connection: ATTENTION_REASON_LABELS.offline,
 }
 
 /** Second line of a row of «Требуют внимания»: since when it has been so. */

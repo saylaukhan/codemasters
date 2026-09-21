@@ -3,11 +3,11 @@ import { Link } from 'react-router'
 
 import type { AttentionItem, AttentionPage, SchoolStatus } from '../../api/types'
 import { appealCardPath, incidentCardPath, schoolCardPath } from '../../app/sections'
-import { formatDate, formatNumber, formatTime, plural } from '../../lib/format'
+import { formatDate, formatDayMonth, formatNumber, formatTime, plural } from '../../lib/format'
 import {
   ATTENTION_LABELS,
+  ATTENTION_METRIC_LABELS,
   ATTENTION_REASON_LABELS,
-  INCIDENT_METRIC_LABELS,
   OVERVIEW_LABELS,
   SCHOOL_COUNT_FORMS,
 } from '../../lib/labels'
@@ -35,14 +35,14 @@ function rowPath(item: AttentionItem): string {
 /** The reason in words: an incident says its first basis metric (docs/design/README.md §4.1). */
 const reasonText = (item: AttentionItem): string =>
   item.reason === 'incident_unassigned' && item.metric
-    ? INCIDENT_METRIC_LABELS[item.metric]
+    ? ATTENTION_METRIC_LABELS[item.metric]
     : ATTENTION_REASON_LABELS[item.reason]
 
-/** Since when: the time of the day it started, or its date once it is older than that day. */
+/** Since when: the time of the day it started, or «18.09» once it is older than that day. */
 function sinceText(item: AttentionItem, now: Date): string {
   const since = new Date(item.since)
   const sameDay = formatDate(since) === formatDate(now)
-  const moment = sameDay ? formatTime(since) : formatDate(since)
+  const moment = sameDay ? formatTime(since) : formatDayMonth(since)
   if (item.reason === 'incident_unassigned') return ATTENTION_LABELS.unassignedSince(moment)
   return ATTENTION_LABELS.since(moment)
 }
