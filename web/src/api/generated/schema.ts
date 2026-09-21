@@ -3415,7 +3415,8 @@ export interface components {
          * @description Queue resend: up to 100 measurements per request (ADR-006).
          *
          *     An invalid item rejects the whole request with 422; ``errors[].field`` starts with
-         *     ``items[<index>]``, so the agent knows which records the server will never accept.
+         *     ``items[<index>]`` and names the field out of range (``items[3].ping_ms``, T-51), so the
+         *     agent knows which records the server will never accept.
          */
         MeasurementBatchRequest: {
             /** Items */
@@ -5045,6 +5046,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ValidationProblem"];
                 };
             };
+            /** @description Превышен лимит запросов: повторить не раньше, чем через Retry-After */
+            429: {
+                headers: {
+                    /** @description Пауза в секундах до следующего запроса */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Ошибка (RFC 9457) */
             default: {
                 headers: {
@@ -5101,6 +5113,17 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Превышен лимит запросов: повторить не раньше, чем через Retry-After */
+            429: {
+                headers: {
+                    /** @description Пауза в секундах до следующего запроса */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Ошибка (RFC 9457) */
@@ -5170,6 +5193,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ValidationProblem"];
                 };
             };
+            /** @description Превышен лимит запросов: повторить не раньше, чем через Retry-After */
+            429: {
+                headers: {
+                    /** @description Пауза в секундах до следующего запроса */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Система не настроена: нет системных настроек, расписания или профиля порогов — примените миграции и выполните make seed */
             503: {
                 headers: {
@@ -5226,6 +5260,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Превышен лимит запросов: повторить не раньше, чем через Retry-After */
+            429: {
+                headers: {
+                    /** @description Пауза в секундах до следующего запроса */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Ошибка (RFC 9457) */
             default: {
                 headers: {
@@ -5267,6 +5312,17 @@ export interface operations {
             /** @description Устройство заблокировано */
             403: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Превышен лимит запросов: повторить не раньше, чем через Retry-After */
+            429: {
+                headers: {
+                    /** @description Пауза в секундах до следующего запроса */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -5351,6 +5407,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ValidationProblem"];
                 };
             };
+            /** @description Превышен лимит запросов: повторить не раньше, чем через Retry-After */
+            429: {
+                headers: {
+                    /** @description Пауза в секундах до следующего запроса */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Ошибка (RFC 9457) */
             default: {
                 headers: {
@@ -5409,6 +5476,17 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Превышен лимит запросов: повторить не раньше, чем через Retry-After */
+            429: {
+                headers: {
+                    /** @description Пауза в секундах до следующего запроса */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Ошибка (RFC 9457) */
@@ -5480,6 +5558,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ValidationProblem"];
                 };
             };
+            /** @description Превышен лимит запросов: повторить не раньше, чем через Retry-After */
+            429: {
+                headers: {
+                    /** @description Пауза в секундах до следующего запроса */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Ошибка (RFC 9457) */
             default: {
                 headers: {
@@ -5530,6 +5619,17 @@ export interface operations {
             /** @description Релизов нет */
             404: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Превышен лимит запросов: повторить не раньше, чем через Retry-After */
+            429: {
+                headers: {
+                    /** @description Пауза в секундах до следующего запроса */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {

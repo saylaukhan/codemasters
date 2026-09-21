@@ -20,7 +20,8 @@ from tests.test_agent_register import as_device, heartbeat, problem
 
 MEASUREMENTS = "/api/measurements"
 BATCH = "/api/measurements/batch"
-MEASURED_AT = datetime(2026, 9, 17, 8, 41, tzinfo=UTC)
+# Inside the window of the agent queue the schemas accept (30 days, ADR-006, T-51).
+MEASURED_AT = datetime.now(UTC).replace(microsecond=0) - timedelta(hours=2)
 
 
 def measurement(**fields: Any) -> dict[str, Any]:

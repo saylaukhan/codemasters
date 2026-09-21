@@ -11,8 +11,10 @@ password reset, the changed fields — says so with ``describe_action``. Sign-in
 the login endpoint itself (``record_login``): it knows the typed e-mail and why it refused.
 
 The record is written in a session of its own after the response has been sent, so a failed
-action leaves no record and a slow log does not slow the answer. Request and response bodies
-never get into the log: only the ``id`` and the problem ``type`` are taken from the answer.
+action leaves no record and a slow log does not slow the answer; a request the rate limit
+refused before routing writes its record itself (``app/core/ratelimit.py``, T-51). Request and
+response bodies never get into the log: only the ``id`` and the problem ``type`` are taken from
+the answer.
 """
 
 import json
@@ -26,6 +28,7 @@ from typing import Any
 from fastapi import Request
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.applications import Starlette
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.auth.deps import AuthUser
@@ -269,13 +272,22 @@ class AuditMiddleware:
             await self.write(scope, entry)
 
     async def write(self, scope: Scope, entry: AuditEntry) -> None:
-        sessions: AuditSessions = getattr(scope["app"].state, "audit_sessions", None) or (
-            get_session_factory()
-        )
-        try:
-            async with sessions() as session:
-                session.add(entry.row())
-                await session.commit()
-        except SQLAlchemyError:
-            # The answer is already sent: a lost record is logged, not turned into a 500.
-            logger.exception("audit record not written: %s %s", entry.action, entry.entity_type)
+        await write_entry(scope["app"], entry)
+
+
+async def write_entry(application: Starlette, entry: AuditEntry) -> None:
+    """Write one record in a session of its own (the rate limit of T-51 writes its own too).
+
+    Records go through ``app.state.audit_sessions`` when it is set (tests put their own session
+    there), otherwise through a session of the application's engine.
+    """
+    sessions: AuditSessions = getattr(application.state, "audit_sessions", None) or (
+        get_session_factory()
+    )
+    try:
+        async with sessions() as session:
+            session.add(entry.row())
+            await session.commit()
+    except SQLAlchemyError:
+        # The answer is already sent: a lost record is logged, not turned into a 500.
+        logger.exception("audit record not written: %s %s", entry.action, entry.entity_type)

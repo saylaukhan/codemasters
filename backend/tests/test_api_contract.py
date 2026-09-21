@@ -103,9 +103,10 @@ def assert_problem(response: HttpxResponse, status: int, type_: str) -> dict[str
 
 
 def measurement(**fields: Any) -> dict[str, Any]:
+    # The moment is taken from the clock: the schemas refuse one older than the queue (T-51).
     valid = {
         "measurement_uuid": "0b5e2c1e-8f0a-4c55-9d7e-3f1c2a4b5d6e",
-        "measured_at": "2026-09-17T08:41:00+05:00",
+        "measured_at": datetime.now(UTC).isoformat(),
         "connection_status": "online",
         "agent_version": "0.1.0",
     }
@@ -214,7 +215,7 @@ def test_panel_endpoint_without_a_token_is_unauthorized(client: TestClient) -> N
 
 
 def test_outage_cannot_end_before_it_starts() -> None:
-    started_at = datetime(2026, 9, 17, 10, tzinfo=UTC)
+    started_at = datetime.now(UTC) - timedelta(hours=1)
 
     with pytest.raises(ValidationError, match="ended_at"):
         OutageCreate(started_at=started_at, ended_at=started_at - timedelta(minutes=1))

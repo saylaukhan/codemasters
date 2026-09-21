@@ -2,19 +2,60 @@
 
 Agent requests carry neither ``school_id`` / ``school_code`` nor a line or a quality status:
 the school and the line come from the device binding (ADR-005), the status is evaluated on
-the server (ADR-004). Time is RFC 3339 with an offset (ADR-014). Metric ranges — T-51.
+the server (ADR-004). Time is RFC 3339 with an offset (ADR-014).
+
+Metrics are bounded (T-51): a value outside the range below is not a bad line but a broken
+agent, and a record that carries one is refused with ``errors[]`` naming the field (ADR-009)
+instead of dragging the averages of a school (ТЗ п. 12).
 """
 
-from datetime import datetime, time
-from typing import Literal, Self
+from datetime import UTC, datetime, time, timedelta
+from typing import Annotated, Literal, Self
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, Field, IPvAnyAddress, model_validator
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    BaseModel,
+    Field,
+    IPvAnyAddress,
+    model_validator,
+)
 
 from app.schemas.statuses import ConnectionStatus, IfaceType
 from app.schemas.thresholds import ThresholdValues
 
 MAX_BATCH_SIZE = 100
+
+# Upper bounds of the metrics (T-51): ten times the fastest school line of the region, a minute
+# of latency and an hour of measuring are all far above anything real and far below the numbers
+# a broken agent reports.
+MAX_SPEED_MBPS = 10_000.0
+MAX_LATENCY_MS = 60_000.0
+MAX_DURATION_S = 3600.0
+
+# The queue of the agent holds 30 days (ADR-006); a day on top of that keeps a record right at
+# the border. Ahead of the server the clock of a school computer may be minutes off, not hours.
+MAX_QUEUE_AGE = timedelta(days=31)
+MAX_CLOCK_SKEW = timedelta(minutes=10)
+
+
+def recent_moment(value: datetime) -> datetime:
+    """Moment an agent may report: not from the future and not older than its queue (ADR-006).
+
+    A computer whose clock is wrong would otherwise write history: a measurement dated forward
+    hides behind «ещё не наступило», one dated years back changes a period already reported.
+    """
+    now = datetime.now(UTC)
+    if value > now + MAX_CLOCK_SKEW:
+        raise ValueError("Момент в будущем: проверьте часы компьютера")
+    if value < now - MAX_QUEUE_AGE:
+        raise ValueError(f"Момент старше срока очереди агента: {MAX_QUEUE_AGE.days} сут.")
+    return value
+
+
+# Time reported by an agent: RFC 3339 with an offset (ADR-014), inside the window of its queue.
+AgentMoment = Annotated[AwareDatetime, AfterValidator(recent_moment)]
 
 
 class DeviceRegisterRequest(BaseModel):
@@ -87,14 +128,14 @@ class MeasurementCreate(BaseModel):
     """One measurement: raw values only; fields of ``measurements`` from plan.md §5."""
 
     measurement_uuid: UUID = Field(description="Генерирует агент; ключ идемпотентности")
-    measured_at: AwareDatetime = Field(description="Момент замера на ПК")
+    measured_at: AgentMoment = Field(description="Момент замера на ПК")
     connection_status: ConnectionStatus
-    download_mbps: float | None = None
-    upload_mbps: float | None = None
-    ping_ms: float | None = None
-    jitter_ms: float | None = None
-    packet_loss_pct: float | None = None
-    duration_s: float | None = None
+    download_mbps: float | None = Field(default=None, ge=0, le=MAX_SPEED_MBPS)
+    upload_mbps: float | None = Field(default=None, ge=0, le=MAX_SPEED_MBPS)
+    ping_ms: float | None = Field(default=None, ge=0, le=MAX_LATENCY_MS)
+    jitter_ms: float | None = Field(default=None, ge=0, le=MAX_LATENCY_MS)
+    packet_loss_pct: float | None = Field(default=None, ge=0, le=100)
+    duration_s: float | None = Field(default=None, ge=0, le=MAX_DURATION_S)
     external_ip: IPvAnyAddress | None = None
     server: str | None = Field(default=None, description="Сервер и метод замера")
     iface_type: IfaceType | None = None
@@ -112,7 +153,8 @@ class MeasurementBatchRequest(BaseModel):
     """Queue resend: up to 100 measurements per request (ADR-006).
 
     An invalid item rejects the whole request with 422; ``errors[].field`` starts with
-    ``items[<index>]``, so the agent knows which records the server will never accept.
+    ``items[<index>]`` and names the field out of range (``items[3].ping_ms``, T-51), so the
+    agent knows which records the server will never accept.
     """
 
     items: list[MeasurementCreate] = Field(min_length=1, max_length=MAX_BATCH_SIZE)
@@ -140,8 +182,8 @@ class OutageCreate(BaseModel):
     409 ``duplicate_outage``, which, like 201, means "delete from the queue" (ADR-006).
     """
 
-    started_at: AwareDatetime
-    ended_at: AwareDatetime
+    started_at: AgentMoment
+    ended_at: AgentMoment
 
     @model_validator(mode="after")
     def check_period(self) -> Self:

@@ -96,6 +96,24 @@
               }
             }
           },
+          "429": {
+            "description": "Превышен лимит запросов: повторить не раньше, чем через Retry-After",
+            "headers": {
+              "Retry-After": {
+                "description": "Пауза в секундах до следующего запроса",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Ошибка валидации запроса",
             "content": {
@@ -153,6 +171,24 @@
           },
           "403": {
             "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов: повторить не раньше, чем через Retry-After",
+            "headers": {
+              "Retry-After": {
+                "description": "Пауза в секундах до следующего запроса",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -259,6 +295,24 @@
               }
             }
           },
+          "429": {
+            "description": "Превышен лимит запросов: повторить не раньше, чем через Retry-After",
+            "headers": {
+              "Retry-After": {
+                "description": "Пауза в секундах до следующего запроса",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "304": {
             "description": "Конфигурация не изменилась: If-None-Match совпал с ETag"
           },
@@ -334,6 +388,24 @@
               }
             }
           },
+          "429": {
+            "description": "Превышен лимит запросов: повторить не раньше, чем через Retry-After",
+            "headers": {
+              "Retry-After": {
+                "description": "Пауза в секундах до следующего запроса",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "default": {
             "description": "Ошибка (RFC 9457)",
             "content": {
@@ -383,6 +455,24 @@
           },
           "403": {
             "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов: повторить не раньше, чем через Retry-After",
+            "headers": {
+              "Retry-After": {
+                "description": "Пауза в секундах до следующего запроса",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -460,6 +550,24 @@
           },
           "403": {
             "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов: повторить не раньше, чем через Retry-After",
+            "headers": {
+              "Retry-After": {
+                "description": "Пауза в секундах до следующего запроса",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -555,6 +663,24 @@
               }
             }
           },
+          "429": {
+            "description": "Превышен лимит запросов: повторить не раньше, чем через Retry-After",
+            "headers": {
+              "Retry-After": {
+                "description": "Пауза в секундах до следующего запроса",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Ошибка валидации запроса",
             "content": {
@@ -632,6 +758,24 @@
               }
             }
           },
+          "429": {
+            "description": "Превышен лимит запросов: повторить не раньше, чем через Retry-After",
+            "headers": {
+              "Retry-After": {
+                "description": "Пауза в секундах до следующего запроса",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Простой с этим started_at уже принят (type duplicate_outage)",
             "content": {
@@ -701,6 +845,24 @@
           },
           "403": {
             "description": "Устройство заблокировано",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов: повторить не раньше, чем через Retry-After",
+            "headers": {
+              "Retry-After": {
+                "description": "Пауза в секундах до следующего запроса",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -12245,7 +12407,7 @@
           "items"
         ],
         "title": "MeasurementBatchRequest",
-        "description": "Queue resend: up to 100 measurements per request (ADR-006).\n\nAn invalid item rejects the whole request with 422; ``errors[].field`` starts with\n``items[<index>]``, so the agent knows which records the server will never accept."
+        "description": "Queue resend: up to 100 measurements per request (ADR-006).\n\nAn invalid item rejects the whole request with 422; ``errors[].field`` starts with\n``items[<index>]`` and names the field out of range (``items[3].ping_ms``, T-51), so the\nagent knows which records the server will never accept."
       },
       "MeasurementBatchResponse": {
         "properties": {
@@ -12321,7 +12483,9 @@
           "download_mbps": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -12332,7 +12496,9 @@
           "upload_mbps": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -12343,7 +12509,9 @@
           "ping_ms": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "maximum": 60000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -12354,7 +12522,9 @@
           "jitter_ms": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "maximum": 60000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -12365,7 +12535,9 @@
           "packet_loss_pct": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -12376,7 +12548,9 @@
           "duration_s": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "maximum": 3600.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
