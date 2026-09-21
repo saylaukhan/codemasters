@@ -36,6 +36,47 @@
 источника времени в планировщике.
 ```
 
+### 2026-09-21 · T-54 · Наблюдаемость: Sentry, Prometheus, Grafana
+Сделано: `backend/app/core/observability.py` — `init_sentry` (пустой `SENTRY_DSN` оставляет
+процесс без Sentry и это не ошибка; `send_default_pii=False`, ТЗ п. 13), `MetricsMiddleware`
+снаружи rate limit и аудита, `GET /metrics` вне контракта (`include_in_schema=False`, поэтому
+`openapi.json` не менялся), метрики задач Celery через сигналы `task_prerun`/`task_postrun`/
+`task_failure` и HTTP-сервер метрик воркера на `celeryd_init`. Путь запроса размечается
+шаблоном маршрута (`/api/schools/{school_id}`), а не адресом: одна метка на эндпоинт, а не на
+школу; несовпавшие пути — одна метка `unmatched`. В compose добавлены `prometheus` и `grafana`
+с готовым дашбордом «Сервер мониторинга ВКО» (`deploy/grafana/dashboards/server-health.json`:
+запросы, доля 5xx, задержки, приём замеров, задачи Celery, `up`). Наружу ничего не
+публикуется: Caddy проксирует только `/api/*`, Grafana — на 127.0.0.1:3000. Тесты —
+`backend/tests/test_observability.py`, без БД. Слияния нет: ветка `claude/optimistic-carson-osvyun`.
+Не сделано: `make check-backend` не запускался — в этой сессии нет ни установленных
+зависимостей backend, ни Docker для testcontainers; проверен только синтаксис и длина строк.
+Дашборд и метрики воркера в живой Grafana не открывались. Новые зависимости
+(`sentry-sdk[fastapi]`, `prometheus-client`) добавлены без обсуждения вживую — отступление от
+AGENTS.md §2.6. Строки — в docs/known-limitations.md.
+Потрачено / Застрял на: не учитывалось. Отдельный порт метрик воркера и
+`PROMETHEUS_MULTIPROC_DIR` только для сервиса `worker`: у prefork-воркера счётчики живут в
+дочерних процессах, а у api процесс один, и каталог, которого нет, ломает импорт.
+
+### 2026-09-21 · T-53 · Резервное копирование БД (pgBackRest)
+Сделано: `deploy/pgbackrest/pgbackrest.conf` (стендж `vko`, хранилище — том `pgbackrest_repo`,
+7 полных бэкапов, zst, подключение к базе по unix-сокету без пароля), `deploy/pgbackrest/backup.sh`
+(создание стенджа, `check`, ежедневный полный бэкап в `PGBACKREST_BACKUP_AT` и `expire`;
+`docker compose run --rm pgbackrest once` — разовый), `docker-compose.backup.yml` — надстройка,
+включающая `archive_mode=on` с `archive_command` и сам контейнер, `make backup`. Пошаговое
+восстановление — `deploy/pgbackrest/README.md`: остановка пишущих сервисов, выбор момента по
+`info`, `--delta restore` на последний бэкап или на точку во времени, проверка по
+`max(measured_at)` и `alembic_version`, обязательный полный бэкап после восстановления на
+точку во времени. Слияния нет: ветка `claude/optimistic-carson-osvyun`.
+Не сделано: главное по «Сделано, когда» — прогон восстановления на чистую БД руками. В этой
+сессии нет Docker, поэтому ни бэкап, ни восстановление не запускались ни разу: конфигурация,
+скрипт и инструкция написаны, но не проверены. Строка — в docs/known-limitations.md; прогон и
+отчёт по нему остаются за человеком, до тех пор задача закрыта только по части автоматизации.
+Бэкапы вынесены отдельным файлом compose, а не включены по умолчанию: архив WAL без
+забирающего его контейнера молча заполняет диск на машине разработчика.
+Потрачено / Застрял на: не учитывалось. Контейнер pgbackrest ходит к базе по общему
+unix-сокету (том `pgsocket`): `pg1-host` в pgBackRest означает удалённый хост по SSH/TLS, а
+это лишний слой для одного сервера.
+
 ### 2026-09-21 · T-51 · Rate limit API агентов и валидация диапазонов метрик
 Сделано: `RateLimitMiddleware` (`backend/app/core/ratelimit.py`) вокруг аудита — фиксированное
 окно в Redis (`INCR` + время жизни ключа), ключ по устройству из токена, для регистрации — по
