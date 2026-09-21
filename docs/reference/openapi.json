@@ -14993,6 +14993,24 @@
             "examples": [
               30
             ]
+          },
+          "attention_incident_unassigned_hours": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Attention Incident Unassigned Hours",
+            "description": "Инцидент без ответственного дольше стольких часов попадает в «Требуют внимания» главного экрана (T-60)",
+            "examples": [
+              24
+            ]
+          },
+          "attention_appeal_no_answer_hours": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Attention Appeal No Answer Hours",
+            "description": "Обращение «Передан поставщику» без движения дольше стольких часов считается оставшимся без ответа (T-60)",
+            "examples": [
+              48
+            ]
           }
         },
         "type": "object",
@@ -15010,7 +15028,9 @@
           "export_sync_max_rows",
           "export_retention_days",
           "incident_auto_close_hours",
-          "agent_queue_retention_days"
+          "agent_queue_retention_days",
+          "attention_incident_unassigned_hours",
+          "attention_appeal_no_answer_hours"
         ],
         "title": "SettingsDetail",
         "description": "System-wide values used by the agent configuration, statuses, reports and exports."
@@ -15087,6 +15107,16 @@
             "maximum": 365.0,
             "minimum": 1.0,
             "title": "Agent Queue Retention Days"
+          },
+          "attention_incident_unassigned_hours": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Attention Incident Unassigned Hours"
+          },
+          "attention_appeal_no_answer_hours": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Attention Appeal No Answer Hours"
           }
         },
         "type": "object",

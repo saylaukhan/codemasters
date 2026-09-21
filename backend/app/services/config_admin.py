@@ -288,6 +288,8 @@ async def settings_detail(session: AsyncSession) -> SettingsDetail:
             "export_retention_days": settings.export_retention_days,
             "incident_auto_close_hours": settings.incident_auto_close_hours,
             "agent_queue_retention_days": settings.agent_queue_retention_days,
+            "attention_incident_unassigned_hours": settings.attention_incident_unassigned_hours,
+            "attention_appeal_no_answer_hours": settings.attention_appeal_no_answer_hours,
         }
     )
 

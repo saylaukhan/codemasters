@@ -70,6 +70,18 @@ class SettingsDetail(BaseModel):
         description="Сколько суток агент хранит замер в очереди и насколько старый замер "
         "принимает сервер (ADR-006)",
     )
+    attention_incident_unassigned_hours: int = Field(
+        ge=1,
+        examples=[24],
+        description="Инцидент без ответственного дольше стольких часов попадает в «Требуют "
+        "внимания» главного экрана (T-60)",
+    )
+    attention_appeal_no_answer_hours: int = Field(
+        ge=1,
+        examples=[48],
+        description="Обращение «Передан поставщику» без движения дольше стольких часов "
+        "считается оставшимся без ответа (T-60)",
+    )
 
 
 class SettingsUpdate(BaseModel):
@@ -91,6 +103,8 @@ class SettingsUpdate(BaseModel):
     export_retention_days: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
     incident_auto_close_hours: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
     agent_queue_retention_days: Annotated[int, Field(ge=1, le=365)] | SkipJsonSchema[None] = None
+    attention_incident_unassigned_hours: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    attention_appeal_no_answer_hours: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
 
     @field_validator(
         "speedtest",
@@ -107,6 +121,8 @@ class SettingsUpdate(BaseModel):
         "export_retention_days",
         "incident_auto_close_hours",
         "agent_queue_retention_days",
+        "attention_incident_unassigned_hours",
+        "attention_appeal_no_answer_hours",
         mode="before",
     )
     @classmethod

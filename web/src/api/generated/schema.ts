@@ -4545,6 +4545,18 @@ export interface components {
              * @example 30
              */
             agent_queue_retention_days: number;
+            /**
+             * Attention Incident Unassigned Hours
+             * @description Инцидент без ответственного дольше стольких часов попадает в «Требуют внимания» главного экрана (T-60)
+             * @example 24
+             */
+            attention_incident_unassigned_hours: number;
+            /**
+             * Attention Appeal No Answer Hours
+             * @description Обращение «Передан поставщику» без движения дольше стольких часов считается оставшимся без ответа (T-60)
+             * @example 48
+             */
+            attention_appeal_no_answer_hours: number;
         };
         /**
          * SettingsUpdate
@@ -4579,6 +4591,10 @@ export interface components {
             incident_auto_close_hours?: number;
             /** Agent Queue Retention Days */
             agent_queue_retention_days?: number;
+            /** Attention Incident Unassigned Hours */
+            attention_incident_unassigned_hours?: number;
+            /** Attention Appeal No Answer Hours */
+            attention_appeal_no_answer_hours?: number;
         };
         /**
          * SpeedtestServers
