@@ -14,6 +14,9 @@ import { saveFile } from '../exports/queries'
 import { REFRESH_MS } from '../map/queries'
 import { appealListQuery, type AppealListView } from './appeals'
 
+/** Appeals of one school on one page: the cabinet shows them all, without pagination. */
+const SCHOOL_APPEALS_PAGE_SIZE = 100
+
 // An appeal outside the scope answers 404: asking again will not change that.
 const retryUnlessMissing = (count: number, error: Error) =>
   !(error instanceof ApiError && error.status === 404) && count < 3
@@ -49,6 +52,18 @@ export const useAppeals = (view: AppealListView) =>
     queryFn: ({ signal }) => getAppeals(appealListQuery(view), signal),
     placeholderData: keepPreviousData,
     refetchInterval: REFRESH_MS,
+  })
+
+/**
+ * Appeals of one school, newest first (T-61): the list endpoint already filters by `school_id`, so
+ * the cabinet needs no route of its own. A school has a few, and they all fit on one page.
+ */
+export const useSchoolAppeals = (schoolId: number) =>
+  useQuery({
+    queryKey: ['appeals', 'school', schoolId],
+    queryFn: ({ signal }) => getAppeals({ schoolId, page: 1, pageSize: SCHOOL_APPEALS_PAGE_SIZE }, signal),
+    refetchInterval: REFRESH_MS,
+    retry: retryUnlessMissing,
   })
 
 export const useAppeal = (appealId: number) =>

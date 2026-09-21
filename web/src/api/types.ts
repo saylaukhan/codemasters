@@ -47,6 +47,9 @@ export type SchoolListItem = Schema<'SchoolListItem'>
 export type SchoolSort = Schemas['SchoolSort']
 
 export type SchoolDetail = Schema<'SchoolDetail'>
+/** Day strip of the school cabinet (T-61): one entry per local day, oldest first. */
+export type SchoolDays = Schema<'SchoolDays'>
+export type SchoolDay = Schema<'SchoolDay'>
 export type SchoolCreate = Schema<'SchoolCreate'>
 export type SchoolUpdate = Schema<'SchoolUpdate'>
 export type WorkingHours = Schema<'WorkingHours'>
