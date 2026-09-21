@@ -30,6 +30,7 @@ const FIELDS = [
   'contractMismatchThresholdPct',
   'contractMismatchWindowDays',
   'enrollmentCodeTtlDays',
+  'agentQueueRetentionDays',
   'exportSyncMaxRows',
   'exportRetentionDays',
   'incidentAutoCloseHours',
@@ -167,6 +168,12 @@ function SettingsForm({ settings }: { settings: SettingsDetail }) {
             <NumberField name="heartbeatIntervalS" label="Интервал heartbeat, с" />
             <NumberField name="configRefreshIntervalS" label="Обновление конфигурации агента, с" />
             <NumberField name="enrollmentCodeTtlDays" label="Срок кода установки, дней" />
+            <NumberField
+              name="agentQueueRetentionDays"
+              label="Срок очереди агента, дней"
+              extra="Сколько суток агент хранит замер в очереди и насколько старый замер принимает сервер."
+              max={365}
+            />
             <NumberField
               name="exportSyncMaxRows"
               label="Выгрузка сразу — до строк"

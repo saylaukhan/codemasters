@@ -36,8 +36,13 @@ type AgentConfig struct {
 	// HeartbeatIntervalS is how often the agent reports it is alive (T-12).
 	HeartbeatIntervalS int `json:"heartbeat_interval_s"`
 	// ConfigRefreshIntervalS is how often the agent asks for this answer again.
-	ConfigRefreshIntervalS int              `json:"config_refresh_interval_s"`
-	Speedtest              SpeedtestServers `json:"speedtest"`
+	ConfigRefreshIntervalS int `json:"config_refresh_interval_s"`
+	// QueueRetentionDays is how many days a measurement may wait in the queue
+	// (ТЗ п. 11, п. 20; ADR-006). The server refuses anything older, so the
+	// agent prunes by the very same number instead of one of its own. Zero
+	// means the server did not say: the agent keeps its fallback.
+	QueueRetentionDays int              `json:"queue_retention_days"`
+	Speedtest          SpeedtestServers `json:"speedtest"`
 	// LatestVersion is the agent version the server expects (T-50); empty when none.
 	LatestVersion string `json:"latest_version,omitempty"`
 	// TokenRotationRequired asks the agent to exchange its token with

@@ -94,10 +94,23 @@ func agentSchedule(cfg api.AgentConfig) (scheduler.Schedule, error) {
 	return scheduler.NewSchedule(cfg.Timezone, slots)
 }
 
+// queueRetention is how long the queue may keep a record by the configuration
+// of the server: queue_retention_days, the same number the server refuses
+// older measurements by (ТЗ п. 11, п. 20; ADR-006). Zero means the server did
+// not say — an older server, or no configuration yet — and the queue keeps its
+// own fallback (queue.DefaultMaxAge).
+func queueRetention(cfg api.AgentConfig) time.Duration {
+	if cfg.QueueRetentionDays <= 0 {
+		return 0
+	}
+	return time.Duration(cfg.QueueRetentionDays) * 24 * time.Hour
+}
+
 // sameConfig reports whether two configurations tell the agent to do the same.
 func sameConfig(a, b api.AgentConfig) bool {
 	if a.Timezone != b.Timezone || a.Speedtest != b.Speedtest || len(a.ScheduleSlots) != len(b.ScheduleSlots) ||
-		a.HeartbeatIntervalS != b.HeartbeatIntervalS || a.ConfigRefreshIntervalS != b.ConfigRefreshIntervalS {
+		a.HeartbeatIntervalS != b.HeartbeatIntervalS || a.ConfigRefreshIntervalS != b.ConfigRefreshIntervalS ||
+		a.QueueRetentionDays != b.QueueRetentionDays {
 		return false
 	}
 	for i, slot := range a.ScheduleSlots {
@@ -161,7 +174,8 @@ func runConfig(ctx context.Context, client *api.Client, dataDir string, settings
 			if changed {
 				logger.Info("конфигурация обновлена", "etag", etag, "timezone", cfg.Timezone,
 					"slots", len(cfg.ScheduleSlots), "librespeed", cfg.Speedtest.LibreSpeedURL,
-					"ndt7", cfg.Speedtest.NDT7URL, "refresh_s", cfg.ConfigRefreshIntervalS)
+					"ndt7", cfg.Speedtest.NDT7URL, "refresh_s", cfg.ConfigRefreshIntervalS,
+					"queue_retention_days", cfg.QueueRetentionDays)
 				apply(cfg, sched)
 			}
 			wait = configRetryWait(settings)

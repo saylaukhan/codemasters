@@ -34,28 +34,46 @@ MAX_SPEED_MBPS = 10_000.0
 MAX_LATENCY_MS = 60_000.0
 MAX_DURATION_S = 3600.0
 
-# The queue of the agent holds 30 days (ADR-006); a day on top of that keeps a record right at
-# the border. Ahead of the server the clock of a school computer may be minutes off, not hours.
-MAX_QUEUE_AGE = timedelta(days=31)
+# Ahead of the server the clock of a school computer may be minutes off, not hours. This is
+# about clocks, not about policy, so it stays a constant of the contract.
 MAX_CLOCK_SKEW = timedelta(minutes=10)
 
+# How far back a moment may point is ``settings.agent_queue_retention_days`` — the same value
+# the agent keeps its queue by (ТЗ п. 11, п. 20; ADR-004, ADR-006). A day on top of it keeps a
+# record that sat at the very border of the queue: the agent still had the right to send it,
+# and while a long resend is running the border moves on.
+QUEUE_WINDOW_MARGIN = timedelta(days=1)
 
-def recent_moment(value: datetime) -> datetime:
-    """Moment an agent may report: not from the future and not older than its queue (ADR-006).
 
-    A computer whose clock is wrong would otherwise write history: a measurement dated forward
-    hides behind «ещё не наступило», one dated years back changes a period already reported.
+def queue_window(retention_days: int) -> timedelta:
+    """How old a moment of an agent may be with a queue kept ``retention_days`` days."""
+    return timedelta(days=retention_days) + QUEUE_WINDOW_MARGIN
+
+
+def too_old_message(window: timedelta) -> str:
+    """Message of a moment older than the window; the agent will never get it accepted."""
+    return f"Момент старше срока очереди агента: {window.days} сут."
+
+
+def not_in_the_future(value: datetime) -> datetime:
+    """Moment an agent may report (ADR-006): the half of the check that needs no database.
+
+    A computer whose clock runs forward would otherwise write history no one sees: a
+    measurement dated ahead hides behind «ещё не наступило». The other half — a moment older
+    than the queue of the agent — is a setting now, so it is checked where there is a session
+    to read it, in ``app/api/agent.py``; the answer stays the same 422 naming the field
+    (ADR-009).
     """
-    now = datetime.now(UTC)
-    if value > now + MAX_CLOCK_SKEW:
+    if value > datetime.now(UTC) + MAX_CLOCK_SKEW:
         raise ValueError("Момент в будущем: проверьте часы компьютера")
-    if value < now - MAX_QUEUE_AGE:
-        raise ValueError(f"Момент старше срока очереди агента: {MAX_QUEUE_AGE.days} сут.")
     return value
 
 
-# Time reported by an agent: RFC 3339 with an offset (ADR-014), inside the window of its queue.
-AgentMoment = Annotated[AwareDatetime, AfterValidator(recent_moment)]
+# Time reported by an agent: RFC 3339 with an offset (ADR-014) and not from the future. Whether
+# it also fits the window of the queue is checked in ``app/api/agent.py`` (``check_queue_window``):
+# the width of that window is ``agent_queue_retention_days`` of the settings, and reading it needs
+# a session, which a validator of a schema has not got.
+AgentMoment = Annotated[AwareDatetime, AfterValidator(not_in_the_future)]
 
 
 class DeviceRegisterRequest(BaseModel):
@@ -74,7 +92,7 @@ class DeviceRegisterRequest(BaseModel):
 
 
 class DeviceRegisterResponse(BaseModel):
-    """Credentials of a registered device; the token is shown once (argon2 hash on server)."""
+    """Credentials of a registered device; the token is shown once (only its hash is kept)."""
 
     device_id: int
     device_token: str
@@ -108,6 +126,13 @@ class AgentConfigResponse(BaseModel):
     schedule_slots: list[ScheduleSlot] = Field(min_length=3, max_length=5)
     heartbeat_interval_s: int = Field(ge=1, examples=[300])
     config_refresh_interval_s: int = Field(ge=1, examples=[900])
+    queue_retention_days: int = Field(
+        ge=1,
+        le=365,
+        examples=[30],
+        description="Сколько суток агент хранит замер в очереди; старше — сервер не примет "
+        "(ADR-006)",
+    )
     speedtest: SpeedtestServers
     thresholds: ThresholdValues
     latest_version: str | None = Field(default=None, examples=["0.2.0"])

@@ -37,7 +37,9 @@ async def get_system_settings(
         "Объекты speedtest и default_working_hours заменяются целиком: speedtest без ndt7_url "
         "отключает резервный сервер. Агенты получают новые значения со следующей конфигурацией: "
         "новый ETag в GET /api/agent/config (T-17). offline_after_s не больше "
-        "heartbeat_interval_s с учётом сохранённых значений — 422."
+        "heartbeat_interval_s с учётом сохранённых значений — 422. "
+        "agent_queue_retention_days задаёт и глубину очереди агента, и то, насколько старый "
+        "замер примет сервер: уменьшение отсекает досылку старых записей (ADR-006)."
     ),
 )
 async def update_system_settings(

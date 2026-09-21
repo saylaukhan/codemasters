@@ -261,14 +261,19 @@ def test_slot_moments_stay_inside_their_slots_and_repeat() -> None:
         assert moment.date() == DAY
 
 
-def test_history_is_cut_to_the_queue_window_of_the_server() -> None:
-    """The server refuses a moment older than the queue of an agent (31 days, ADR-006)."""
+def test_the_history_is_as_deep_as_it_was_asked_for() -> None:
+    """«3 месяца истории» T-55: глубина больше ничем не обрезается (ТЗ п. 11, ADR-006).
+
+    Сколько назад сервер примет замер — настройка ``agent_queue_retention_days``, и на время
+    прогона симулятор поднимает её до нужной глубины (``queue_retention``).
+    """
     now = datetime(2026, 9, 21, 10, 0, tzinfo=UTC)
     assert len(simulate.history_days(5, now, TZ)) == 5
     days = simulate.history_days(90, now, TZ)
-    assert len(days) == simulate.HISTORY_WINDOW_DAYS
+    assert len(days) == 90
     assert days == sorted(days)
     assert days[-1] == now.astimezone(TZ).date()
+    assert days[0] == now.astimezone(TZ).date() - timedelta(days=89)
 
 
 def test_future_moments_are_not_sent() -> None:
@@ -363,3 +368,83 @@ def test_batches_never_exceed_the_limit_of_the_server() -> None:
     parts = list(simulate.chunks(list(range(250)), simulate.MAX_BATCH_SIZE))
     assert [len(part) for part in parts] == [100, 100, 50]
     assert [number for part in parts for number in part] == list(range(250))
+
+
+class FakeAdmin:
+    """``AdminSession``, отвечающая из словаря: ``queue_retention`` проверяется без сервера."""
+
+    def __init__(self, settings: dict[str, object] | None, *, patch_status: int = 200) -> None:
+        self.settings = settings
+        self.patch_status = patch_status
+        self.patched: list[object] = []
+
+    def request(self, method: str, path: str, *, body: object = None) -> simulate.Response:
+        assert path == simulate.SETTINGS_PATH
+        if method == "GET":
+            if self.settings is None:
+                return simulate.Response(503, {"detail": "система не настроена"})
+            return simulate.Response(200, dict(self.settings))
+        assert isinstance(body, dict)
+        self.patched.append(body[simulate.RETENTION_SETTING])
+        if self.patch_status == 200:
+            self.settings = {**(self.settings or {}), **body}
+        return simulate.Response(self.patch_status, self.settings)
+
+
+def test_queue_retention_is_raised_for_the_run_and_put_back() -> None:
+    """«3 месяца истории» T-55 заливаются через API агента и не меняют установку насовсем."""
+    admin = FakeAdmin({simulate.RETENTION_SETTING: 30})
+
+    with simulate.queue_retention(admin, 90) as depth:
+        assert depth == 90
+        assert admin.settings == {simulate.RETENTION_SETTING: 90}
+
+    assert admin.settings == {simulate.RETENTION_SETTING: 30}
+    assert admin.patched == [90, 30]
+
+
+@pytest.mark.parametrize("error", [RuntimeError("сеть"), KeyboardInterrupt()])
+def test_queue_retention_is_put_back_after_an_error_and_after_ctrl_c(
+    error: BaseException,
+) -> None:
+    """Прерванный прогон не оставляет сервер с поднятым сроком очереди (ADR-006)."""
+    admin = FakeAdmin({simulate.RETENTION_SETTING: 30})
+
+    with pytest.raises(type(error)):
+        with simulate.queue_retention(admin, 90):
+            raise error
+
+    assert admin.settings == {simulate.RETENTION_SETTING: 30}
+    assert admin.patched == [90, 30]
+
+
+def test_a_setting_deep_enough_is_not_touched() -> None:
+    """Сервер уже принимает нужную глубину — менять настройку незачем."""
+    admin = FakeAdmin({simulate.RETENTION_SETTING: 120})
+
+    with simulate.queue_retention(admin, 90) as depth:
+        assert depth == 120
+
+    assert admin.patched == []
+
+
+def test_an_old_server_without_the_setting_says_so() -> None:
+    """Сборка сервера до этой настройки — внятное сообщение, а не падение на 422."""
+    admin = FakeAdmin({"heartbeat_interval_s": 300})
+
+    with pytest.raises(simulate.SimulatorError, match=simulate.RETENTION_SETTING):
+        with simulate.queue_retention(admin, 90):
+            pass
+
+    assert admin.patched == []
+
+
+def test_a_depth_over_the_limit_of_the_server_stops_the_run() -> None:
+    """Глубже года сервер историю не примет: лучше сказать это до многочасового прогона."""
+    admin = FakeAdmin({simulate.RETENTION_SETTING: 30})
+
+    with pytest.raises(simulate.SimulatorError, match=str(simulate.MAX_RETENTION_DAYS)):
+        with simulate.queue_retention(admin, simulate.MAX_RETENTION_DAYS + 1):
+            pass
+
+    assert admin.patched == []

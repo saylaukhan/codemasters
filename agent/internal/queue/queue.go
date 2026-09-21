@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	// SQLite without CGO (plan.md §2): the agent is cross-compiled for Windows.
@@ -21,9 +22,14 @@ import (
 )
 
 // Limits of the queue (ADR-006): older and extra records are dropped, oldest first.
+//
+// DefaultMaxAge is a fallback only: how long a record waits is
+// queue_retention_days of GET /api/agent/config (ТЗ п. 11, п. 20), and it is
+// used until the first configuration arrives — a queue opened before the
+// registration must still prune itself rather than grow without a bound.
 const (
-	MaxAge     = 30 * 24 * time.Hour
-	MaxRecords = 10000
+	DefaultMaxAge = 30 * 24 * time.Hour
+	MaxRecords    = 10000
 )
 
 // FileName is the queue database inside the agent data directory.
@@ -71,10 +77,12 @@ func addOutageRejected(db *sql.DB) error {
 
 // Queue is the local measurement queue. It is safe for concurrent use.
 type Queue struct {
-	db         *sql.DB
-	logger     *slog.Logger
-	now        func() time.Time
-	maxAge     time.Duration
+	db     *sql.DB
+	logger *slog.Logger
+	now    func() time.Time
+	// maxAge is nanoseconds, read and written from several goroutines: the
+	// sending loop prunes while runConfig applies a new configuration.
+	maxAge     atomic.Int64
 	maxRecords int
 }
 
@@ -96,7 +104,27 @@ func Open(path string, logger *slog.Logger) (*Queue, error) {
 		db.Close()
 		return nil, fmt.Errorf("очередь %s: %w", path, err)
 	}
-	return &Queue{db: db, logger: logger, now: time.Now, maxAge: MaxAge, maxRecords: MaxRecords}, nil
+	q := &Queue{db: db, logger: logger, now: time.Now, maxRecords: MaxRecords}
+	q.maxAge.Store(int64(DefaultMaxAge))
+	return q, nil
+}
+
+// SetMaxAge applies queue_retention_days of the server configuration: from now
+// on the queue keeps exactly what the server still accepts (ADR-006). A value
+// that is not positive is ignored, so an old server without the field leaves
+// the fallback in place.
+func (q *Queue) SetMaxAge(d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	if old := time.Duration(q.maxAge.Swap(int64(d))); old != d {
+		q.logger.Info("срок хранения очереди из конфигурации сервера", "was", old, "now", d)
+	}
+}
+
+// MaxAge is the age limit in force now.
+func (q *Queue) MaxAge() time.Duration {
+	return time.Duration(q.maxAge.Load())
 }
 
 // Close closes the database.
@@ -134,7 +162,7 @@ func (q *Queue) Pending(ctx context.Context) (int, error) {
 // prune applies the limits: records older than maxAge go first, then the
 // oldest records above maxRecords. Dropping is logged: it is lost data.
 func (q *Queue) prune(ctx context.Context) error {
-	cutoff := q.now().Add(-q.maxAge).UnixMilli()
+	cutoff := q.now().Add(-q.MaxAge()).UnixMilli()
 	old, err := q.db.ExecContext(ctx, `DELETE FROM measurements WHERE measured_at < ?`, cutoff)
 	if err != nil {
 		return fmt.Errorf("очередь: удаление старых записей: %w", err)
