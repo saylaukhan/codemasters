@@ -1,6 +1,7 @@
 // Transitions of an incident's status (T-41, ADR-007): the table the API checks in POST /api/incidents/{id}/status,
 // repeated here only to offer what will be accepted. The card and the kanban of T-43 both read it.
 import type { CurrentUser, IncidentStatus, UserRole } from '../../api/types'
+import { INCIDENT_STATUS_LABELS, INCIDENT_TARGETS_LABELS } from '../../lib/labels'
 
 /**
  * Forward in the order of ТЗ п. 19, «Передан поставщику», «В работе» and «Ожидает информации» may be skipped;
@@ -54,3 +55,12 @@ export const canMove = (
 
 /** A comment is required to close an incident (DESIGN.md §3.17); the API answers 422 without it. */
 export const commentRequired = (to: IncidentStatus | undefined): boolean => to === 'closed'
+
+/**
+ * Hint under the select of the card (T-63): the targets of `allowedTargets` written out in the order of ТЗ п. 19,
+ * «Доступно: В работе, Ожидает информации, Устранён»; an empty list is not a broken form and says so.
+ */
+export const targetsHint = (targets: readonly IncidentStatus[]): string =>
+  targets.length === 0
+    ? INCIDENT_TARGETS_LABELS.none
+    : `${INCIDENT_TARGETS_LABELS.available}: ${targets.map((to) => INCIDENT_STATUS_LABELS[to]).join(', ')}`
