@@ -19,7 +19,7 @@ days ?= 90
 
 .PHONY: help up down api worker web agent-run \
 	check check-agent check-backend check-web \
-	migrate migration db-reset seed simulate openapi \
+	migrate migration db-reset seed simulate openapi backup \
 	install agent-install backend-install web-install
 
 help: ## Показать этот список команд
@@ -27,7 +27,7 @@ help: ## Показать этот список команд
 	@echo
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(firstword $(MAKEFILE_LIST)) | awk 'BEGIN {FS = ":.*## "} {printf "  %-16s %s\n", $$1, $$2}'
 	@echo
-	@echo "Порты: api 8000, web 5173, db 5432, redis 6379, speedtest 8080, ndt7 8081, caddy 80/443."
+	@echo "Порты: api 8000, web 5173, db 5432, redis 6379, speedtest 8080, ndt7 8081, caddy 80/443, grafana 3000."
 	@echo "Перед первым запуском: cp .env.example .env && make install && make up"
 
 # --- Infrastructure -----------------------------------------------------------------------
@@ -38,6 +38,9 @@ up: ## Поднять инфраструктуру для разработки: 
 
 down: ## Остановить контейнеры (docker compose down, без -v: данные остаются)
 	docker compose down
+
+backup: ## Разовый полный бэкап БД pgBackRest (T-53); расписание — в docker-compose.backup.yml
+	docker compose -f docker-compose.yml -f docker-compose.backup.yml run --rm pgbackrest once
 
 # --- Run locally --------------------------------------------------------------------------
 

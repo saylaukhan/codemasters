@@ -1,0 +1,72 @@
+# Резервное копирование БД (T-53, plan.md §13) — надстройка над docker-compose.yml.
+#
+# Отдельным файлом, а не частью основного compose, потому что включает архивирование WAL:
+# как только archive_mode=on, PostgreSQL держит сегменты WAL до тех пор, пока их не заберёт
+# pgbackrest. На боевом сервере это и нужно, а на машине разработчика `make up` поднимает
+# базу без контейнера pgbackrest — архив некому забирать, и диск заполнится молча.
+#
+# Боевой запуск (оба файла, порядок важен):
+#   docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d
+#
+# Проверка и восстановление — deploy/pgbackrest/README.md.
+
+name: vko-monitor
+
+services:
+  db:
+    # Архив WAL уходит в то же хранилище, где лежат полные бэкапы: без него
+    # восстановление возможно только на момент последнего бэкапа, а не на точку во времени.
+    # unix_socket_directories задан явно, чтобы контейнер pgbackrest нашёл сокет по
+    # известному пути (том pgsocket).
+    command:
+      - postgres
+      - -c
+      - unix_socket_directories=/var/run/postgresql
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=pgbackrest --stanza=${PGBACKREST_STANZA:-vko} archive-push %p
+      # Закрывать сегмент раз в 5 минут даже на простое: столько данных максимум теряется
+      # при восстановлении на точку во времени.
+      - -c
+      - archive_timeout=300
+    volumes:
+      - pgsocket:/var/run/postgresql
+      - pgbackrest_repo:${PGBACKREST_REPO1_PATH:-/var/lib/pgbackrest}
+      - pgbackrest_log:/var/log/pgbackrest
+      - ./deploy/pgbackrest/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
+
+  pgbackrest:
+    # Тот же образ, что и у базы: в нём уже есть pgbackrest нужной версии, а процесс
+    # работает под тем же пользователем postgres — иначе он не прочитает PGDATA и сокет.
+    image: timescale/timescaledb-ha:pg16
+    entrypoint: ["/bin/bash", "/opt/pgbackrest/backup.sh"]
+    environment:
+      PGBACKREST_STANZA: ${PGBACKREST_STANZA:-vko}
+      PGBACKREST_BACKUP_AT: ${PGBACKREST_BACKUP_AT:-02:30}
+      PGBACKREST_REPO1_PATH: ${PGBACKREST_REPO1_PATH:-/var/lib/pgbackrest}
+      PGBACKREST_REPO1_RETENTION_FULL: ${PGBACKREST_RETENTION_FULL:-7}
+      TZ: ${TZ:-Asia/Almaty}
+    volumes:
+      # Полный доступ к PGDATA: бэкап его только читает, но восстановление (README) пишет
+      # каталог базы заново — и делает это из этого же контейнера, при остановленной db.
+      - pgdata:/home/postgres/pgdata/data
+      - pgsocket:/var/run/postgresql
+      - pgbackrest_repo:${PGBACKREST_REPO1_PATH:-/var/lib/pgbackrest}
+      - pgbackrest_log:/var/log/pgbackrest
+      - ./deploy/pgbackrest/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
+      - ./deploy/pgbackrest/backup.sh:/opt/pgbackrest/backup.sh:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  # Хранилище бэкапов и архива WAL. Том переживает `docker compose down`; на боевом сервере
+  # его место — отдельный диск, смонтированный в каталог этого тома (deploy/pgbackrest/README.md).
+  pgbackrest_repo:
+  pgbackrest_log:
+  # Каталог unix-сокета базы, общий для db и pgbackrest.
+  pgsocket:

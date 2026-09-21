@@ -1,0 +1,15 @@
+# Дашборды подхватываются из файлов: правка в интерфейсе не переживёт перезапуск,
+# менять нужно JSON в deploy/grafana/dashboards/ (T-54).
+apiVersion: 1
+
+providers:
+  - name: vko-monitor
+    orgId: 1
+    folder: Мониторинг ВКО
+    type: file
+    disableDeletion: false
+    allowUiUpdates: false
+    updateIntervalSeconds: 60
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

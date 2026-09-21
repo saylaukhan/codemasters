@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     agent_register_rate_limit: int = 20
     agent_rate_limit_window_s: int = 60
 
+    # Observability of the server itself (T-54, plan.md §2, §13). An empty DSN leaves the
+    # process without Sentry; metrics are always collected and are not published outside.
+    sentry_dsn: str = ""
+    sentry_environment: str = "local"
+    sentry_traces_sample_rate: float = 0.0
+    worker_metrics_port: int = 9808
+
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""

@@ -1,0 +1,34 @@
+# Сбор метрик самого сервера мониторинга (T-54, plan.md §2).
+#
+# Prometheus живёт внутри сети compose и ходит к контейнерам по именам сервисов. Наружу
+# метрики не отдаются: Caddy проксирует только /api/* (deploy/Caddyfile), а порты api и
+# воркера в compose не публикуются на хост.
+#
+# Качество интернета в школах здесь не хранится — это замеры агентов в таблице measurements.
+# Здесь только API и воркер: запросы, ошибки, задержки, задачи Celery.
+
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  external_labels:
+    installation: vko-monitor
+
+scrape_configs:
+  - job_name: api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8000"]
+        labels:
+          component: api
+
+  - job_name: worker
+    # Порт HTTP-сервера метрик воркера: Settings.worker_metrics_port,
+    # значение по умолчанию — 9808 (backend/app/core/observability.py).
+    static_configs:
+      - targets: ["worker:9808"]
+        labels:
+          component: worker
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
