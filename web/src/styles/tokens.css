@@ -304,8 +304,9 @@
   color-scheme: dark;
 }
 
-/* Breakpoints of DESIGN.md §9 are inclusive: «at 1280px and narrower». */
-@media (max-width: 1280px) {
+/* Bands of DESIGN.md §9.3, each including its upper bound: «≥ 1280» keeps 32, «1025–1279»
+ * takes 24, «769–1024» and «≤ 768» take 16. 1280 itself belongs to the first band. */
+@media (max-width: 1279px) {
   :root {
     --content-padding: 24px;
   }
