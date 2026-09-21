@@ -18,7 +18,7 @@ from typing import Any
 
 from sqlalchemy import CheckConstraint, ForeignKey, Identity, Index, LargeBinary
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, deferred, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.audit_log import one_of
 from app.models.base import Base, TimestampMixin
@@ -58,5 +58,5 @@ class Appeal(TimestampMixin, Base):
     delivery_error: Mapped[str | None]
     sent_at: Mapped[datetime]
     # Loaded only when the PDF is downloaded, never with the card of the appeal.
-    pdf: Mapped[bytes] = deferred(mapped_column(LargeBinary))
+    pdf: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
     author_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)

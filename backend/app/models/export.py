@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import CheckConstraint, ForeignKey, Identity, LargeBinary
-from sqlalchemy.orm import Mapped, deferred, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
 
@@ -34,7 +34,7 @@ class Export(TimestampMixin, Base):
     rows_count: Mapped[int | None]
     file_name: Mapped[str | None]
     # Loaded only when the file is downloaded, never with the state of the export.
-    content: Mapped[bytes | None] = deferred(mapped_column(LargeBinary))
+    content: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)
     error: Mapped[str | None]
     expires_at: Mapped[datetime | None] = mapped_column(index=True)
 
