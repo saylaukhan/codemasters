@@ -295,7 +295,7 @@ async def test_an_appeal_from_a_new_incident_hands_it_over_to_the_provider(
         201,
     )
 
-    assert appeal["incident_id"] == incident.id
+    assert appeal["context"]["incident_id"] == incident.id
     card = ok(await api_client.get(f"{INCIDENTS}/{incident.id}", headers=admin))
     assert card["status"] == "sent_to_provider"
     sent_at = datetime.fromisoformat(card["sent_to_provider_at"])
