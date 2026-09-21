@@ -8,6 +8,8 @@ agent may call (``app/core/ratelimit.py``, T-51); ``MetricsMiddleware`` counts r
 Prometheus and Sentry receives unhandled errors (``app/core/observability.py``, T-54).
 """
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 from starlette.responses import Response
@@ -27,11 +29,22 @@ from app.core.ratelimit import RateLimitMiddleware
 from app.schemas.health import HealthResponse
 
 
+@asynccontextmanager
+async def lifespan(application: ContractApp) -> AsyncIterator[None]:
+    """Start Sentry when the server starts serving, not when the module is imported.
+
+    ``init_sentry`` reads the settings, and the settings demand a configured environment.
+    Doing that at import time makes importing ``app.main`` impossible without one — which is
+    exactly what a test collector and any tool that merely inspects the application do (T-54).
+    """
+    init_sentry("api")
+    yield
+
+
 def create_app() -> ContractApp:
     """Build and return a configured FastAPI application."""
-    # Before the application is built: an error while building it is worth a report too.
-    init_sentry("api")
     application = ContractApp(
+        lifespan=lifespan,
         title="Мониторинг интернета ВКО",
         version=__version__,
         docs_url=f"{API_PREFIX}/docs",
