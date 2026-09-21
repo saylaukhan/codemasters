@@ -9,6 +9,10 @@ The second half is the cabinet of the provider (T-44, ADR-008): he moves the sta
 appeal, every move is an ``appeal_events`` row, «Закрыт» is not his to put, and an appeal of
 another provider's line is simply not there — 404, not 403. An installation without SMTP is a
 normal installation: the appeal is stored and marked «не отправлено» with its PDF kept.
+
+The last two are T-63: an appeal sent from the card of an incident in «Новый» hands the
+incident over to the provider by itself, with a row of its history naming the appeal; an
+incident a person already moved is not touched.
 """
 
 from datetime import UTC, datetime
@@ -23,9 +27,10 @@ from app.core.config import Settings, get_settings
 from app.models import Appeal, AppealEvent, Line
 from tests.factories import bearer, create_settings, create_user
 from tests.test_admin_incident_rules import ok, problem
-from tests.test_appeal_draft import PROVIDER_EMAIL, appealed_school
+from tests.test_appeal_draft import PROVIDER_EMAIL, an_incident, appealed_school
 
 APPEALS = "/api/appeals"
+INCIDENTS = "/api/incidents"
 
 SUBJECT = "Качество интернет-соединения: VKO-UK-047, период 01.09.2026 — 08.09.2026"
 TEXT = "**Провайдер**\n\nУважаемые коллеги!\n\n- Замеров за период: 3\n\n---\n\nОтветственное лицо"
@@ -267,6 +272,64 @@ async def test_a_stranger_does_not_see_an_appeal(
     ]:
         response = await api_client.request(method, url, json=body, headers=provider)
         problem(response, 404, "not_found")
+
+
+async def test_an_appeal_from_a_new_incident_hands_it_over_to_the_provider(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """T-63 (ADR-007): «Отправить» from the card of an incident in «Новый» is the handing over
+    itself — the incident moves to «Передан поставщику» with a row of its history."""
+    await create_settings(session)
+    school, line, period = await appealed_school(session)
+    incident = await an_incident(session, school, line)
+    user = await create_user(session, "admin")
+    admin = bearer(user)
+    before = datetime.now(UTC)
+
+    appeal = ok(
+        await api_client.post(
+            APPEALS,
+            json={"incident_id": incident.id} | period | {"subject": SUBJECT, "text": TEXT},
+            headers=admin,
+        ),
+        201,
+    )
+
+    assert appeal["incident_id"] == incident.id
+    card = ok(await api_client.get(f"{INCIDENTS}/{incident.id}", headers=admin))
+    assert card["status"] == "sent_to_provider"
+    sent_at = datetime.fromisoformat(card["sent_to_provider_at"])
+    assert before <= sent_at <= datetime.now(UTC)
+    assert [
+        (e["kind"], e["from_status"], e["to_status"], e["author_user_id"]) for e in card["events"]
+    ] == [("status_change", "new", "sent_to_provider", user.id)]
+    assert appeal["number"] in card["events"][0]["comment"]
+
+
+async def test_an_appeal_leaves_an_incident_already_in_work_as_it_is(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """T-63: an incident a person already moved keeps its status and its history."""
+    await create_settings(session)
+    school, line, period = await appealed_school(session)
+    incident = await an_incident(session, school, line)
+    incident.status = "in_progress"
+    await session.flush()
+    admin = bearer(await create_user(session, "admin"))
+
+    ok(
+        await api_client.post(
+            APPEALS,
+            json={"incident_id": incident.id} | period | {"subject": SUBJECT, "text": TEXT},
+            headers=admin,
+        ),
+        201,
+    )
+
+    card = ok(await api_client.get(f"{INCIDENTS}/{incident.id}", headers=admin))
+    assert card["status"] == "in_progress"
+    assert card["sent_to_provider_at"] is None
+    assert card["events"] == []
 
 
 def _silent_provider() -> Any:

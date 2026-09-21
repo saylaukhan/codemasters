@@ -945,7 +945,7 @@ export interface paths {
         put?: never;
         /**
          * Отправить обращение: номер, письмо поставщику, PDF
-         * @description Номер присваивается здесь. Контекст сервер пересобирает за тот же период; статус после отправки — sent_to_provider. SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.
+         * @description Номер присваивается здесь. Контекст сервер пересобирает за тот же период; статус после отправки — sent_to_provider. Обращение из инцидента в статусе new переводит его в sent_to_provider с записью в incident_events; инцидент в другом статусе не меняется (T-63). SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.
          */
         post: operations["create_appeal"];
         delete?: never;

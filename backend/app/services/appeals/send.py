@@ -10,6 +10,11 @@ only then the letter leaves the server, so an SMTP that hangs, refuses or is not
 all leaves a numbered appeal with its PDF behind instead of losing the work of the person
 («Решения по умолчанию», ТЗ п. 17). The status after the sending is «Передан поставщику» either
 way: the appeal was made, the letter is a channel.
+
+An appeal sent from the card of an incident is the handing over of that incident (T-63,
+ADR-007): one in «Новый» moves to «Передан поставщику» in the same transaction as the appeal,
+with a row of its history naming the number; an incident in any other status was already moved
+by a person and is left as it is.
 """
 
 import asyncio
@@ -24,11 +29,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import AuthUser
 from app.core.config import Settings, get_settings
-from app.models import Appeal, AppealEvent, SystemSettings
+from app.models import Appeal, AppealEvent, IncidentEvent, SystemSettings
 from app.schemas.appeals import AppealCreate, AppealDetail
 from app.services.appeals.card import appeal_detail
 from app.services.appeals.context import appeal_facts
 from app.services.appeals.pdf import AppealLetter, appeal_pdf
+from app.services.incident_card import locked_incident
 from app.services.notifications import CHANNEL_OFF, send_email
 from app.services.settings import system_settings
 
@@ -43,6 +49,9 @@ NO_ADDRESS = "У поставщика не указан e-mail для обращ
 
 # The comment of the person travels next to the letter, never inside its text (ТЗ п. 17).
 COMMENT_TITLE = "Комментарий отправителя:"
+
+# History row of the incident the sending handed over (T-63); the number is that of the appeal.
+HANDOVER_COMMENT = "Статус изменён при отправке обращения {number}"
 
 
 async def appeal_number(session: AsyncSession, settings: SystemSettings, now: datetime) -> str:
@@ -89,10 +98,35 @@ async def deliver(settings: Settings, appeal: Appeal, *, pdf: bytes) -> tuple[st
     return "sent", None
 
 
+async def hand_over_incident(
+    session: AsyncSession, incident_id: int, number: str, user: AuthUser, *, now: datetime
+) -> None:
+    """«Новый» → «Передан поставщику» for the incident the appeal ``number`` is about, with the
+    row of the history the card of T-41 would write; the caller commits (T-63, ADR-007). An
+    incident in any other status is left untouched: a person already moved it."""
+    incident = await locked_incident(session, incident_id)
+    if incident.status != "new":
+        return
+    incident.status = SENT_STATUS
+    incident.sent_to_provider_at = now
+    session.add(
+        IncidentEvent(
+            incident_id=incident.id,
+            kind="status_change",
+            from_status="new",
+            to_status=SENT_STATUS,
+            comment=HANDOVER_COMMENT.format(number=number),
+            author_user_id=user.id,
+            created_at=now,
+        )
+    )
+
+
 async def create_appeal(
     session: AsyncSession, body: AppealCreate, user: AuthUser, *, now: datetime
 ) -> AppealDetail:
-    """Send the appeal of ``body``: a row with a number and a PDF, then the letter itself."""
+    """Send the appeal of ``body``: a row with a number and a PDF, the incident it is about
+    handed over with it, then the letter itself."""
     facts = await appeal_facts(session, body, now=now)
     settings = await system_settings(session)
     context = facts.context
@@ -136,6 +170,9 @@ async def create_appeal(
             created_at=now,
         )
     )
+    # Before the first commit: the appeal and the transition succeed or fail together (T-63).
+    if body.incident_id is not None:
+        await hand_over_incident(session, body.incident_id, appeal.number, user, now=now)
     await session.commit()
 
     delivery_status, error = await deliver(get_settings(), appeal, pdf=appeal.pdf)
