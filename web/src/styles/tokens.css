@@ -226,6 +226,9 @@
   --icon-md: 20px;
   --icon-empty: 48px;
   --avatar-size: 32px;
+  /* Header, DESIGN.md §3.5: the 28px brand mark and the 40px profile chip around a 32px avatar. */
+  --brand-mark-size: 28px;
+  --profile-chip-height: 40px;
   /* Day strip of the school cabinet, DESIGN.md §3.27: 40px cells, 32 on a phone. */
   --day-cell-height: 40px;
   --day-cell-radius: 4px;

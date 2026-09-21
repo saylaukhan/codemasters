@@ -563,8 +563,10 @@ export const RESPONSIVE_TABLE_LABELS = {
   defaultOrder: 'По умолчанию',
 } as const
 
-/** Button that opens the navigation drawer at 1024px and narrower (DESIGN.md §3.5, §9.3). */
+/** Controls of the side navigation and of its drawer (DESIGN.md §3.5, §3.6, §9.3). */
 export const NAVIGATION_LABELS = {
   open: 'Открыть меню',
   title: 'Разделы',
+  expand: 'Развернуть меню',
+  fold: 'Свернуть меню',
 } as const
