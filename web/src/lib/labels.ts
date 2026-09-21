@@ -360,6 +360,16 @@ export const EXPORT_AGGREGATE_COLUMN_LABELS: Record<ExportAggregateColumn, strin
   problem_pct: 'Доля проблемных, %',
 }
 
+/** Summary of the export constructor (DESIGN.md §3.24, T-64): «Будет выгружено ≈ 12 480 строк». */
+export const EXPORT_ESTIMATE_LABELS = {
+  title: 'Будет выгружено',
+  /** Sign of an estimate: m_daily counts a touched day whole and holds no Wi-Fi. */
+  approximate: '≈',
+  rows: 'строк',
+  loading: 'считаем…',
+  error: 'не удалось оценить',
+} as const
+
 /** Sections of the side navigation (DESIGN.md §3.6). */
 export const SECTION_LABELS = {
   overview: 'Обзор',

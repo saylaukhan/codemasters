@@ -1,8 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
 
-import { createExport, downloadExport, getExports } from '../../api/exports'
+import { createExport, downloadExport, getExportEstimate, getExports } from '../../api/exports'
 import { getSchoolDevices, getSchools } from '../../api/schools'
 import type { ExportCreate, ExportJob } from '../../api/types'
+import { useDebouncedValue } from '../../app/useDebouncedValue'
+import { estimateQuery, type ExportDraft } from './request'
 
 // Schools offered at a time: the choice narrows by typing, the list is not paged.
 const SCHOOL_OPTIONS = 20
@@ -81,3 +84,22 @@ export const useExports = (page: number, pageSize: number) =>
 
 /** «Скачать» in the list of exports: the file of a ready export. */
 export const useDownloadExport = () => useMutation({ mutationFn: saveExport })
+
+// How long the summary waits after the last change of a filter before it asks for a new estimate (T-64).
+const ESTIMATE_DELAY_MS = 300
+
+/**
+ * «Будет выгружено ≈ N строк» for the draft (T-64): asked 300 ms after the last change of a filter, the
+ * previous number stays on screen while the new one is counted.
+ */
+export const useExportEstimate = (draft: ExportDraft) => {
+  const query = useDebouncedValue(
+    useMemo(() => estimateQuery(draft), [draft]),
+    ESTIMATE_DELAY_MS,
+  )
+  return useQuery({
+    queryKey: [...EXPORTS_KEY, 'estimate', query],
+    queryFn: ({ signal }) => getExportEstimate(query, signal),
+    placeholderData: keepPreviousData,
+  })
+}
