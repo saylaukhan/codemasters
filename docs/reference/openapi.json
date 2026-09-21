@@ -1932,6 +1932,107 @@
         }
       }
     },
+    "/api/schools/{school_id}/days": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Статус каждого из последних дней школы",
+        "description": "Полоса дней кабинета школы: по элементу на каждый локальный день Asia/Almaty, старые сверху, включая дни без замеров. День — «Нет соединения», если простой попал в рабочие часы школы (ADR-014); иначе худший замер дня по основным линиям без Wi‑Fi (ADR-012); иначе «Нет данных».",
+        "operationId": "list_school_days",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 90,
+              "minimum": 1,
+              "description": "Сколько последних локальных дней вернуть",
+              "default": 30,
+              "title": "Days"
+            },
+            "description": "Сколько последних локальных дней вернуть"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец окна, не включая; по умолчанию — текущий момент",
+              "title": "Period To"
+            },
+            "description": "Конец окна, не включая; по умолчанию — текущий момент"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolDays"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Школа не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/schools/{school_id}/devices": {
       "get": {
         "tags": [
@@ -14323,6 +14424,85 @@
         ],
         "title": "SchoolCreate",
         "description": "New school (ТЗ п. 14, п. 20); working hours start from the admin defaults (ADR-014)."
+      },
+      "SchoolDay": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date",
+            "description": "Локальный день Asia/Almaty"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SchoolStatus",
+            "description": "«Нет соединения» — простой в рабочие часы дня; иначе худший замер дня, иначе «Нет данных»"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Measurements Count",
+            "description": "Замеры основных линий без Wi‑Fi за день"
+          },
+          "problem_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Count",
+            "description": "Из них со статусом unstable, critical или offline"
+          },
+          "downtime_s": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Downtime S",
+            "description": "Простой в рабочие часы этого дня, секунды"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "status",
+          "measurements_count",
+          "problem_count",
+          "downtime_s"
+        ],
+        "title": "SchoolDay",
+        "description": "One local day of the school in the day strip of the cabinet (DESIGN.md §3.27, T-61)."
+      },
+      "SchoolDays": {
+        "properties": {
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From",
+            "description": "Начало первого дня окна, включительно"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To",
+            "description": "Конец окна, не включая"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/SchoolDay"
+            },
+            "type": "array",
+            "title": "Days",
+            "description": "По одному элементу на каждый день окна, включая дни без замеров"
+          }
+        },
+        "type": "object",
+        "required": [
+          "school_id",
+          "period_from",
+          "period_to",
+          "days"
+        ],
+        "title": "SchoolDays",
+        "description": "Day strip of the school cabinet: every local day of the window, oldest first (T-61)."
       },
       "SchoolDetail": {
         "properties": {

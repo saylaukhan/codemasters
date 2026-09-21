@@ -159,6 +159,36 @@ class SchoolDetail(BaseModel):
     )
 
 
+class SchoolDay(BaseModel):
+    """One local day of the school in the day strip of the cabinet (DESIGN.md §3.27, T-61)."""
+
+    # A calendar day of ``settings.timezone`` (ADR-014); the annotation is wrapped in
+    # ``Annotated`` because the name of the field shadows the ``date`` type in the class body.
+    date: Annotated[date, Field(description="Локальный день Asia/Almaty")]
+    status: SchoolStatus = Field(
+        description=(
+            "«Нет соединения» — простой в рабочие часы дня; иначе худший замер дня, "
+            "иначе «Нет данных»"
+        )
+    )
+    measurements_count: int = Field(ge=0, description="Замеры основных линий без Wi‑Fi за день")
+    problem_count: int = Field(
+        ge=0, description="Из них со статусом unstable, critical или offline"
+    )
+    downtime_s: float = Field(ge=0, description="Простой в рабочие часы этого дня, секунды")
+
+
+class SchoolDays(BaseModel):
+    """Day strip of the school cabinet: every local day of the window, oldest first (T-61)."""
+
+    school_id: int
+    period_from: datetime = Field(description="Начало первого дня окна, включительно")
+    period_to: datetime = Field(description="Конец окна, не включая")
+    days: list[SchoolDay] = Field(
+        description="По одному элементу на каждый день окна, включая дни без замеров"
+    )
+
+
 class ContractCompliance(BaseModel):
     """Sustained mismatch of a line with its contract speed (ТЗ п. 14, T-29).
 

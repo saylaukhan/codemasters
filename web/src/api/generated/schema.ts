@@ -416,6 +416,26 @@ export interface paths {
         patch: operations["update_school"];
         trace?: never;
     };
+    "/api/schools/{school_id}/days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Статус каждого из последних дней школы
+         * @description Полоса дней кабинета школы: по элементу на каждый локальный день Asia/Almaty, старые сверху, включая дни без замеров. День — «Нет соединения», если простой попал в рабочие часы школы (ADR-014); иначе худший замер дня по основным линиям без Wi‑Fi (ADR-012); иначе «Нет данных».
+         */
+        get: operations["list_school_days"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/schools/{school_id}/devices": {
         parameters: {
             query?: never;
@@ -4266,6 +4286,60 @@ export interface components {
             location?: components["schemas"]["GeoPoint"] | null;
         };
         /**
+         * SchoolDay
+         * @description One local day of the school in the day strip of the cabinet (DESIGN.md §3.27, T-61).
+         */
+        SchoolDay: {
+            /**
+             * Date
+             * Format: date
+             * @description Локальный день Asia/Almaty
+             */
+            date: string;
+            /** @description «Нет соединения» — простой в рабочие часы дня; иначе худший замер дня, иначе «Нет данных» */
+            status: components["schemas"]["SchoolStatus"];
+            /**
+             * Measurements Count
+             * @description Замеры основных линий без Wi‑Fi за день
+             */
+            measurements_count: number;
+            /**
+             * Problem Count
+             * @description Из них со статусом unstable, critical или offline
+             */
+            problem_count: number;
+            /**
+             * Downtime S
+             * @description Простой в рабочие часы этого дня, секунды
+             */
+            downtime_s: number;
+        };
+        /**
+         * SchoolDays
+         * @description Day strip of the school cabinet: every local day of the window, oldest first (T-61).
+         */
+        SchoolDays: {
+            /** School Id */
+            school_id: number;
+            /**
+             * Period From
+             * Format: date-time
+             * @description Начало первого дня окна, включительно
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец окна, не включая
+             */
+            period_to: string;
+            /**
+             * Days
+             * @description По одному элементу на каждый день окна, включая дни без замеров
+             */
+            days: components["schemas"]["SchoolDay"][];
+        };
+        /**
          * SchoolDetail
          * @description School card (ТЗ п. 13, DESIGN.md §3.15): identity, place, working hours, current state.
          */
@@ -6170,6 +6244,60 @@ export interface operations {
             };
             /** @description School ID уже занят другой школой (type school_code_taken) */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_school_days: {
+        parameters: {
+            query?: {
+                /** @description Сколько последних локальных дней вернуть */
+                days?: number;
+                /** @description Конец окна, не включая; по умолчанию — текущий момент */
+                period_to?: string | null;
+            };
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolDays"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
