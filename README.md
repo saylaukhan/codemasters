@@ -1,9 +1,9 @@
-# Мониторинг интернета ВКО
+# Jyldam · мониторинг интернета ВКО
 
 > `main` — стабильная, обновляет только лид перед демо или поставкой; `developing` — интеграционная, в неё вливаются задачи (ADR-001).
 > Как включиться в работу — [CONTRIBUTING.md](CONTRIBUTING.md); задачи — [docs/tasks/README.md](docs/tasks/README.md).
 > Архитектурные решения — [docs/architecture/decisions/README.md](docs/architecture/decisions/README.md); правила для ИИ-агентов — [AGENTS.md](AGENTS.md).
-> Интерфейс панели — [DESIGN.md](DESIGN.md).
+> Интерфейс панели — [DESIGN.md](DESIGN.md); поведение экранов, адаптивность и сценарии сверх ТЗ — [docs/design/README.md](docs/design/README.md), макеты — `docs/design/mockups/`.
 
 ## Что это
 
@@ -25,7 +25,8 @@ HTTPS/TLS отправляет результаты в API, а тот сохра
 | [docs/tasks/README.md](docs/tasks/README.md) | задачи T-01…T-58 со статусами, порядок внутри MVP, решения по умолчанию |
 | [docs/architecture/decisions/README.md](docs/architecture/decisions/README.md) | ADR-001…014 — принятые решения и как добавить новое |
 | [AGENTS.md](AGENTS.md) | правила для ИИ-агентов: что можно, что нельзя, инварианты из ТЗ |
-| [DESIGN.md](DESIGN.md) | дизайн-код панели: токены, компоненты, состояния экранов |
+| [DESIGN.md](DESIGN.md) | дизайн-код панели Jyldam v2: токены, компоненты, адаптивность |
+| [docs/design/README.md](docs/design/README.md) | что, где и как работает в дизайне v2; макеты всех экранов в `docs/design/mockups/` |
 | [LOCAL-CHECKS.md](LOCAL-CHECKS.md) | что осталось прогнать на живой машине: прогоны, которых не было |
 | [docs/checklist.md](docs/checklist.md) | чек-лист — гейт перед слиянием в `developing` |
 | [docs/worklog.md](docs/worklog.md) | отчёт по каждой слитой задаче |
