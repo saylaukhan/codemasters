@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { cardColumns, sortableColumns, tableLayout, visibleColumns } from './responsive-table'
+import { cardColumns, cardPage, pageRows, sortableColumns, tableLayout, visibleColumns } from './responsive-table'
 
 // The school list of T-24 as the scouting of T-62 prioritised it.
 const COLUMNS = [
@@ -57,5 +57,32 @@ describe('a row becomes a card (DESIGN.md §3.12, step 3)', () => {
 describe('sorting of the card list', () => {
   it('offers only the columns with a client comparator', () => {
     expect(keys(sortableColumns(COLUMNS))).toEqual(['school', 'download'])
+  })
+})
+
+describe('pagination of the card list (DESIGN.md §3.12: «Пагинация в подвале»)', () => {
+  const rows = Array.from({ length: 25 }, (_, index) => index + 1)
+
+  it('gives nothing to draw when the caller turned pagination off', () => {
+    expect(cardPage(false, 1, rows.length)).toBeUndefined()
+    expect(pageRows(rows, undefined)).toHaveLength(25)
+  })
+
+  it('counts the rows at hand when the caller says nothing', () => {
+    expect(cardPage(undefined, 1, rows.length)).toEqual({ current: 1, pageSize: 10, total: 25 })
+  })
+
+  it('lets the caller control the page and the size', () => {
+    expect(cardPage({ current: 3, pageSize: 20, total: 350 }, 1, rows.length)).toEqual({
+      current: 3,
+      pageSize: 20,
+      total: 350,
+    })
+  })
+
+  it('cuts the source only when it holds more than one page', () => {
+    expect(pageRows(rows, { current: 2, pageSize: 10, total: 25 })).toEqual([11, 12, 13, 14, 15, 16, 17, 18, 19, 20])
+    // The server already sent one page of 25 out of 350: the list shows it as it is.
+    expect(pageRows(rows, { current: 2, pageSize: 25, total: 350 })).toHaveLength(25)
   })
 })

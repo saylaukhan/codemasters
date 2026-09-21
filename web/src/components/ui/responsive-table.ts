@@ -63,3 +63,48 @@ export function sortableColumns<C extends object>(columns: readonly C[]): C[] {
     return typeof sorter === 'function' && key !== undefined
   })
 }
+/** What the caller gave `pagination`; AntD's own config, read back by the card list. */
+export interface CardPaginationInput {
+  current?: number
+  pageSize?: number
+  defaultPageSize?: number
+  total?: number
+}
+
+/** The page the card list shows right now (DESIGN.md §3.12: «Пагинация в подвале»). */
+export interface CardPage {
+  current: number
+  pageSize: number
+  total: number
+}
+
+/** AntD's own default page size; the card list follows the table it replaces. */
+export const DEFAULT_PAGE_SIZE = 10
+
+/**
+ * Page of the card list, or nothing when the caller turned pagination off. A controlled `current`
+ * wins over the list's own; `total` falls back to the rows at hand, which is the client-side case.
+ */
+export function cardPage(
+  pagination: CardPaginationInput | false | undefined,
+  ownCurrent: number,
+  rowCount: number,
+): CardPage | undefined {
+  if (pagination === false) return undefined
+  const config = pagination ?? {}
+  return {
+    current: config.current ?? ownCurrent,
+    pageSize: config.pageSize ?? config.defaultPageSize ?? DEFAULT_PAGE_SIZE,
+    total: config.total ?? rowCount,
+  }
+}
+
+/**
+ * Rows of one page. Like AntD, the source is cut only when it holds more than a page: a server
+ * that already sent one page (`total` bigger than the rows at hand) is shown as it is.
+ */
+export function pageRows<T>(rows: readonly T[], page: CardPage | undefined): T[] {
+  if (!page || rows.length <= page.pageSize) return [...rows]
+  const start = (page.current - 1) * page.pageSize
+  return rows.slice(start, start + page.pageSize)
+}

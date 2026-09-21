@@ -10,6 +10,25 @@
   min-width: 0;
 }
 
+/* The list itself; the sort select stands above it and the pagination under it (§3.12). */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.empty {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  padding: var(--space-6) 0;
+}
+
+.pagination {
+  min-width: 0;
+}
+
 .sort {
   display: flex;
   align-items: center;

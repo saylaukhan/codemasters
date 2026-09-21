@@ -1,11 +1,19 @@
-import { Select, Table, type TableProps } from 'antd'
+import { Empty, Pagination, Select, Spin, Table, type TableProps } from 'antd'
 import { useMemo, useState, type ReactNode } from 'react'
 
 import { useMediaQuery } from '../../app/useMediaQuery'
 import { RESPONSIVE_TABLE_LABELS } from '../../lib/labels'
 import { NARROW_SCREEN, PHONE_SCREEN } from '../../styles/theme'
 import styles from './ResponsiveTable.module.css'
-import { cardColumns, sortableColumns, tableLayout, visibleColumns, type ColumnPriority } from './responsive-table'
+import {
+  cardColumns,
+  cardPage,
+  pageRows,
+  sortableColumns,
+  tableLayout,
+  visibleColumns,
+  type ColumnPriority,
+} from './responsive-table'
 
 /** Column of `ResponsiveTable`: an AntD column plus the priority of DESIGN.md §3.12. */
 export type ResponsiveColumn<T> = NonNullable<TableProps<T>['columns']>[number] & {
@@ -71,7 +79,8 @@ const cellContent = <T extends object>(column: Renderable, row: T, index: number
  * from 1025px the plain AntD table; at 769–1024 it scrolls inside its card with the first column
  * pinned and the `minor` columns hidden; at 768px and narrower every row becomes a card — title,
  * status pill, up to four «подпись — значение» pairs and the row action — with a sort select above
- * the list built from the sortable columns. The rules themselves live in `responsive-table.ts`.
+ * the list built from the sortable columns. The list keeps the three states of §2.7 and the footer
+ * pagination of §3.12, which AntD gives the table for free. The rules live in `responsive-table.ts`.
  */
 export function ResponsiveTable<T extends object>({
   columns,
@@ -86,6 +95,7 @@ export function ResponsiveTable<T extends object>({
   const layout = card ? tableLayout(narrow, phone) : tableLayout(narrow, false)
 
   const [sortKey, setSortKey] = useState<string>()
+  const [ownPage, setOwnPage] = useState(1)
 
   const sortable = useMemo(
     () => sortableColumns(columns.map((column, index) => ({ ...column, key: columnKey(column, index) }))),
@@ -117,9 +127,29 @@ export function ResponsiveTable<T extends object>({
     )
   }
 
-  const pairs = cardColumns(columns, cardPairLimit)
+  // The key of a pair comes from the column's place in `columns`, so two columns without a key of
+  // their own stay apart after the filtering of `cardColumns`.
+  const keyed = columns.map((column, index) => ({ column, key: columnKey(column, index), priority: column.priority }))
+  const pairs = cardColumns(keyed, cardPairLimit)
   const rowId = (row: T, index: number): React.Key =>
     typeof rowKey === 'function' ? rowKey(row, index) : ((row as Record<string, React.Key>)[String(rowKey)] ?? index)
+
+  // The three states of DESIGN.md §2.7 and the footer pagination of §3.12: the plain table gets
+  // them from AntD, the card list has to keep them itself.
+  const { loading, locale, pagination, onChange } = props
+  const spin = typeof loading === 'object' ? loading : { spinning: loading === true }
+  const emptyText = typeof locale?.emptyText === 'function' ? locale.emptyText() : locale?.emptyText
+  const page = cardPage(pagination === false ? false : pagination, ownPage, rows.length)
+  const shown = pageRows(rows, page)
+  const changePage = (next: number, nextSize: number) => {
+    setOwnPage(next)
+    const config = pagination === false ? undefined : pagination
+    config?.onChange?.(next, nextSize)
+    onChange?.({ ...config, current: next, pageSize: nextSize }, {}, [], {
+      currentDataSource: rows,
+      action: 'paginate',
+    })
+  }
 
   return (
     <div className={styles.cards}>
@@ -137,26 +167,45 @@ export function ResponsiveTable<T extends object>({
           />
         </label>
       )}
-      {rows.map((row, index) => (
-        <div key={rowId(row, index)} className={styles.card}>
-          <div className={styles.head}>
-            <span className={styles.title}>{card.title(row)}</span>
-            {card.status?.(row)}
-          </div>
-          {card.description && <span className={styles.description}>{card.description(row)}</span>}
-          {pairs.length > 0 && (
-            <div className={styles.pairs}>
-              {pairs.map((column, columnIndex) => (
-                <div key={columnKey(column, columnIndex)} className={styles.pair}>
-                  <span className={styles.pairLabel}>{column.title as ReactNode}</span>
-                  <span className={styles.pairValue}>{cellContent(column, row, index)}</span>
+      <Spin {...spin}>
+        <div className={styles.list}>
+          {shown.length === 0 && !spin.spinning ? (
+            <div className={styles.empty}>{emptyText ?? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}</div>
+          ) : (
+            shown.map((row, index) => (
+              <div key={rowId(row, index)} className={styles.card}>
+                <div className={styles.head}>
+                  <span className={styles.title}>{card.title(row)}</span>
+                  {card.status?.(row)}
                 </div>
-              ))}
-            </div>
+                {card.description && <span className={styles.description}>{card.description(row)}</span>}
+                {pairs.length > 0 && (
+                  <div className={styles.pairs}>
+                    {pairs.map(({ column, key }) => (
+                      <div key={key} className={styles.pair}>
+                        <span className={styles.pairLabel}>{column.title as ReactNode}</span>
+                        <span className={styles.pairValue}>{cellContent(column, row, index)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {card.action && <div className={styles.action}>{card.action(row)}</div>}
+              </div>
+            ))
           )}
-          {card.action && <div className={styles.action}>{card.action(row)}</div>}
         </div>
-      ))}
+      </Spin>
+      {page && page.total > page.pageSize && (
+        <Pagination
+          className={styles.pagination}
+          align="center"
+          current={page.current}
+          pageSize={page.pageSize}
+          total={page.total}
+          showSizeChanger={false}
+          onChange={changePage}
+        />
+      )}
     </div>
   )
 }
