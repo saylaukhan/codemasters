@@ -36,6 +36,29 @@
 источника времени в планировщике.
 ```
 
+### 2026-09-21 · T-52 · Linux-пакет агента (systemd)
+Сделано: `agent/installer/linux/` — unit systemd с `User=vko-agent` и ограничениями systemd
+(`ProtectSystem=strict`, `NoNewPrivileges`, пустой `CapabilityBoundingSet`), `nfpm.yaml` на два
+формата (формат пакета в plan.md §15 не зафиксирован — собираются оба, `.deb` и `.rpm`),
+сценарии `postinstall` / `preremove` / `postremove`, общие для dpkg и rpm: системная учётная
+запись, папки `/etc/vko-agent` 0750 и `/var/lib/vko-agent` 0750, `vko-agent configure` из
+переменных `VKO_*`, unprivileged ICMP через `sysctl.d`, `enable --now`; удаление убирает unit,
+данные и токен остаются (ADR-006). `service.Name` и учётная запись службы стали платформенными:
+на Linux unit — `vko-agent.service`, поэтому `vko-agent status` видит пакетную службу.
+`.github/workflows/agent-linux.yml` собирает amd64 и arm64, а job `install-deb` реально ставит
+`.deb` на ubuntu-latest и проверяет автозапуск, `User=`, права `agent.yaml`, вывод `status` и
+что `purge` убирает unit. Тест `systemd_unit_test.go` не даёт unit'у разойтись с константами
+агента. Слияние: <хэш merge-коммита в developing>. Чек-лист пройден полностью, кроме пункта про
+400 строк diff: 710 строк, из них ~550 — сам пакет, workflow и документы.
+Не сделано: `.rpm` ни разу не ставился (в CI проверяется только `.deb` на amd64), arm64 не
+запускался, пакет переписывает `net.ipv4.ping_group_range` целиком, `vko-agent status` от root
+оставляет `queue.db-wal` от root, ручной `vko-agent install` без пакета по-прежнему даёт unit от
+root — пять строк в `docs/known-limitations.md`. Самообновления под systemd нет (так задумано,
+T-50). Отдельно: `TestRunConfigRotatesTokenOnRequest` (T-36) флакает под нагрузкой — нашлось при
+прогоне, к задаче не относится, не чинил.
+Потрачено / Застрял на: ~0,5 дня. Застрял на имени unit'а: kardianos/service строит его из
+`service.Name`, и пакетный `vko-agent.service` был бы не виден команде `status`.
+
 ### 2026-09-21 · T-51 · Rate limit API агентов и валидация диапазонов метрик
 Сделано: `RateLimitMiddleware` (`backend/app/core/ratelimit.py`) вокруг аудита — фиксированное
 окно в Redis (`INCR` + время жизни ключа), ключ по устройству из токена, для регистрации — по
