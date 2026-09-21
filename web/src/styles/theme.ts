@@ -165,7 +165,10 @@ export const SIZES = {
   drawerWidth: 480,
 } as const
 
-/** Width at which the side navigation collapses and the padding shrinks (inclusive). */
+/** Width at which the side navigation collapses to icons with tooltips (DESIGN.md §9.3). */
+export const COMPACT_SCREEN = '(max-width: 1279px)'
+
+/** Width at which the side navigation leaves the page for a drawer in the header (inclusive). */
 export const NARROW_SCREEN = '(max-width: 1024px)'
 
 /** Width at which tables become card lists and the page action sticks to the bottom (inclusive). */

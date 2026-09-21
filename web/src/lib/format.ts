@@ -118,6 +118,20 @@ export function formatDuration(seconds: number | null | undefined): string {
   return `${rest}${NBSP}мин`
 }
 
+/**
+ * Three Russian forms of a counted noun, in the order «1 школа», «2 школы», «5 школ»; the forms
+ * themselves live in labels.ts (ADR-013). Used by the status strip and the lists of days.
+ */
+export function plural(count: number, forms: readonly [string, string, string]): string {
+  const absolute = Math.abs(Math.trunc(count))
+  const tens = absolute % 100
+  if (tens >= 11 && tens <= 14) return forms[2]
+  const units = absolute % 10
+  if (units === 1) return forms[0]
+  if (units >= 2 && units <= 4) return forms[1]
+  return forms[2]
+}
+
 /** «только что», «2 мин назад», «3 ч назад»; older than a day — the date in Asia/Almaty. */
 export function formatRelative(value: DateInput, now: Date = new Date()): string {
   const date = toDate(value)

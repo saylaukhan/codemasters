@@ -48,7 +48,7 @@ describe('navigation of a role', () => {
   })
 
   it('keeps the whole panel for the roles of the oblast', () => {
-    expect(keys('oblast')).toEqual(['overview', 'map', 'schools', 'devices', 'analytics', 'incidents', 'appeals', 'exports', 'admin'])
+    expect(keys('oblast')).toEqual(['overview', 'map', 'schools', 'devices', 'incidents', 'appeals', 'analytics', 'exports', 'admin'])
     expect(keys('admin')).toContain('admin')
     // Школа and Район/город see everything but «Администрирование»: they have none of its rights.
     expect(keys('school')).not.toContain('admin')
@@ -83,6 +83,20 @@ describe('landing of «/»', () => {
 })
 
 describe('sections themselves', () => {
+  it('keeps the order of DESIGN.md §3.6, with «Администрирование» last', () => {
+    expect(SECTIONS.map((section) => section.key)).toEqual([
+      'overview',
+      'map',
+      'schools',
+      'devices',
+      'incidents',
+      'appeals',
+      'analytics',
+      'exports',
+      'admin',
+    ])
+  })
+
   it('names every section of the dictionary exactly once (ADR-013)', () => {
     expect(SECTIONS.map((section) => section.key).sort()).toEqual(Object.keys(SECTION_LABELS).sort())
     expect(PROVIDER_SECTIONS.every((key) => key in SECTION_LABELS)).toBe(true)

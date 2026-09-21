@@ -1,4 +1,90 @@
 /*
+ * Fonts of DESIGN.md §2.1: Manrope for the interface, JetBrains Mono for identifiers. The woff2
+ * subsets live in web/public/fonts, never on a CDN — the panel runs in a closed network (T-59).
+ * Both are variable fonts, so one file per subset covers the whole weight range. The subsets and
+ * their unicode-range come from the Google Fonts CSS API; `cyrillic-ext` carries the Kazakh
+ * letters Ә Ғ Қ Ң Ө Ұ Ү Һ and is needed by T-66. The licences are next to the files.
+ */
+
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/manrope-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/manrope-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/manrope-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/manrope-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/*
  * Design tokens of DESIGN.md v2 (front matter: colors, radius, spacing, control-heights, shadow,
  * motion, breakpoints). Besides theme.ts this is the only file in web/ with hex values and raw
  * px: components use var(--…) only. The names are the same as in v1, only the values changed
@@ -26,6 +112,8 @@
   --accent-hover: #2559c9;
   --accent-pressed: #1f4fb8;
   --accent-soft: #eaf0fe;
+  /* Border of a control that sits on --accent-soft: an active filter chip (DESIGN.md §3.9). */
+  --accent-border: rgba(46, 107, 230, 0.25);
   --text-on-accent: #ffffff;
 
   /* colors.status: main — marker, pill dot, day strip, cluster ring; bg and text — pill */
@@ -116,6 +204,8 @@
   --control-height-s: 32px;
   --control-height-m: 38px;
   --control-height-l: 44px;
+  /* Chip of the filter bar, DESIGN.md §3.9: between Small and the normal control. */
+  --chip-height: 36px;
 
   /* layout (DESIGN.md §2.2, §9) and fixed component sizes (§3) */
   --header-height: 64px;
@@ -138,6 +228,16 @@
   --icon-md: 20px;
   --icon-empty: 48px;
   --avatar-size: 32px;
+  /* Header, DESIGN.md §3.5: the 28px brand mark and the 40px profile chip around a 32px avatar. */
+  --brand-mark-size: 28px;
+  --profile-chip-height: 40px;
+  /* Day strip of the school cabinet, DESIGN.md §3.27: 40px cells, 32 on a phone. */
+  --day-cell-height: 40px;
+  --day-cell-radius: 4px;
+  /* Bar «fact against the threshold», DESIGN.md §3.10: 8px track with 2×14 ticks. */
+  --fact-bar-height: 8px;
+  --fact-tick-width: 2px;
+  --fact-tick-height: 14px;
   --border-width: 1px;
   --focus-ring-width: 2px;
   --touch-target: 44px;
@@ -167,6 +267,7 @@
   --accent-hover: #7aa3ff;
   --accent-pressed: #9dbbff;
   --accent-soft: rgba(91, 141, 255, 0.16);
+  --accent-border: rgba(91, 141, 255, 0.32);
   --text-on-accent: #0f1115;
 
   --status-normal-main: #2fbf72;
@@ -218,8 +319,9 @@
   color-scheme: dark;
 }
 
-/* Breakpoints of DESIGN.md §9 are inclusive: «at 1280px and narrower». */
-@media (max-width: 1280px) {
+/* Bands of DESIGN.md §9.3, each including its upper bound: «≥ 1280» keeps 32, «1025–1279»
+ * takes 24, «769–1024» and «≤ 768» take 16. 1280 itself belongs to the first band. */
+@media (max-width: 1279px) {
   :root {
     --content-padding: 24px;
   }
@@ -235,6 +337,7 @@
   :root {
     --card-padding: 16px 18px;
     --control-height-m: 44px;
+    --day-cell-height: 32px;
   }
 }
 

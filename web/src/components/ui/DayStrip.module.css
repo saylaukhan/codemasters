@@ -1,0 +1,55 @@
+/* Day strip of the school cabinet, DESIGN.md §3.27: N cells coloured by the status of the day. */
+.strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.days {
+  display: flex;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.day {
+  flex: 1 1 0;
+  min-width: 0;
+  height: var(--day-cell-height);
+  border-radius: var(--day-cell-radius);
+  background: var(--day-main);
+}
+
+.day[data-status='normal'] {
+  --day-main: var(--status-normal-main);
+}
+.day[data-status='unstable'] {
+  --day-main: var(--status-unstable-main);
+}
+.day[data-status='critical'] {
+  --day-main: var(--status-critical-main);
+}
+.day[data-status='offline'] {
+  --day-main: var(--status-offline-main);
+}
+.day[data-status='no_data'] {
+  --day-main: var(--status-no-data-main);
+}
+
+/* Three captions under the strip: the first date, the worst day, «сегодня» (DESIGN.md §3.27). */
+.captions {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.caption {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

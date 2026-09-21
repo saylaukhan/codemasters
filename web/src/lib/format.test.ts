@@ -12,6 +12,7 @@ import {
   formatSpeed,
   formatSpeedPair,
   formatTime,
+  plural,
 } from './format'
 
 const NBSP = ' '
@@ -72,5 +73,27 @@ describe('durations and relative time', () => {
     expect(formatRelative('2026-09-12T09:58:00Z', now)).toBe(`2${NBSP}мин назад`)
     expect(formatRelative('2026-09-12T07:00:00Z', now)).toBe(`3${NBSP}ч назад`)
     expect(formatRelative('2026-09-10T20:00:00Z', now)).toBe('11.09.2026')
+  })
+})
+
+describe('Russian plural of a counted noun', () => {
+  const SCHOOLS = ['школа', 'школы', 'школ'] as const
+
+  it('picks the form by the last digits, as the status strip prints it', () => {
+    expect(plural(1, SCHOOLS)).toBe('школа')
+    expect(plural(21, SCHOOLS)).toBe('школа')
+    expect(plural(3, SCHOOLS)).toBe('школы')
+    expect(plural(312, SCHOOLS)).toBe('школ')
+    expect(plural(0, SCHOOLS)).toBe('школ')
+  })
+
+  it('keeps the teens on the third form', () => {
+    expect(plural(11, SCHOOLS)).toBe('школ')
+    expect(plural(14, SCHOOLS)).toBe('школ')
+    expect(plural(112, SCHOOLS)).toBe('школ')
+  })
+
+  it('ignores the sign of a delta', () => {
+    expect(plural(-2, SCHOOLS)).toBe('школы')
   })
 })
