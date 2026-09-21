@@ -5,6 +5,7 @@ import { ApiError } from '../../api/client'
 import {
   getSchool,
   getSchoolContacts,
+  getSchoolDays,
   getSchoolDevices,
   getSchoolLines,
   getSchoolPoints,
@@ -36,6 +37,15 @@ export const useSchool = (schoolId: number) =>
   useQuery({
     queryKey: ['schools', schoolId],
     queryFn: ({ signal }) => getSchool(schoolId, signal),
+    refetchInterval: REFRESH_MS,
+    retry: retryUnlessMissing,
+  })
+
+/** Day strip of the cabinet (GET /api/schools/{id}/days, T-61): the last local days, oldest first. */
+export const useSchoolDays = (schoolId: number, days: number) =>
+  useQuery({
+    queryKey: ['schools', schoolId, 'days', days],
+    queryFn: ({ signal }) => getSchoolDays(schoolId, days, signal),
     refetchInterval: REFRESH_MS,
     retry: retryUnlessMissing,
   })
