@@ -20,6 +20,11 @@
   font-family: var(--font-mono);
 }
 
+/* «· VKO-UK-001» of the context line, separator included: a phone drops the whole part. */
+.contextCode {
+  white-space: nowrap;
+}
+
 /* The verdict itself: a status dot in a ring of its own light colour, then the phrase. */
 .verdict {
   display: inline-flex;
@@ -360,12 +365,21 @@
     font-size: var(--font-size-kpi);
   }
 
-  /* The tile turns into one line «подпись — число» with the bar under it (§9.3). */
-  .tileCaption {
-    justify-content: space-between;
+  /* The tile turns into one line «подпись — число» with the bar under it (§9.3): the caption and
+   * the figure share the first row, the bar takes the whole second one. */
+  .tile {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
   }
 
-  .term {
+  .tile > *:last-child {
+    grid-column: 1 / -1;
+  }
+
+  /* The English term of a tile and the code of the school are dropped on a phone (SchoolPhone.html). */
+  .term,
+  .contextCode {
     display: none;
   }
 

@@ -185,7 +185,11 @@ export function SchoolCabinetPage() {
   return (
     <div className={styles.page}>
       <p className={styles.context}>
-        {card.fullName} · {card.regionName} · <span className={styles.code}>{card.schoolCode}</span>
+        {card.fullName} · {card.regionName}
+        <span className={styles.contextCode}>
+          {' · '}
+          <span className={styles.code}>{card.schoolCode}</span>
+        </span>
       </p>
       <PageHeader
         title={
