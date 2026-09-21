@@ -1031,3 +1031,36 @@ auto`). Под ролью `vko_panel` предикат RLS сравнивает 
 **Сделано, когда:** либо поле добавлено в API и в форму «Настройки» (со списком поясов и
 тестом «чужой не видит»), либо строка убрана из `docs/product/admin-guide.md` §4 и пояс
 описан как значение окружения; `make openapi` перегенерирован, если менялся контракт.
+
+### T-61 · Тома `docker-compose.yml` без `:z`: на хосте с SELinux стек поднимается пустым · S · v1
+**Статус:** todo
+**Зачем:** найдено прогоном п. 6 `LOCAL-CHECKS.md` (2026-09-21, `docs/worklog.md`). На
+Fedora 44 с `SELinux=Enforcing` `docker compose up -d` даёт: `prometheus` в
+`Restarting (2)` с `open /etc/prometheus/prometheus.yml: permission denied`, а `grafana` —
+поднимается молча и провижинит **ноль** дашбордов и ноль источников данных, потому что
+`/etc/grafana/provisioning` и `/var/lib/grafana/dashboards` ему не читаются. В логе Grafana
+при этом стоит бодрое «finished to provision dashboards» — без ошибки. Причина не в правах
+файлов (0644), а в метке SELinux: bind-тома смонтированы без суффикса `:z`. Затронуты все
+монтирования репозитория, включая `deploy/Caddyfile` и `deploy/speedtest`.
+`docs/product/admin-guide.md` §1 не называет дистрибутив, так что администратор на
+RHEL / Rocky / AlmaLinux / Fedora упрётся в это на первом же шаге.
+**Где:** `docker-compose.yml` (тома `prometheus`, `grafana`, `caddy`, `speedtest`),
+`docker-compose.backup.yml`; упоминание в `docs/product/admin-guide.md` §11 «Что пошло не так».
+**Зависит от:** T-54
+**Сделано, когда:** на хосте с `SELinux=Enforcing` `docker compose up -d` поднимает
+`prometheus` и `grafana` без перезапусков, дашборд «Сервер мониторинга ВКО» и источник
+`vko-prometheus` видны в Grafana сразу после старта; проверено, что на хосте без SELinux
+ничего не сломалось.
+
+### T-62 · Панель «Доля ошибочных ответов за час» показывает «No data» вместо 0 % · XS · v1
+**Статус:** todo
+**Зачем:** найдено прогоном п. 6 `LOCAL-CHECKS.md` (2026-09-21). Выражение
+`sum(rate(vko_http_requests_total{status=~"5.."}[1h])) / clamp_min(…)` при полном отсутствии
+5xx не возвращает ни одной серии — делитель не спасает, пустой делимый обнуляет результат
+целиком. Дежурный видит «No data» ровно тогда, когда всё хорошо, и не может отличить это от
+неработающего сбора. Проверено на живом Prometheus: как есть — 0 серий, с
+`(sum(rate(…)) or vector(0))` — одна серия со значением 0.
+**Где:** `deploy/grafana/dashboards/server-health.json`, панель «Доля ошибочных ответов за час».
+**Зависит от:** T-54
+**Сделано, когда:** на стенде без единой 5xx панель показывает `0 %`, а не «No data»;
+остальные шесть панелей не затронуты.
