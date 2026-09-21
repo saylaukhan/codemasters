@@ -39,14 +39,16 @@ const ADMIN_PERMISSIONS = [
   'audit:read',
 ] as const
 
+// Order of DESIGN.md §3.6 and of the mockups: what breaks first stands above what explains it.
+// «Администрирование» is last and the shell pins it to the bottom of the navigation.
 export const SECTIONS: readonly Section[] = [
   { key: 'overview', path: '/overview', icon: LayoutDashboard, permissions: ['dashboard:read'], task: 'T-22' },
   { key: 'map', path: '/map', icon: MapIcon, permissions: ['map:read'], task: 'T-22' },
   { key: 'schools', path: '/schools', icon: School, permissions: ['schools:read'], task: 'T-24' },
   { key: 'devices', path: '/devices', icon: Monitor, permissions: ['devices:read'], task: 'T-26' },
-  { key: 'analytics', path: '/analytics', icon: ChartLine, permissions: ['analytics:read'], task: 'T-27' },
   { key: 'incidents', path: '/incidents', icon: TriangleAlert, permissions: ['incidents:read'], task: 'T-41' },
   { key: 'appeals', path: '/appeals', icon: Mail, permissions: ['appeals:read'], task: 'T-48' },
+  { key: 'analytics', path: '/analytics', icon: ChartLine, permissions: ['analytics:read'], task: 'T-27' },
   { key: 'exports', path: '/exports', icon: Download, permissions: ['exports:create'], task: 'T-30' },
   { key: 'admin', path: '/admin', icon: Settings, permissions: ADMIN_PERMISSIONS, task: 'T-34' },
 ]

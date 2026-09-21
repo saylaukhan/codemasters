@@ -1,0 +1,135 @@
+/* Strip of indicators, DESIGN.md §3.10: one card, columns split by hairlines, 4 in a row. */
+.strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+}
+
+/* Hairlines separate the cells; the outer edges stay with the card (DESIGN.md §1, rule 6). */
+.cell + .cell {
+  border-inline-start: var(--border-width) solid var(--border);
+}
+
+/* The first cell of a row touches the card edge, so it keeps no line of its own. */
+.cell:nth-child(4n + 1) {
+  border-inline-start: none;
+}
+
+.cell:nth-child(n + 5) {
+  border-block-start: var(--border-width) solid var(--border);
+}
+
+.label {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.figure {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.value {
+  color: var(--text-primary);
+  font-size: var(--font-size-kpi);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: 1.1;
+}
+
+/* Worse than the threshold (DESIGN.md §3.12): the number itself carries the warning. */
+.alert {
+  color: var(--status-critical-text);
+}
+
+.unit,
+.hint {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delta {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.delta[data-tone='good'] {
+  color: var(--status-normal-text);
+}
+
+.delta[data-tone='bad'] {
+  color: var(--status-critical-text);
+}
+
+.delta[data-tone='neutral'] {
+  color: var(--text-muted);
+}
+
+/* DESIGN.md §9.3: 2 columns at 769–1024, 1 at ≤768 with the number right of the caption. */
+@media (max-width: 1024px) {
+  .strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cell:nth-child(odd) {
+    border-inline-start: none;
+  }
+
+  .cell:nth-child(n + 3) {
+    border-block-start: var(--border-width) solid var(--border);
+  }
+}
+
+@media (max-width: 768px) {
+  .strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    column-gap: var(--space-3);
+    border-inline-start: none;
+  }
+
+  .cell + .cell {
+    border-block-start: var(--border-width) solid var(--border);
+  }
+
+  .figure {
+    justify-content: flex-end;
+  }
+
+  .hint,
+  .delta {
+    grid-column: 1 / -1;
+  }
+}
