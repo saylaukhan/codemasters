@@ -26,6 +26,7 @@ HTTPS/TLS отправляет результаты в API, а тот сохра
 | [docs/architecture/decisions/README.md](docs/architecture/decisions/README.md) | ADR-001…014 — принятые решения и как добавить новое |
 | [AGENTS.md](AGENTS.md) | правила для ИИ-агентов: что можно, что нельзя, инварианты из ТЗ |
 | [DESIGN.md](DESIGN.md) | дизайн-код панели: токены, компоненты, состояния экранов |
+| [LOCAL-CHECKS.md](LOCAL-CHECKS.md) | что осталось прогнать на живой машине: прогоны, которых не было |
 | [docs/checklist.md](docs/checklist.md) | чек-лист — гейт перед слиянием в `developing` |
 | [docs/worklog.md](docs/worklog.md) | отчёт по каждой слитой задаче |
 | [docs/known-limitations.md](docs/known-limitations.md) | что заведомо не доделано — это не баг |
@@ -119,7 +120,8 @@ Windows и systemd — регистрируется по коду установ
 
 Это не список багов, а список непроведённых проверок. Всё перечисленное написано и выверено по
 коду, но ни разу не выполнялось на работающем стенде: у разработки не было ни сервера, ни чистого
-Windows. Полный список недоделок — [docs/known-limitations.md](docs/known-limitations.md).
+Windows. Пошагово, с командами и ожидаемым результатом — [LOCAL-CHECKS.md](LOCAL-CHECKS.md);
+полный список недоделок — [docs/known-limitations.md](docs/known-limitations.md).
 
 | Что не проверено | Почему это важно | Чем закрывается |
 |---|---|---|
