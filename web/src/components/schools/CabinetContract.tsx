@@ -13,11 +13,13 @@ interface CabinetContractProps {
   line: LineDetail | undefined
   /** Support of the provider, from the contacts of the school (ТЗ п. 15); empty — no button. */
   supportPhone: string | null
+  /** SchoolPhone.html drops the row «Подключение» and widens the support button (DESIGN.md §9.3). */
+  phone?: boolean
   placeholder?: ReactNode
 }
 
 /** Card «Провайдер и договор»: who gives the internet and what he promised (ТЗ п. 10, п. 14). */
-export function CabinetContract({ line, supportPhone, placeholder }: CabinetContractProps) {
+export function CabinetContract({ line, supportPhone, phone = false, placeholder }: CabinetContractProps) {
   const connection = line && [line.connectionTypeName, CABINET_LINE_LABELS[line.status]].filter(Boolean)
   return (
     <section className={styles.card} aria-label={CABINET_LABELS.contract}>
@@ -27,8 +29,12 @@ export function CabinetContract({ line, supportPhone, placeholder }: CabinetCont
           <dl className={styles.fields}>
             <dt>{CABINET_FIELD_LABELS.provider}</dt>
             <dd>{line?.providerName ?? NO_VALUE}</dd>
-            <dt>{CABINET_FIELD_LABELS.connection}</dt>
-            <dd>{connection?.length ? connection.join(' · ') : NO_VALUE}</dd>
+            {!phone && (
+              <>
+                <dt>{CABINET_FIELD_LABELS.connection}</dt>
+                <dd>{connection?.length ? connection.join(' · ') : NO_VALUE}</dd>
+              </>
+            )}
             <dt>{CABINET_FIELD_LABELS.contract}</dt>
             <dd>{formatSpeedPair(line?.contractDownMbps, line?.contractUpMbps)}</dd>
             <dt>{CABINET_FIELD_LABELS.contractNumber}</dt>
@@ -40,12 +46,13 @@ export function CabinetContract({ line, supportPhone, placeholder }: CabinetCont
           {supportPhone && (
             <p className={styles.support}>
               <Button
+                block={phone}
                 href={telHref(supportPhone)}
                 icon={<Phone size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} aria-hidden />}
               >
-                {CABINET_LABELS.support}
+                {phone ? CABINET_LABELS.callSupport : CABINET_LABELS.support}
               </Button>
-              <span className={styles.contactRole}>{CABINET_LABELS.roundClock}</span>
+              {!phone && <span className={styles.contactRole}>{CABINET_LABELS.roundClock}</span>}
             </p>
           )}
         </>

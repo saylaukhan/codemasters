@@ -21,7 +21,10 @@ const SchoolCabinetPage = lazy(() =>
  * the card (ТЗ п. 16).
  */
 export function SchoolsSection() {
-  const { data: user } = useGetIdentity<CurrentUser>()
+  const { data: user, isLoading } = useGetIdentity<CurrentUser>()
+  // Until the role is known nothing is drawn: a school user must not see one frame of the oblast
+  // list or of the card of T-25 before the cabinet replaces it (LandingRoute does the same).
+  if (isLoading) return <ContentSkeleton rows={8} />
   const cabinet = user?.role === 'school'
   const ownSchoolId = cabinet ? user.scope.schoolId : null
 

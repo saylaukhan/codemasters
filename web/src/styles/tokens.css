@@ -234,8 +234,10 @@
   /* Day strip of the school cabinet, DESIGN.md §3.27: 40px cells, 32 on a phone. */
   --day-cell-height: 40px;
   --day-cell-radius: 4px;
-  /* Verdict of the school cabinet, DESIGN.md §3.27: a 14px status dot in a ring, 12px on a phone. */
+  /* Verdict of the school cabinet, DESIGN.md §3.27: a 14px status dot in a 5px ring of its own light
+   * colour; a phone draws 12px in a 4px ring (School.html, SchoolPhone.html). */
   --verdict-dot: 14px;
+  --verdict-ring: 5px;
   /* Bar «fact against the threshold», DESIGN.md §3.10: 8px track with 2×14 ticks. */
   --fact-bar-height: 8px;
   --fact-tick-width: 2px;
@@ -341,6 +343,7 @@
     --control-height-m: 44px;
     --day-cell-height: 32px;
     --verdict-dot: 12px;
+    --verdict-ring: 4px;
   }
 }
 

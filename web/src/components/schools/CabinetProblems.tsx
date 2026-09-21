@@ -12,6 +12,8 @@ interface CabinetProblemsProps {
   problems: readonly CabinetProblem[]
   /** «Вся история»: the list of the letters to the provider (T-48). */
   historyHref: string
+  /** SchoolPhone.html shortens the link to «Все» (DESIGN.md §9.3). */
+  phone?: boolean
   placeholder?: ReactNode
 }
 
@@ -19,12 +21,12 @@ interface CabinetProblemsProps {
  * Card «Проблемы и обращения» (DESIGN.md §3.27): what broke and what came of the letter about it,
  * in the words of the cabinet — one line per incident of the school and per appeal it sent.
  */
-export function CabinetProblems({ problems, historyHref, placeholder }: CabinetProblemsProps) {
+export function CabinetProblems({ problems, historyHref, phone = false, placeholder }: CabinetProblemsProps) {
   return (
     <section className={`${styles.card} ${styles.flush}`} aria-label={CABINET_LABELS.problems}>
       <div className={styles.head}>
         <h2 className={styles.title}>{CABINET_LABELS.problems}</h2>
-        <Link to={historyHref}>{CABINET_LABELS.history}</Link>
+        <Link to={historyHref}>{phone ? CABINET_LABELS.all : CABINET_LABELS.history}</Link>
       </div>
       {placeholder ?? (
         <ul className={styles.list}>

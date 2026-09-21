@@ -9,6 +9,7 @@ import {
   PROVIDER_SECTIONS,
   SCHOOL_SECTIONS,
   SECTIONS,
+  sectionPath,
 } from './sections'
 
 // Rights of backend/app/auth/permissions.py: what GET /api/auth/me answers for a role.
@@ -120,6 +121,11 @@ describe('sections themselves', () => {
       'exports',
       'admin',
     ])
+  })
+
+  it('gives the address of a section to a link that crosses sections', () => {
+    expect(sectionPath('appeals')).toBe('/appeals')
+    expect(sectionPath('schools')).toBe('/schools')
   })
 
   it('names every section of the dictionary exactly once (ADR-013)', () => {

@@ -25,9 +25,11 @@ interface CabinetContact {
 }
 
 /**
- * Card «Кому звонить» (DESIGN.md §3.27, ТЗ п. 15): the responsible people of the school and the
- * support of its provider, the phone always a `tel:` link. Three cards in a row on a wide screen,
- * call rows on a phone (§9.3). The card of the district office waits for a source of its data.
+ * Block «Кому звонить» (DESIGN.md §3.27, ТЗ п. 15): the responsible people of the school and the
+ * support of its provider, the phone always a `tel:` link. Three free-standing cards in a row on a
+ * wide screen, where the heading of the block is only its `aria-label` (School.html); a phone wraps
+ * the same people in one card with a visible heading and turns them into call rows (SchoolPhone.html,
+ * §9.3). The card of the district office waits for a source of its data.
  */
 export function CabinetContacts({ items, providerName, supportPhone, placeholder }: CabinetContactsProps) {
   const contacts: CabinetContact[] = items.map((contact) => ({
@@ -48,8 +50,8 @@ export function CabinetContacts({ items, providerName, supportPhone, placeholder
   }
 
   return (
-    <section className={`${styles.card} ${styles.flush}`} aria-label={CABINET_LABELS.contacts}>
-      <div className={styles.head}>
+    <section className={styles.contactsCard} aria-label={CABINET_LABELS.contacts}>
+      <div className={`${styles.head} ${styles.contactsHead}`}>
         <h2 className={styles.title}>{CABINET_LABELS.contacts}</h2>
       </div>
       {placeholder ?? (

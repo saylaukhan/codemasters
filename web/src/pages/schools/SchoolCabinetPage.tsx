@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
 import { ApiError } from '../../api/client'
-import { appealDraftPath, deviceCardPath } from '../../app/sections'
+import { appealDraftPath, deviceCardPath, sectionPath } from '../../app/sections'
 import { useMediaQuery } from '../../app/useMediaQuery'
 import { APPEAL_CREATE_PERMISSION, appealTargetQuery, schoolAppealTarget } from '../../components/appeals/appeals'
 import { useSchoolAppeals } from '../../components/appeals/queries'
@@ -86,6 +86,33 @@ export function SchoolCabinetPage() {
   const { open } = useNotification()
   const navigate = useNavigate()
 
+  const reportAction = (
+    <Button
+      kind="outlined"
+      icon={<FileDown size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} aria-hidden />}
+      loading={report.isPending}
+      onClick={() =>
+        report.mutate(schoolReportBody(schoolId, 'month'), {
+          onSuccess: ({ saved }) =>
+            !saved &&
+            open?.({
+              type: 'success',
+              message: CABINET_NOTICE_LABELS.reportPending,
+              description: CABINET_NOTICE_LABELS.reportPendingHint,
+            }),
+          onError: (error) =>
+            open?.({
+              type: 'error',
+              message: CABINET_NOTICE_LABELS.reportFailed,
+              description: error instanceof ApiError ? (error.detail ?? error.title) : error.message,
+            }),
+        })
+      }
+    >
+      {CABINET_LABELS.report}
+    </Button>
+  )
+
   if (school.isError) {
     if (school.error instanceof ApiError && school.error.status === 404) {
       return (
@@ -143,6 +170,7 @@ export function SchoolCabinetPage() {
     <CabinetContract
       line={mainLine}
       supportPhone={(canSeePhone && support?.providerSupportContact) || null}
+      phone={phone}
       placeholder={cardState(lines, mainLine ? null : <EmptyState title={CABINET_NOTICE_LABELS.noLine} />)}
     />
   )
@@ -160,7 +188,8 @@ export function SchoolCabinetPage() {
   const problemsCard = (
     <CabinetProblems
       problems={cabinetProblems(incidents.data?.items ?? [], appeals.data?.items ?? [])}
-      historyHref="/appeals"
+      historyHref={sectionPath('appeals')}
+      phone={phone}
       placeholder={
         cardState(incidents, null) ??
         cardState(appeals, null) ??
@@ -201,32 +230,9 @@ export function SchoolCabinetPage() {
           </span>
         }
         subtitle={checked}
-        actions={
-          <Button
-            kind="outlined"
-            icon={<FileDown size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} aria-hidden />}
-            loading={report.isPending}
-            onClick={() =>
-              report.mutate(schoolReportBody(schoolId, 'month'), {
-                onSuccess: ({ saved }) =>
-                  !saved &&
-                  open?.({
-                    type: 'success',
-                    message: CABINET_NOTICE_LABELS.reportPending,
-                    description: CABINET_NOTICE_LABELS.reportPendingHint,
-                  }),
-                onError: (error) =>
-                  open?.({
-                    type: 'error',
-                    message: CABINET_NOTICE_LABELS.reportFailed,
-                    description: error instanceof ApiError ? (error.detail ?? error.title) : error.message,
-                  }),
-              })
-            }
-          >
-            {CABINET_LABELS.report}
-          </Button>
-        }
+        // «Отчёт за месяц» stands next to the Action on a wide screen and is dropped on a phone,
+        // where the mockup leaves the Action alone in its bar (SchoolPhone.html).
+        actions={phone ? undefined : reportAction}
         stickyAction={
           canCreateAppeal && (
             <Button
@@ -249,6 +255,7 @@ export function SchoolCabinetPage() {
         latest={latest}
         availabilityPct={analytics.isPending ? undefined : analytics.data?.rows[0]?.availabilityPct}
         measurementsHref={device ? deviceCardPath(device.id) : undefined}
+        phone={phone}
       />
       {phone ? (
         <>

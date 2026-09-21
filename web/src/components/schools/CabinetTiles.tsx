@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import type { LatestMeasurement } from '../../api/types'
@@ -14,6 +15,8 @@ interface CabinetTilesProps {
   availabilityPct: number | null | undefined
   /** «Все замеры»: the history of the computer with the agent (T-26); without a computer — no link. */
   measurementsHref?: string
+  /** SchoolPhone.html shortens the footer line and puts the availability first (DESIGN.md §9.3). */
+  phone?: boolean
 }
 
 /**
@@ -21,7 +24,20 @@ interface CabinetTilesProps {
  * against the norm and the contract, the captions of the ticks — and a footer line with the rest of
  * the last measurement. At 768px and narrower the tiles stand one under another (§9.3).
  */
-export function CabinetTiles({ tiles, latest, availabilityPct, measurementsHref }: CabinetTilesProps) {
+export function CabinetTiles({ tiles, latest, availabilityPct, measurementsHref, phone = false }: CabinetTilesProps) {
+  const availability: ReactNode = (
+    <>
+      {phone ? CABINET_LABELS.availabilityCap : CABINET_LABELS.availability}{' '}
+      <span className={styles.strong}>
+        {availabilityPct === undefined ? NO_VALUE : formatPercent(availabilityPct)}
+      </span>
+    </>
+  )
+  const jitter = `${phone ? CABINET_LABELS.jitterLow : CABINET_LABELS.jitter} ${formatMs(latest?.jitterMs)}`
+  const loss = `${phone ? CABINET_LABELS.packetLossShort : CABINET_LABELS.packetLoss} ${formatPercent(latest?.packetLossPct, 0)}`
+  // The phone leads with the availability and drops the word «пакетов» (SchoolPhone.html).
+  const facts: ReactNode[] = phone ? [availability, jitter, loss] : [jitter, loss, availability]
+
   return (
     <section className={`${styles.card} ${styles.flush}`} aria-label={CABINET_LABELS.tiles}>
       <div className={styles.tiles}>
@@ -49,11 +65,12 @@ export function CabinetTiles({ tiles, latest, availabilityPct, measurementsHref 
       </div>
       <p className={styles.footer}>
         <span>
-          {CABINET_LABELS.jitter} {formatMs(latest?.jitterMs)} · {CABINET_LABELS.packetLoss}{' '}
-          {formatPercent(latest?.packetLossPct, 0)} · {CABINET_LABELS.availability}{' '}
-          <span className={styles.strong}>
-            {availabilityPct === undefined ? NO_VALUE : formatPercent(availabilityPct)}
-          </span>
+          {facts.map((fact, index) => (
+            <Fragment key={index}>
+              {index > 0 && ' · '}
+              {fact}
+            </Fragment>
+          ))}
         </span>
         {measurementsHref && <Link to={measurementsHref}>{CABINET_LABELS.allMeasurements}</Link>}
       </p>

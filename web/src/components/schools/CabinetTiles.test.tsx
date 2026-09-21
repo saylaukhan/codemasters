@@ -32,6 +32,18 @@ const html = renderToStaticMarkup(
   </MemoryRouter>,
 )
 
+const phoneHtml = renderToStaticMarkup(
+  <MemoryRouter>
+    <CabinetTiles
+      tiles={cabinetTiles(LATEST, MAIN)}
+      latest={LATEST}
+      availabilityPct={99.4}
+      measurementsHref="/devices/8"
+      phone
+    />
+  </MemoryRouter>,
+)
+
 describe('CabinetTiles (DESIGN.md §3.27)', () => {
   it('names the three metrics in Russian with their English term', () => {
     expect(html).toContain('Скорость загрузки')
@@ -63,5 +75,13 @@ describe('CabinetTiles (DESIGN.md §3.27)', () => {
     expect(html).toContain('99,4%')
     expect(html).toContain('href="/devices/8"')
     expect(html).toContain('Все замеры')
+  })
+
+  it('leads the footer of a phone with the availability and shortens the rest (SchoolPhone.html)', () => {
+    const footer = phoneHtml.slice(phoneHtml.indexOf('Доступность за 7 дней'))
+    expect(footer).toContain('Доступность за 7 дней')
+    expect(footer.indexOf('дрожание 6')).toBeGreaterThan(0)
+    expect(footer.indexOf('потери 0%')).toBeGreaterThan(footer.indexOf('дрожание 6'))
+    expect(phoneHtml).not.toContain('потери пакетов')
   })
 })

@@ -25,11 +25,14 @@
   white-space: nowrap;
 }
 
-/* The verdict itself: a status dot in a ring of its own light colour, then the phrase. */
+/* The verdict itself: a status dot in a ring of its own light colour, then the phrase. The heading
+ * of the cabinet is larger than a page title of the panel — 30px, 24px on a phone (School.html). */
 .verdict {
   display: inline-flex;
   align-items: center;
   gap: var(--space-3);
+  font-size: var(--font-size-3xl);
+  letter-spacing: var(--letter-spacing-tight);
 }
 
 .dot {
@@ -38,7 +41,7 @@
   height: var(--verdict-dot);
   border-radius: 50%;
   background: var(--status-main);
-  box-shadow: 0 0 0 var(--space-1) var(--status-bg);
+  box-shadow: 0 0 0 var(--verdict-ring) var(--status-bg);
 }
 
 .dot[data-status='normal'] {
@@ -108,6 +111,13 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-block);
+}
+
+/* DESIGN.md §9.3: from 1024 down the paired cards stand one under another, chart included. */
+@media (max-width: 1024px) {
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* Three tiles in a row; the hairline between them belongs to the card, not to the tile. */
@@ -299,13 +309,22 @@
   color: var(--text-muted);
 }
 
-/* «Кому звонить»: three cards in a row on a wide screen, call rows on a phone (§9.3). */
+/* «Кому звонить»: three free-standing cards in a row on a wide screen, where the block itself has
+ * no frame and no visible heading (School.html); a phone wraps them in one card with its title. */
+.contactsCard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.contactsHead {
+  display: none;
+}
+
 .contacts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-block);
-  padding: var(--card-padding);
-  padding-top: 0;
 }
 
 .contact {
@@ -361,6 +380,10 @@
     border-top: var(--border-width) solid var(--border);
   }
 
+  .verdict {
+    font-size: var(--font-size-kpi);
+  }
+
   .value {
     font-size: var(--font-size-kpi);
   }
@@ -387,11 +410,28 @@
     padding: var(--space-3) var(--card-padding);
   }
 
-  /* Every contact becomes a row with a call button instead of a printed number. */
+  /* The support button of «Провайдер и договор» fills the width of the card (SchoolPhone.html). */
+  .support > :first-child {
+    flex: 1 1 auto;
+  }
+
+  /* The three people move into one card with a visible heading and become call rows. */
+  .contactsCard {
+    overflow: hidden;
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--bg-surface);
+  }
+
+  .contactsHead {
+    display: flex;
+    padding: var(--card-padding);
+    padding-bottom: 0;
+  }
+
   .contacts {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
-    padding: 0;
   }
 
   .contact {

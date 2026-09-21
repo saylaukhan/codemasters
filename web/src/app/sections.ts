@@ -91,6 +91,10 @@ export const navigationSections = (
   granted: readonly string[] | undefined = user?.permissions,
 ): Section[] => SECTIONS.filter((section) => canOpenSection(section, granted) && inCabinet(section, user?.role))
 
+/** Address of a section of the navigation: a link across sections never writes the path itself. */
+export const sectionPath = (key: SectionKey): string =>
+  SECTIONS.find((section) => section.key === key)?.path ?? SECTIONS[0].path
+
 /** Card of one school (T-25): the popover of the map and the lists lead here. */
 export const schoolCardPath = (schoolId: number): string => `/schools/${schoolId}`
 
