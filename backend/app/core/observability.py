@@ -42,7 +42,6 @@ from prometheus_client import (
     multiprocess,
     start_http_server,
 )
-from starlette.routing import Match
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app import __version__
@@ -149,18 +148,29 @@ def render_metrics() -> tuple[bytes, str]:
 def route_template(scope: Scope) -> str:
     """Return the route template of the request, or ``unmatched``.
 
-    Starlette fills ``scope["route"]`` only inside the router, which runs after this
-    middleware, so the routes are matched here the same way the router matches them. A path
-    that matches but under another method (405) still names its route: the endpoint exists.
+    Read after the router has run, not before: the routers of ``app/api`` are attached with
+    ``include_router``, and the object that stands for one of them in ``app.routes`` carries
+    neither a path nor the routes inside it — matching against the top level finds it and
+    learns nothing. The router itself leaves the route it chose in ``scope["route"]``.
+
+    That route knows its own template only relative to the prefix it was included under
+    (``/schools/{school_id}``, not ``/api/schools/{school_id}``), and the prefix is nowhere in
+    the scope. So the full template is rebuilt from the address that was called: substitute the
+    parameters back into the template and whatever is left in front of it is the prefix.
     """
-    partial = ""
-    for route in scope["app"].routes:
-        match, _ = route.matches(scope)
-        if match == Match.FULL:
-            return str(getattr(route, "path_format", None) or route.path)
-        if match == Match.PARTIAL and not partial:
-            partial = str(getattr(route, "path_format", None) or route.path)
-    return partial or UNMATCHED
+    route = scope.get("route")
+    template = getattr(route, "path_format", None) or getattr(route, "path", None)
+    if template is None:
+        # Nothing matched (404), or the request never reached the router.
+        return UNMATCHED
+    called = scope.get("path", "")
+    try:
+        tail = str(template).format(**(scope.get("path_params") or {}))
+    except (IndexError, KeyError):
+        return str(template)
+    if tail and called.endswith(tail):
+        return called[: len(called) - len(tail)] + str(template)
+    return str(template)
 
 
 class MetricsMiddleware:
@@ -175,7 +185,6 @@ class MetricsMiddleware:
             return
 
         method = scope["method"]
-        path = route_template(scope)
         started = time.perf_counter()
         # An exception on the way out never reaches ``http.response.start``; the request still
         # ended for the client, and 500 is what the error handler answers (ADR-009).
@@ -190,6 +199,8 @@ class MetricsMiddleware:
         try:
             await self.app(scope, receive, record_status)
         finally:
+            # After the router: only then does the scope know which route answered.
+            path = route_template(scope)
             REQUEST_DURATION.labels(method, path).observe(time.perf_counter() - started)
             REQUESTS.labels(method, path, str(status)).inc()
 
