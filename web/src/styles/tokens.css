@@ -112,6 +112,8 @@
   --accent-hover: #2559c9;
   --accent-pressed: #1f4fb8;
   --accent-soft: #eaf0fe;
+  /* Border of a control that sits on --accent-soft: an active filter chip (DESIGN.md §3.9). */
+  --accent-border: rgba(46, 107, 230, 0.25);
   --text-on-accent: #ffffff;
 
   /* colors.status: main — marker, pill dot, day strip, cluster ring; bg and text — pill */
@@ -265,6 +267,7 @@
   --accent-hover: #7aa3ff;
   --accent-pressed: #9dbbff;
   --accent-soft: rgba(91, 141, 255, 0.16);
+  --accent-border: rgba(91, 141, 255, 0.32);
   --text-on-accent: #0f1115;
 
   --status-normal-main: #2fbf72;

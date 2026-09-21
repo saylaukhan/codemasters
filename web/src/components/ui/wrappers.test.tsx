@@ -115,6 +115,10 @@ describe('FilterChip (DESIGN.md §3.9)', () => {
     expect(active).toContain('data-active="true"')
     expect(active).toContain('Район:')
     expect(active).toContain('aria-label="Очистить фильтр: Район"')
+    // One pill holds both controls, so the cross is drawn inside it and not beside it (§3.9).
+    expect(active).toContain('data-clearable="true"')
+    // The cross is an icon button, so it carries both a label and a tooltip (DESIGN.md §3.0).
+    expect(active).toContain('aria-describedby=')
 
     const empty = renderToStaticMarkup(<FilterChip label="Район" />)
     expect(empty).toContain('data-active="false"')

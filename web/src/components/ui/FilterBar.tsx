@@ -1,3 +1,4 @@
+import { Tooltip } from 'antd'
 import { ChevronDown, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -34,24 +35,26 @@ export function FilterChip({
   disabled,
 }: FilterChipProps) {
   const active = value !== undefined && value !== ''
-  const chip = (
-    <button type="button" className={styles.chip} data-active={active} disabled={disabled} onClick={onClick}>
-      <span className={styles.chipLabel}>{active ? `${label}:` : label}</span>
-      {active && <span className={styles.chipValue}>{value}</span>}
-      {!active && (
-        <ChevronDown className={styles.chipIcon} size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} aria-hidden />
-      )}
-    </button>
-  )
-
-  if (!active || !onClear) return chip
-  // Two controls, so Tab reaches the clear button on its own (DESIGN.md §9.4).
+  const clearable = active && onClear !== undefined
+  const clearTitle = `${clearLabel}: ${label}`
+  // One pill, two controls inside it: the chip opens the menu, the cross clears the dimension on
+  // its own, so Tab reaches both (DESIGN.md §3.9 draws the pill, §9.4 asks for the keyboard).
   return (
-    <span className={styles.group}>
-      {chip}
-      <button type="button" className={styles.clear} aria-label={`${clearLabel}: ${label}`} onClick={onClear}>
-        <X size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} aria-hidden />
+    <span className={styles.group} data-active={active} data-clearable={clearable} data-disabled={disabled}>
+      <button type="button" className={styles.chip} data-active={active} disabled={disabled} onClick={onClick}>
+        <span className={styles.chipLabel}>{active ? `${label}:` : label}</span>
+        {active && <span className={styles.chipValue}>{value}</span>}
+        {!active && (
+          <ChevronDown className={styles.chipIcon} size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} aria-hidden />
+        )}
       </button>
+      {clearable && (
+        <Tooltip title={clearTitle}>
+          <button type="button" className={styles.clear} aria-label={clearTitle} disabled={disabled} onClick={onClear}>
+            <X size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} aria-hidden />
+          </button>
+        </Tooltip>
+      )}
     </span>
   )
 }
@@ -64,7 +67,7 @@ export interface FilterBarProps {
   /** Clears every dimension at once; the link is shown only when something is set. */
   onReset?: () => void
   resetLabel?: string
-  /** Read out by screen readers, e.g. «Фильтры школ». */
+  /** Read out by screen readers, e.g. «Фильтры школ»; the row is a `group`, not a landmark. */
   label?: string
 }
 
@@ -75,7 +78,7 @@ export interface FilterBarProps {
  */
 export function FilterBar({ search, children, onReset, resetLabel = FILTER_BAR_LABELS.reset, label }: FilterBarProps) {
   return (
-    <div className={styles.bar} role="search" aria-label={label}>
+    <div className={styles.bar} role="group" aria-label={label}>
       {search && <div className={styles.search}>{search}</div>}
       <div className={styles.chips}>{children}</div>
       {onReset && (

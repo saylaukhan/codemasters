@@ -35,43 +35,73 @@
   }
 }
 
-/* Chip itself: 36px, radius 10; inactive on the surface, active on the soft accent. */
-.chip {
+/* The pill itself, DESIGN.md §3.9 and mockup SchoolsList.html: 36px with radius 10, inactive on
+ * the surface with `--border-strong`, active on `--accent-soft` with an accent border. The chip
+ * and the clear button live inside it, so the row shows one pill and not two controls. */
+.group {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
   height: var(--chip-height);
   min-width: 0;
-  padding: 0 var(--space-3);
+  max-width: 100%;
   border: var(--border-width) solid var(--border-strong);
   border-radius: var(--radius-control);
   background: var(--bg-surface);
   color: var(--text-primary);
+  transition:
+    background var(--motion-duration) var(--motion-easing),
+    border-color var(--motion-duration) var(--motion-easing);
+}
+
+.group:hover:not([data-disabled='true']) {
+  background: var(--bg-subtle);
+}
+
+.group[data-active='true'] {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent-pressed);
+}
+
+.group[data-active='true']:hover:not([data-disabled='true']) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.group[data-disabled='true'] {
+  color: var(--text-muted);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 100%;
+  min-width: 0;
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
   font: inherit;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  transition:
-    background var(--motion-duration) var(--motion-easing),
-    border-color var(--motion-duration) var(--motion-easing);
-}
-
-.chip:hover:not(:disabled) {
-  background: var(--bg-subtle);
 }
 
 .chip:disabled {
-  color: var(--text-muted);
   cursor: not-allowed;
 }
 
 .chip[data-active='true'] {
-  border-color: transparent;
-  background: var(--accent-soft);
-  color: var(--accent-pressed);
   font-weight: var(--font-weight-semibold);
+}
+
+/* With a cross next to it the chip gives up its trailing padding, so the pill keeps its shape. */
+.group[data-clearable='true'] .chip {
+  padding-inline-end: var(--space-1);
 }
 
 .chipLabel {
@@ -90,31 +120,35 @@
   color: currentcolor;
 }
 
-/* The clear button is its own control: it must not open the chip's menu (DESIGN.md §9.4). */
+/* The clear button is its own control inside the pill: it must not open the chip's menu
+ * (DESIGN.md §9.4), and it fills the pill's height to keep the 36px hit area of §3.0. */
 .clear {
-  width: var(--icon-md);
-  height: var(--icon-md);
+  width: var(--chip-height);
+  height: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: none;
   padding: 0;
   border: none;
-  border-radius: 50%;
+  border-start-end-radius: inherit;
+  border-end-end-radius: inherit;
   background: transparent;
   color: currentcolor;
   cursor: pointer;
 }
 
-.group {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
+.clear:disabled {
+  cursor: not-allowed;
 }
 
-/* The touch area is 44px at 768px and narrower (DESIGN.md §9.3). */
+/* The touch area is 44px at 768px and narrower (DESIGN.md §9.3, §3.0). */
 @media (max-width: 768px) {
-  .chip {
+  .group {
     height: var(--control-height-l);
+  }
+
+  .clear {
+    width: var(--control-height-l);
   }
 }
