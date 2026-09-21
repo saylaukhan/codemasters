@@ -19,7 +19,7 @@ days ?= 90
 
 .PHONY: help up down api worker web agent-run \
 	check check-agent check-backend check-web \
-	migrate migration db-reset seed simulate openapi backup \
+	migrate migration db-reset seed simulate openapi api-pdf backup \
 	install agent-install backend-install web-install
 
 help: ## Показать этот список команд
@@ -108,6 +108,9 @@ simulate: ## Симулятор агентов: make simulate n=1000 days=90
 openapi: ## Экспорт схемы в docs/reference/openapi.json + генерация web/src/api/generated
 	cd backend && .venv/bin/python -m app.openapi_export ../docs/reference/openapi.json
 	cd web && npm run api:generate
+
+api-pdf: ## Описание API одним PDF из docs/reference/openapi.json (поставка, T-57)
+	cd backend && .venv/bin/python -m app.openapi_pdf ../docs/reference/openapi.json ../docs/reference/api.pdf
 
 # --- Dependencies -------------------------------------------------------------------------
 
