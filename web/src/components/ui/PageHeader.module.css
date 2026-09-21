@@ -46,6 +46,8 @@
   margin: 0 0 var(--space-1);
   color: var(--text-muted);
   font-size: var(--font-size-sm);
+}
+
 /* The single Action of the screen at 768px and narrower (DESIGN.md §9.3): a 56px bar pinned to the
  * bottom of the window with a hairline above it. The button inside fills the bar. */
 .sticky {
