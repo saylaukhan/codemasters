@@ -1,0 +1,112 @@
+/* «Требуют внимания», DESIGN.md §3.28: hairline rows of school, reason and since when. */
+.body {
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--space-2) var(--space-2);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  transition: background var(--motion-duration) var(--motion-easing);
+}
+
+.row:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.dot {
+  flex: none;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: 50%;
+  background: var(--row-main);
+}
+
+.what {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.school {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+}
+
+.where {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.why {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+
+.reason {
+  color: var(--row-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.since {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+/* «Ещё 11 школ»: pushed to the bottom, so the card ends level with the map next to it. */
+.more {
+  margin: auto 0 0;
+  padding: var(--space-2) var(--space-block) var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.row[data-status='normal'] {
+  --row-main: var(--status-normal-main);
+  --row-text: var(--status-normal-text);
+}
+.row[data-status='unstable'] {
+  --row-main: var(--status-unstable-main);
+  --row-text: var(--status-unstable-text);
+}
+.row[data-status='critical'] {
+  --row-main: var(--status-critical-main);
+  --row-text: var(--status-critical-text);
+}
+.row[data-status='offline'] {
+  --row-main: var(--status-offline-main);
+  --row-text: var(--status-offline-text);
+}
+.row[data-status='no_data'] {
+  --row-main: var(--status-no-data-main);
+  --row-text: var(--status-no-data-text);
+}

@@ -38,10 +38,20 @@ export type ExportAggregateColumn =
   | 'problem_pct'
 
 export type DashboardSummary = Schema<'DashboardSummary'>
+/** The period-dependent half of the KPIs: the same six numbers describe the previous period (T-60). */
+export type DashboardPeriodKpis = Schema<'DashboardPeriodKpis'>
+/** Schools per status at `period_to`, counted before the status filter narrows them (T-60). */
+export type SchoolStatusCounts = Schema<'SchoolStatusCounts'>
 export type SchoolMapCollection = Schema<'SchoolMapFeatureCollection'>
 export type SchoolMapFeature = Schema<'SchoolMapFeature'>
 export type RegionMapCollection = Schema<'RegionMapFeatureCollection'>
 export type MapFilterOptions = Schema<'MapFilterOptions'>
+
+// «Требуют внимания» of the main screen (T-60): what is wrong, where, and since when.
+export type AttentionPage = Schema<'AttentionPage'>
+export type AttentionItem = Schema<'AttentionItem'>
+export type AttentionKind = Schemas['AttentionKind']
+export type AttentionReason = Schemas['AttentionReason']
 
 export type SchoolListItem = Schema<'SchoolListItem'>
 export type SchoolSort = Schemas['SchoolSort']

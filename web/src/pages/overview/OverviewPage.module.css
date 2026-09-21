@@ -1,7 +1,37 @@
+/* Main screen, DESIGN.md §3.28 and §9.1: blocks in a column 20px apart. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-block);
+  min-width: 0;
+}
+
+/* The map is the wider of the two (1,55 against 1 in `Main.html`). */
+.row {
+  display: flex;
+  gap: var(--space-block);
+  min-width: 0;
+}
+
+.mapCard {
+  flex: 1.55 1 0;
+}
+
+.attentionCard {
+  flex: 1 1 0;
+}
+
 .map {
   height: 60vh;
 }
 
-.error {
-  margin-bottom: var(--space-4);
+/* DESIGN.md §9.3: at 1024px and narrower the two cards stack, the map first. */
+@media (max-width: 1024px) {
+  .row {
+    flex-direction: column;
+  }
+
+  .map {
+    height: 50vh;
+  }
 }

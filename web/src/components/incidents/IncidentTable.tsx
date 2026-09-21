@@ -73,9 +73,12 @@ interface IncidentTableProps {
   pageSize: number
   loading: boolean
   empty: ReactNode
-  onPageChange: (page: number, pageSize: number) => void
+  /** Required while the footer is there: a cut list of five rows turns it off instead (T-60). */
+  onPageChange?: (page: number, pageSize: number) => void
   /** The school card leaves its own school out. */
   showSchool?: boolean
+  /** The main screen shows the five newest incidents and pages them nowhere (DESIGN.md §3.28). */
+  pagination?: boolean
 }
 
 /** Incidents of ТЗ п. 19, newest first; pages are on the server (T-41). */
@@ -88,6 +91,7 @@ export function IncidentTable({
   empty,
   onPageChange,
   showSchool = true,
+  pagination = true,
 }: IncidentTableProps) {
   return (
     <Table<IncidentListItem>
@@ -98,17 +102,19 @@ export function IncidentTable({
       loading={loading}
       scroll={{ x: 'max-content' }}
       locale={{ emptyText: empty }}
-      pagination={{
-        current: page,
-        pageSize,
-        total,
-        pageSizeOptions: PAGE_SIZES.map(String),
-        showSizeChanger: true,
-        showTotal: (count, [from, to]) => `${from}–${to} из ${count}`,
-      }}
-      onChange={(pagination) => {
-        const size = pagination.pageSize ?? pageSize
-        onPageChange(size === pageSize ? (pagination.current ?? 1) : 1, size)
+      pagination={
+        pagination && {
+          current: page,
+          pageSize,
+          total,
+          pageSizeOptions: PAGE_SIZES.map(String),
+          showSizeChanger: true,
+          showTotal: (count, [from, to]) => `${from}–${to} из ${count}`,
+        }
+      }
+      onChange={(next) => {
+        const size = next.pageSize ?? pageSize
+        onPageChange?.(size === pageSize ? (next.current ?? 1) : 1, size)
       }}
     />
   )
