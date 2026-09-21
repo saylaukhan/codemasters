@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Jyldam · вход</title>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA;font-family:Manrope,system-ui,sans-serif;color:#171D26;-webkit-font-smoothing:antialiased}
+a{color:#2E6BE6;text-decoration:none}a:hover{color:#2559C9}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; background: #F5F7FA; color: #171D26; font-family: Manrope, system-ui, sans-serif; position: relative;">
+  <div style="position: absolute; top: 24px; right: 32px; display: inline-flex; align-items: center; height: 34px; padding: 3px; border-radius: 999px; background: #FFFFFF; border: 1px solid rgba(23,29,38,0.08); gap: 2px;">
+    <button type="button" style="height: 26px; padding: 0 10px; border-radius: 999px; border: 0; background: transparent; color: #5B6472; font-size: 12.5px; font-weight: 500; font-family: inherit; cursor: pointer;">Қаз</button>
+    <button type="button" style="height: 26px; padding: 0 10px; border-radius: 999px; border: 0; background: #EAF0FE; color: #1F4FB8; font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer;">Рус</button>
+  </div>
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+    <span style="width: 56px; height: 56px; border-radius: 16px; background: #2E6BE6; display: inline-flex; align-items: center; justify-content: center;"><svg width="34" height="34" viewBox="0 0 28 28" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15h4.5l3-6.5 4 12 3-7 2 1.5H24"/></svg></span>
+    <span style="font-size: 26px; font-weight: 600; letter-spacing: -0.02em;">Jyldam</span>
+    <span style="font-size: 14px; color: #5B6472;">Мониторинг интернета в школах ВКО</span>
+  </div>
+  <form style="background: #FFFFFF; border: 1px solid rgba(23,29,38,0.06); border-radius: 16px; box-shadow: 0 1px 2px rgba(23,29,38,0.04); width: 420px; box-sizing: border-box; padding: 28px 28px 24px; display: flex; flex-direction: column; gap: 16px; margin: 0;">
+    <h1 style="margin: 0 0 4px; font-size: 20px; font-weight: 600;">Вход в систему</h1>
+    <label style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; color: #5B6472;">E-mail</span><input type="email" value="rayon@example.kz" autocomplete="username" style="height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(23,29,38,0.14); font: inherit; font-size: 15px; color: #171D26; background: #FFFFFF; width: 100%; box-sizing: border-box;"></label>
+    <label style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; color: #5B6472;">Пароль</span>
+      <span style="display: flex; align-items: center; height: 44px; padding: 0 6px 0 14px; border-radius: 10px; border: 1px solid #2E6BE6; box-shadow: 0 0 0 3px rgba(46,107,230,0.18); background: #FFFFFF; box-sizing: border-box;">
+        <input type="password" value="password" autocomplete="current-password" style="border: 0; outline: 0; font: inherit; font-size: 15px; color: #171D26; background: transparent; flex-grow: 1; min-width: 0;">
+        <button type="button" aria-label="Показать пароль" style="width: 32px; height: 32px; border-radius: 8px; border: 0; background: transparent; color: #8B94A1; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </span>
+    </label>
+    <button type="submit" style="height: 44px; border-radius: 10px; background: #2E6BE6; color: #FFFFFF; font-size: 15px; font-weight: 600; border: 0; font-family: inherit; cursor: pointer; margin-top: 4px;">Войти</button>
+    <a href="#" style="font-size: 13px; font-weight: 500; text-align: center;">Забыли пароль?</a>
+  </form>
+  <div style="font-size: 12.5px; color: #8B94A1; text-align: center; line-height: 1.6;">Поддержка: [телефон] · [e-mail]</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
