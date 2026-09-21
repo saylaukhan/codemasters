@@ -40,3 +40,10 @@
 .breadcrumbs {
   font-size: var(--font-size-sm);
 }
+
+/* Caption of the context above the title, DESIGN.md §3.7: where we are and how much is in view. */
+.context {
+  margin: 0 0 var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}

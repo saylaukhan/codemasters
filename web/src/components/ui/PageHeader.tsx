@@ -10,6 +10,8 @@ export interface Crumb {
 }
 
 interface PageHeaderProps {
+  /** Caption of the context above the title: «Вся область · 350 школ» (DESIGN.md §3.7). */
+  context?: ReactNode
   title: string
   /** For example «Обновлено 2 мин назад» from format.ts. */
   subtitle?: ReactNode
@@ -20,7 +22,7 @@ interface PageHeaderProps {
   mono?: boolean
 }
 
-export function PageHeader({ title, subtitle, breadcrumbs, actions, mono = false }: PageHeaderProps) {
+export function PageHeader({ context, title, subtitle, breadcrumbs, actions, mono = false }: PageHeaderProps) {
   return (
     <header className={styles.header}>
       {breadcrumbs && breadcrumbs.length > 0 && (
@@ -33,6 +35,7 @@ export function PageHeader({ title, subtitle, breadcrumbs, actions, mono = false
       )}
       <div className={styles.row}>
         <div>
+          {context && <p className={styles.context}>{context}</p>}
           <h1 className={mono ? `${styles.title} ${styles.mono}` : styles.title}>{title}</h1>
           {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
         </div>

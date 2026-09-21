@@ -3,6 +3,7 @@
 import type {
   AnalyticsLevel,
   AppealDeliveryStatus,
+  AttentionReason,
   AuditAction,
   AuditEntityType,
   AnalyticsPeriod,
@@ -115,6 +116,23 @@ export const APPEAL_LABELS = {
   notFoundHint: 'Его нет или оно вне вашей области видимости.',
   noTarget: 'Обращение не о чем',
   noTargetHint: 'Откройте черновик кнопкой «Создать обращение» в карточке инцидента или школы.',
+} as const
+
+/** Columns of the incident list (T-41), header of `IncidentTable`. */
+export const INCIDENT_COLUMN_LABELS = {
+  number: 'Номер',
+  school: 'Школа',
+  status: 'Статус',
+  line: 'Линия и поставщик',
+  basis: 'Основания',
+  startedAt: 'Начало',
+  duration: 'Длительность',
+  responsible: 'Ответственный',
+} as const
+
+/** Footer of a paged table: «1–25 из 143». */
+export const TABLE_PAGINATION_LABELS = {
+  total: (from: number, to: number, count: number) => `${from}–${to} из ${count}`,
 } as const
 
 /** Columns of the appeal list (T-48). */
@@ -569,4 +587,77 @@ export const NAVIGATION_LABELS = {
   title: 'Разделы',
   expand: 'Развернуть меню',
   fold: 'Свернуть меню',
+} as const
+
+/** Blocks of the main screen of the oblast and of a district (DESIGN.md §3.28, `Main.html`). */
+export const OVERVIEW_LABELS = {
+  statusStrip: 'Школы по статусу',
+  map: 'Карта области',
+  mapOpen: 'Открыть карту',
+  attention: 'Требуют внимания',
+  kpi: 'Показатели за период',
+  kpiCompare: 'к предыдущему периоду',
+  incidents: 'Последние инциденты',
+  incidentsAll: 'Все инциденты',
+  incidentsEmpty: 'Открытых инцидентов нет',
+  incidentsEmptyHint: 'Инцидент открывается, когда показатели линии нарушают правило подряд или дольше заданного.',
+  /** No previous period to compare with, so the delta line says so instead (docs/design/README.md §4.1). */
+  firstData: 'первые данные',
+  /** Caption of the context above the title: «Вся область · 350 школ» (DESIGN.md §3.7). */
+  context: (scope: string, count: string, noun: string) => `${scope} · ${count} ${noun}`,
+  subtitle: (time: string) => `Данные на ${time} · основные линии`,
+  /** «Нет данных» is display-only (ADR-004): a footnote under the strip, not a fifth column. */
+  noData: (count: string, noun: string) => `${SCHOOL_STATUS_LABELS.no_data}: ${count} ${noun}`,
+} as const
+
+/** Verdict of the main screen (DESIGN.md §3.28): the title is a sentence about the whole selection. */
+export const OVERVIEW_VERDICT_LABELS = {
+  loading: 'Собираем данные',
+  empty: 'Школ по заданным фильтрам нет',
+  all: (count: string, noun: string) => `Все ${count} ${noun} сегодня в норме`,
+  part: (normal: string, noun: string, total: string) => `${normal} ${noun} из ${total} сегодня в норме`,
+} as const
+
+/** The eight KPIs of ТЗ п. 4 on the main screen; the captions are those of `Main.html`. */
+export const OVERVIEW_KPI_LABELS = {
+  schools: 'Подключённые школы',
+  devices: 'Компьютеры с агентом',
+  activeDevices: 'На связи сейчас',
+  measurements: 'Замеров за период',
+  avgDownload: 'Средняя загрузка',
+  avgUpload: 'Средняя отдача',
+  avgPing: 'Средний отклик',
+  problemDevices: 'Проблемные устройства',
+  registry: (total: string) => `из ${total} в реестре`,
+  of: (total: string) => `из ${total}`,
+} as const
+
+/** Why a row of «Требуют внимания» is there; an incident says its metric instead (§4.1). */
+export const ATTENTION_REASON_LABELS: Record<AttentionReason, string> = {
+  offline: 'Нет связи',
+  critical: SCHOOL_STATUS_LABELS.critical,
+  incident_unassigned: 'Инцидент',
+  appeal_unanswered: 'Обращение без ответа',
+}
+
+/**
+ * Metric of an incident row of «Требуют внимания», in the words of `Main.html`: the English terms
+ * of `INCIDENT_METRIC_LABELS` belong to the incident card, not to this list (docs/design §4.1).
+ */
+export const ATTENTION_METRIC_LABELS: Record<IncidentMetric, string> = {
+  download_mbps: 'Загрузка',
+  upload_mbps: 'Отдача',
+  ping_ms: 'Отклик',
+  jitter_ms: 'Дрожание',
+  packet_loss_pct: 'Потери',
+  no_connection: ATTENTION_REASON_LABELS.offline,
+}
+
+/** Second line of a row of «Требуют внимания»: since when it has been so. */
+export const ATTENTION_LABELS = {
+  since: (moment: string) => `с ${moment}`,
+  unassignedSince: (moment: string) => `без ответственного с ${moment}`,
+  more: (count: string, noun: string) => `Ещё ${count} ${noun}`,
+  empty: 'Ничего не требует внимания',
+  emptyHint: 'Школы без связи, инциденты без ответственного и обращения без ответа появятся здесь.',
 } as const
