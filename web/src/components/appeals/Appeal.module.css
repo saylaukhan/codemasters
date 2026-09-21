@@ -49,6 +49,21 @@
   font-weight: var(--font-weight-semibold);
 }
 
+/* «Отправить обращение» with the note of T-63 under it: the caption wraps, the Action keeps its place. */
+.sendAction {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  max-width: 34ch;
+}
+
+.sendHint {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  text-align: right;
+}
+
 /* «Черновик создан автоматически»: a quiet note over the editor, no AI decoration (DESIGN.md §7). */
 .note {
   margin: 0;

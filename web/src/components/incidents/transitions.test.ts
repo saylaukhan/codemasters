@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest'
 
 import type { IncidentStatus, UserRole } from '../../api/types'
 import { INCIDENT_STATUS_ORDER } from '../../lib/labels'
-import { allowedTargets, canClose, canMove, commentRequired, INCIDENT_TRANSITIONS, isTransition } from './transitions'
+import {
+  allowedTargets,
+  canClose,
+  canMove,
+  commentRequired,
+  INCIDENT_TRANSITIONS,
+  isTransition,
+  targetsHint,
+} from './transitions'
 
 // The table of T-41 written out pair by pair: every other pair of the 36 is refused.
 const ALLOWED = new Set([
@@ -78,5 +86,23 @@ describe('targets of a user', () => {
   it('requires a comment only to close', () => {
     expect(INCIDENT_STATUS_ORDER.filter(commentRequired)).toEqual(['closed'])
     expect(commentRequired(undefined)).toBe(false)
+  })
+})
+
+describe('hint of the available transitions', () => {
+  it('names the targets in the order of ТЗ п. 19', () => {
+    expect(targetsHint(allowedTargets('sent_to_provider', user('admin')))).toBe(
+      'Доступно: В работе, Ожидает информации, Устранён',
+    )
+    expect(targetsHint(allowedTargets('resolved', user('oblast')))).toBe('Доступно: В работе, Закрыт')
+    expect(targetsHint(allowedTargets('resolved', user('provider')))).toBe('Доступно: В работе')
+  })
+
+  it('says so when nothing is available', () => {
+    expect(targetsHint([])).toBe('Из этого статуса переходов нет')
+    expect(targetsHint(allowedTargets('closed', user('admin')))).toBe('Из этого статуса переходов нет')
+    expect(targetsHint(allowedTargets('new', user('school', ['incidents:read'])))).toBe(
+      'Из этого статуса переходов нет',
+    )
   })
 })

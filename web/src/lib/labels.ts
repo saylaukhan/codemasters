@@ -64,6 +64,15 @@ export const INCIDENT_STATUS_ORDER: readonly IncidentStatus[] = [
   'closed',
 ]
 
+/**
+ * Hint under «Новый статус» of the card (DESIGN.md §3.17, T-63): the whole row of the table of transitions,
+ * «Доступно: В работе, Ожидает информации, Устранён». A status with nothing left says so instead.
+ */
+export const INCIDENT_TARGETS_LABELS = {
+  available: 'Доступно',
+  none: 'Из этого статуса переходов нет',
+} as const
+
 /** Switch of the incidents section (DESIGN.md §3.18): the table of T-41 or the kanban of T-43. */
 export const INCIDENT_VIEW_LABELS = {
   list: 'Список',
@@ -114,6 +123,8 @@ export const APPEAL_LABELS = {
   filteredEmptyHint: 'Измените или сбросьте фильтры.',
   notFound: 'Обращение не найдено',
   notFoundHint: 'Его нет или оно вне вашей области видимости.',
+  /** Under «Отправить» of a draft about an incident: the sending hands the incident over itself (T-63, ADR-007). */
+  incidentHandover: 'После отправки инцидент в статусе «Новый» перейдёт в «Передан поставщику»',
   noTarget: 'Обращение не о чем',
   noTargetHint: 'Откройте черновик кнопкой «Создать обращение» в карточке инцидента или школы.',
 } as const
