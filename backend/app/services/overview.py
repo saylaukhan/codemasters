@@ -8,6 +8,7 @@ Measurement values cover main lines only and never Wi-Fi (ADR-012).
 """
 
 import json
+from collections import Counter
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -27,7 +28,7 @@ from app.models import (
     Region,
     School,
 )
-from app.schemas.dashboard import DashboardSummary
+from app.schemas.dashboard import DashboardPeriodKpis, DashboardSummary, SchoolStatusCounts
 from app.schemas.map import (
     MapFilterOption,
     MapFilterOptions,
@@ -51,11 +52,15 @@ class OverviewFilters:
     statuses: Sequence[SchoolStatus] | None = None
 
 
-async def selected_schools(
-    session: AsyncSession, filters: OverviewFilters, *, now: datetime
-) -> dict[int, SchoolStatus]:
-    """Active schools matching the filters, with their status at ``now``, by id."""
-    query = select(School.id).where(School.is_active)
+def school_candidates(filters: OverviewFilters, *, only_active: bool = True) -> Select[Any]:
+    """Ids of the schools the district, provider and connection-type filters select.
+
+    The status filter is not one of them: it is applied to the statuses afterwards by ``narrow``,
+    so the counters of the status strip see the whole selection (docs/design/README.md §4.1).
+    """
+    query = select(School.id)
+    if only_active:
+        query = query.where(School.is_active)
     if filters.region_id is not None:
         query = query.where(School.region_id == filters.region_id)
     line_filters = []
@@ -69,11 +74,51 @@ async def selected_schools(
             .where(Line.school_id == School.id, Line.status != "disabled", *line_filters)
             .exists()
         )
-    school_ids = list(await session.scalars(query))
-    statuses = await school_statuses(session, school_ids, now=now)
-    if filters.statuses:
-        return {i: status for i, status in statuses.items() if status in filters.statuses}
-    return statuses
+    return query
+
+
+async def school_selection(
+    session: AsyncSession, filters: OverviewFilters, *, now: datetime
+) -> dict[int, SchoolStatus]:
+    """Every candidate school with its status at ``now``, before the status filter (T-60)."""
+    school_ids = list(await session.scalars(school_candidates(filters)))
+    return await school_statuses(session, school_ids, now=now)
+
+
+def narrow(
+    statuses: dict[int, SchoolStatus], wanted: Sequence[SchoolStatus] | None
+) -> dict[int, SchoolStatus]:
+    """Schools of ``statuses`` whose status is one of ``wanted``; all of them when it is empty."""
+    if not wanted:
+        return statuses
+    return {i: status for i, status in statuses.items() if status in wanted}
+
+
+async def selected_schools(
+    session: AsyncSession, filters: OverviewFilters, *, now: datetime
+) -> dict[int, SchoolStatus]:
+    """Active schools matching the filters, with their status at ``now``, by id."""
+    return narrow(await school_selection(session, filters, now=now), filters.statuses)
+
+
+def status_counts(statuses: dict[int, SchoolStatus]) -> SchoolStatusCounts:
+    """Schools per status; every status is present, so the five sum to the selection (T-60)."""
+    counted = Counter(statuses.values())
+    return SchoolStatusCounts(
+        normal=counted["normal"],
+        unstable=counted["unstable"],
+        critical=counted["critical"],
+        offline=counted["offline"],
+        no_data=counted["no_data"],
+    )
+
+
+async def schools_in_registry(session: AsyncSession, filters: OverviewFilters) -> int:
+    """Schools of the same filters together with the switched-off ones: «350 из 366 в реестре»."""
+    query = select(func.count()).select_from(
+        school_candidates(filters, only_active=False).subquery()
+    )
+    return await session.scalar(query) or 0
 
 
 def main_line_measurements(
@@ -94,35 +139,47 @@ def main_line_measurements(
     return conditions
 
 
-async def dashboard_summary(
-    session: AsyncSession,
-    filters: OverviewFilters,
-    *,
-    period_from: datetime,
-    period_to: datetime,
-) -> DashboardSummary:
-    """The eight KPIs of ТЗ п. 4 over the selected schools for the period."""
-    school_ids = list(await selected_schools(session, filters, now=period_to))
-    if not school_ids:
-        return DashboardSummary(
-            period_from=period_from,
-            period_to=period_to,
-            schools_count=0,
-            devices_count=0,
-            active_devices_count=0,
-            measurements_count=0,
-            avg_download_mbps=None,
-            avg_upload_mbps=None,
-            avg_ping_ms=None,
-            problem_devices_count=0,
-        )
-
-    devices = (
+def registered_devices(school_ids: Collection[int]) -> Select[Any]:
+    """Count of the computers of the schools that are not blocked (ТЗ п. 4, ADR-005)."""
+    return (
         select(func.count())
         .select_from(Device)
         .join(MonitoringPoint, MonitoringPoint.id == Device.monitoring_point_id)
         .where(MonitoringPoint.school_id.in_(school_ids), Device.status == "active")
     )
+
+
+def no_measurements() -> DashboardPeriodKpis:
+    """KPIs of a period in which nothing was measured and nobody was heard."""
+    return DashboardPeriodKpis(
+        active_devices_count=0,
+        measurements_count=0,
+        avg_download_mbps=None,
+        avg_upload_mbps=None,
+        avg_ping_ms=None,
+        problem_devices_count=0,
+    )
+
+
+def has_data(kpis: DashboardPeriodKpis) -> bool:
+    """Whether a period is worth comparing with: something was measured or somebody was heard."""
+    return kpis.measurements_count > 0 or kpis.active_devices_count > 0
+
+
+async def period_kpis(
+    session: AsyncSession,
+    school_ids: Collection[int],
+    *,
+    period_from: datetime,
+    period_to: datetime,
+) -> DashboardPeriodKpis:
+    """KPIs of ТЗ п. 4 that depend on the period, over the given schools.
+
+    The schools are passed in and never re-selected, so the previous period of ``previous``
+    answers over exactly the same schools as the current one: a school added in between would
+    otherwise read as a school that changed (T-60).
+    """
+    devices = registered_devices(school_ids)
     heard = (
         select(Heartbeat.device_id)
         .where(
@@ -165,17 +222,57 @@ async def dashboard_summary(
     )
     problem_devices = select(func.count()).where(last.c.quality_status.in_(PROBLEM_STATUSES))
 
-    return DashboardSummary(
-        period_from=period_from,
-        period_to=period_to,
-        schools_count=len(school_ids),
-        devices_count=await session.scalar(devices) or 0,
+    return DashboardPeriodKpis(
         active_devices_count=await session.scalar(devices.where(or_(heard, measured))) or 0,
         measurements_count=totals[0],
         avg_download_mbps=totals[1],
         avg_upload_mbps=totals[2],
         avg_ping_ms=totals[3],
         problem_devices_count=await session.scalar(problem_devices) or 0,
+    )
+
+
+async def dashboard_summary(
+    session: AsyncSession,
+    filters: OverviewFilters,
+    *,
+    period_from: datetime,
+    period_to: datetime,
+) -> DashboardSummary:
+    """The KPIs of ТЗ п. 4, the status strip and the previous period over the selected schools.
+
+    The strip is counted before the status filter and the registry count includes the
+    switched-off schools, so «312 из 350» and «350 из 366 в реестре» of the main screen come
+    from one request (docs/design/README.md §4.1, T-60).
+    """
+    all_statuses = await school_selection(session, filters, now=period_to)
+    counts = status_counts(all_statuses)
+    total_in_registry = await schools_in_registry(session, filters)
+    school_ids = list(narrow(all_statuses, filters.statuses))
+    common = {
+        "period_from": period_from,
+        "period_to": period_to,
+        "schools_count": len(school_ids),
+        "schools_total_count": total_in_registry,
+        "status_counts": counts,
+    }
+    if not school_ids:
+        return DashboardSummary.model_validate(
+            no_measurements().model_dump() | common | {"devices_count": 0, "previous": None},
+        )
+
+    current = await period_kpis(session, school_ids, period_from=period_from, period_to=period_to)
+    length = period_to - period_from
+    earlier = await period_kpis(
+        session, school_ids, period_from=period_from - length, period_to=period_from
+    )
+    return DashboardSummary.model_validate(
+        current.model_dump()
+        | common
+        | {
+            "devices_count": await session.scalar(registered_devices(school_ids)) or 0,
+            "previous": earlier if has_data(earlier) else None,
+        },
     )
 
 

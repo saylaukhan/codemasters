@@ -1097,7 +1097,7 @@
           "dashboard"
         ],
         "summary": "Сводка главного экрана: KPI",
-        "description": "Восемь KPI из ТЗ п. 4 по школам в области видимости, отобранным фильтрами; status — статус школы на момент period_to (ADR-004), как на карте. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Замеры, средние и проблемные устройства — за период, по основным линиям, без Wi-Fi (ADR-012).",
+        "description": "Восемь KPI из ТЗ п. 4 по школам в области видимости, отобранным фильтрами; status — статус школы на момент period_to (ADR-004), как на карте. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Замеры, средние и проблемные устройства — за период, по основным линиям, без Wi-Fi (ADR-012). status_counts считается до фильтра по статусу, поэтому сумма пяти чисел не меняется при клике по колонке полосы; schools_total_count включает отключённые школы. previous — те же показатели за предыдущий период такой же длины по тем же школам; null, если за тот период не было ни замеров, ни heartbeat.",
         "operationId": "get_dashboard_summary",
         "security": [
           {
@@ -1220,6 +1220,136 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/attention": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Требуют внимания: школы, инциденты и обращения, которые ждут человека",
+        "description": "Школы со статусом «Нет соединения» и «Критично» на момент period_to, инциденты без ответственного и обращения «Передан поставщику» без движения дольше окон из настроек (attention_incident_unassigned_hours, attention_appeal_no_answer_hours). Фильтры отбирают школы так же, как GET /api/dashboard/summary. Порядок: severity по возрастанию, затем since от старого к новому; total — число строк до ограничения limit, для подписи «Ещё N школ».",
+        "operationId": "get_attention",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region Id"
+            }
+          },
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "connection_type_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Type Id"
+            }
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Момент, на который собирается список; по умолчанию — текущий",
+              "title": "Period To"
+            },
+            "description": "Момент, на который собирается список; по умолчанию — текущий"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "description": "Сколько строк вернуть",
+              "default": 10,
+              "title": "Limit"
+            },
+            "description": "Сколько строк вернуть"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttentionPage"
                 }
               }
             }
@@ -9238,6 +9368,190 @@
         "title": "AppealUpdate",
         "description": "Status change or comment by the provider or a user; at least one of them."
       },
+      "AttentionItem": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/AttentionKind"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/AttentionReason"
+          },
+          "severity": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Severity",
+            "description": "Ключ сортировки, меньше — хуже: 1 «Нет соединения», 2 «Критично», 3 инцидент без ответственного, 4 обращение без ответа"
+          },
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "school_code": {
+            "type": "string",
+            "title": "School Code"
+          },
+          "school_name": {
+            "type": "string",
+            "title": "School Name"
+          },
+          "region_name": {
+            "type": "string",
+            "title": "Region Name"
+          },
+          "provider_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Name",
+            "description": "Поставщик: у школы — основной линии, у инцидента и обращения — их линии"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchoolStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Статус школы; null у строки инцидента и обращения"
+          },
+          "incident_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Id"
+          },
+          "incident_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Number"
+          },
+          "appeal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appeal Id"
+          },
+          "appeal_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appeal Number"
+          },
+          "metric": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IncidentMetric"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Первое основание инцидента: из него строится причина словами (§4.1)"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Since",
+            "description": "Школа — когда её в последний раз слышали или мерили, иначе period_to; инцидент — started_at; обращение — sent_at"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "reason",
+          "severity",
+          "school_id",
+          "school_code",
+          "school_name",
+          "region_name",
+          "provider_name",
+          "status",
+          "incident_id",
+          "incident_number",
+          "appeal_id",
+          "appeal_number",
+          "metric",
+          "since"
+        ],
+        "title": "AttentionItem",
+        "description": "One row of «Требуют внимания»: what is wrong, where, and since when (§4.1)."
+      },
+      "AttentionKind": {
+        "type": "string",
+        "enum": [
+          "school",
+          "incident",
+          "appeal"
+        ]
+      },
+      "AttentionPage": {
+        "properties": {
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total",
+            "description": "Сколько строк до ограничения limit: подпись «Ещё N школ»"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_to",
+          "total",
+          "items"
+        ],
+        "title": "AttentionPage",
+        "description": "Rows that ask for a person at ``period_to``, the worst first (§4.1)."
+      },
+      "AttentionReason": {
+        "type": "string",
+        "enum": [
+          "offline",
+          "critical",
+          "incident_unassigned",
+          "appeal_unanswered"
+        ]
+      },
       "AuditAction": {
         "type": "string",
         "enum": [
@@ -9635,30 +9949,8 @@
         "title": "CurrentUser",
         "description": "User of the access token: role, scope and permissions to shape the panel.\n\nPermissions only hide what the panel cannot use: the API checks them again (ТЗ п. 16)."
       },
-      "DashboardSummary": {
+      "DashboardPeriodKpis": {
         "properties": {
-          "period_from": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Period From"
-          },
-          "period_to": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Period To"
-          },
-          "schools_count": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Schools Count",
-            "description": "Подключённые школы: активные школы по фильтрам"
-          },
-          "devices_count": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Devices Count",
-            "description": "Зарегистрированные компьютеры, кроме заблокированных"
-          },
           "active_devices_count": {
             "type": "integer",
             "minimum": 0.0,
@@ -9716,10 +10008,6 @@
         },
         "type": "object",
         "required": [
-          "period_from",
-          "period_to",
-          "schools_count",
-          "devices_count",
           "active_devices_count",
           "measurements_count",
           "avg_download_mbps",
@@ -9727,8 +10015,127 @@
           "avg_ping_ms",
           "problem_devices_count"
         ],
+        "title": "DashboardPeriodKpis",
+        "description": "KPIs that depend on the period, so the previous period of equal length also answers them.\n\nMeasurement values cover main lines only, without Wi-Fi (ADR-012)."
+      },
+      "DashboardSummary": {
+        "properties": {
+          "active_devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Active Devices Count",
+            "description": "Устройства, выходившие на связь за период: heartbeat или замер"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Measurements Count",
+            "description": "Замеры за период"
+          },
+          "avg_download_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Download Mbps",
+            "description": "null — замеров за период нет"
+          },
+          "avg_upload_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Upload Mbps",
+            "description": "null — замеров за период нет"
+          },
+          "avg_ping_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Ping Ms",
+            "description": "null — замеров за период нет"
+          },
+          "problem_devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Devices Count",
+            "description": "Устройства, чей последний замер за период — unstable, critical или offline"
+          },
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To"
+          },
+          "schools_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Count",
+            "description": "Подключённые школы: активные школы по фильтрам"
+          },
+          "schools_total_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Total Count",
+            "description": "Школы тех же фильтров вместе с отключёнными: подпись «350 из 366 в реестре»"
+          },
+          "devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Count",
+            "description": "Зарегистрированные компьютеры, кроме заблокированных"
+          },
+          "status_counts": {
+            "$ref": "#/components/schemas/SchoolStatusCounts",
+            "description": "Школы по статусам на period_to, до применения фильтра по статусу"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DashboardPeriodKpis"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Те же показатели за предыдущий период той же длины; null — данных за него нет"
+          }
+        },
+        "type": "object",
+        "required": [
+          "active_devices_count",
+          "measurements_count",
+          "avg_download_mbps",
+          "avg_upload_mbps",
+          "avg_ping_ms",
+          "problem_devices_count",
+          "period_from",
+          "period_to",
+          "schools_count",
+          "schools_total_count",
+          "devices_count",
+          "status_counts",
+          "previous"
+        ],
         "title": "DashboardSummary",
-        "description": "KPIs in the order of ТЗ п. 4 for the applied period.\n\nMeasurement values cover main lines only, without Wi-Fi (ADR-012)."
+        "description": "KPIs in the order of ТЗ п. 4 for the applied period, with the status strip and the deltas.\n\n``previous`` covers the period of the same length that ends at ``period_from``, counted over\nthe same schools; it is null while that period holds neither a measurement nor a heartbeat,\nand the panel says «первые данные» instead of a delta (docs/design/README.md §4.1)."
       },
       "DeviceDetail": {
         "properties": {
@@ -14822,6 +15229,46 @@
           "offline",
           "no_data"
         ]
+      },
+      "SchoolStatusCounts": {
+        "properties": {
+          "normal": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Normal"
+          },
+          "unstable": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unstable"
+          },
+          "critical": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Critical"
+          },
+          "offline": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offline"
+          },
+          "no_data": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "No Data",
+            "description": "Показ, а не статус качества (ТЗ п. 13, ADR-004)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "normal",
+          "unstable",
+          "critical",
+          "offline",
+          "no_data"
+        ],
+        "title": "SchoolStatusCounts",
+        "description": "Schools per status at ``period_to`` (ТЗ п. 13, ADR-004).\n\nCounted over the schools the district, provider and connection-type filters select, before\nthe status filter narrows them: the five numbers always sum to the same selection, so a\nclick on a column of the status strip does not rewrite the strip (docs/design/README.md §4.1)."
       },
       "SchoolUpdate": {
         "properties": {
