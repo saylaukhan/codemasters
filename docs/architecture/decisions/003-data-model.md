@@ -12,7 +12,7 @@
   и `line_id`; статус считается вверх по цепочке. Справочники `regions` (PostGIS), `providers`, `connection_types`; поля таблиц — plan.md §5.
 - `lines.status` — `main | reserve | disabled`, `ip_ranges` — для сверки внешнего IP. Договор — поля
   `contract_down_mbps`, `contract_up_mbps`, `contract_number`, `contract_date` в `lines`, не в порогах (п. 11, п. 14).
-- `monitoring_points.is_primary` — главная точка школы; `devices.status` — `active | blocked`, `devices.token_hash` — argon2 (ADR-005).
+- `monitoring_points.is_primary` — главная точка школы; `devices.status` — `active | blocked`, `devices.token_hash` — `sha256$…`, алгоритм назван в самой строке (ADR-005).
 - `school_contacts` — единственная таблица с персональными данными: ФИО, должность, телефон, e-mail,
   контакт поддержки провайдера, `updated_at` (п. 15).
 - `measurements` и `heartbeats` — hypertables TimescaleDB. `measurement_uuid` — уникальный индекс (ADR-006);

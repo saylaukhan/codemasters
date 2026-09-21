@@ -118,7 +118,7 @@ Celery/Redis; панель — React 18 + Ant Design 5 (ADR-002). Кода в р
 | `agent/internal/*` | `service/` (Windows/systemd), `scheduler/` (слоты, джиттер), `probe/` (связь, ping/jitter/loss), `speed/` (librespeed, ndt7), `netinfo/`, `queue/` (SQLite), `api/` (клиент, токен, повторы), `secure/` (DPAPI / файл 600), `update/` |
 | `agent/installer/wix/` | MSI (WiX v4), `VKO-Agent.msi`; служба `VKOMonitorAgent` |
 | `backend/app/main.py` | приложение FastAPI, middleware аудита и ошибок |
-| `backend/app/core/` | config (pydantic-settings), db (async engine), security (argon2, JWT), deps |
+| `backend/app/core/` | config (pydantic-settings), db (async engine), security (argon2id и sha256, JWT), deps |
 | `backend/app/api/` | роутеры: `agent.py`, `devices.py`, `auth.py`, `schools.py`, `dashboard.py`, `map.py`, `analytics.py`, `incidents.py`, `appeals.py`, `exports.py`, `admin/*.py` |
 | `backend/app/models/` | SQLAlchemy 2, одна таблица — один файл |
 | `backend/app/schemas/` | Pydantic v2: запрос и ответ каждого эндпоинта |
@@ -171,10 +171,10 @@ Celery/Redis; панель — React 18 + Ant Design 5 (ADR-002). Кода в р
 
 ## 7. Команды
 
-Цели `Makefile` появятся в T-01; до этого пункты чек-листа выполняются вручную (ADR-001).
+Полный список — `make help`.
 
 ```bash
-make up            # docker compose up -d db redis speedtest — инфраструктура для разработки
+make up            # docker compose up -d db redis speedtest ndt7 — инфраструктура для разработки
 make down          # docker compose down (без -v: данные остаются)
 make api           # uvicorn app.main:app --reload на http://localhost:8000 (Swagger: /api/docs)
 make worker        # celery worker + beat
@@ -190,17 +190,27 @@ make db-reset      # пересоздать локальную БД: drop + crea
 make seed          # справочники, GeoJSON районов ВКО, тестовые школы, dev-пользователи
 make simulate n=1000 days=90     # симулятор агентов
 make openapi       # экспорт схемы в docs/reference/openapi.json + генерация web/src/api/generated
+make api-pdf       # описание API одним PDF из docs/reference/openapi.json (поставка, T-57)
+make backup        # разовый полный бэкап БД pgBackRest (T-53); восстановление — deploy/pgbackrest/README.md
 ```
 
-Порты: api 8000, web 5173, db 5432, redis 6379, speedtest 8080, caddy 80/443.
+Бэкапы и наблюдаемость живут отдельно от основного compose:
+`docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d` включает архив WAL и
+ежедневный бэкап (T-53), а `prometheus` и `grafana` поднимаются обычным `docker compose up -d`
+(T-54) — `make up` не поднимает ни то, ни другое.
+
+Порты: api 8000, web 5173, db 5432, redis 6379, speedtest 8080, ndt7 8081, caddy 80/443,
+grafana 3000 (только с самого сервера).
 Dev-пользователи после `make seed` (пароль у всех `Password1`, только локально):
 `admin@example.kz` (Администратор), `oblast@example.kz` (Область), `rayon@example.kz`
 (Район/город, Усть-Каменогорск), `school@example.kz` (Школа), `provider@example.kz` (Провайдер).
 
 ## 8. Продуктовые инварианты из ТЗ, которые код не должен нарушать
 
-1. Пороги, расписание и адрес сервера замеров не зашиты в агент и панель — приходят с
-   сервера и меняются в админке (п. 11, п. 20; ADR-004, ADR-012).
+1. Пороги, расписание, адрес сервера замеров и срок хранения очереди не зашиты в агент и
+   панель — приходят с сервера и меняются в админке (п. 11, п. 20; ADR-004, ADR-012).
+   Срок очереди — `settings.agent_queue_retention_days`; по нему же сервер отклоняет замер,
+   который старше окна (`backend/app/schemas/agent.py`), и по нему агент чистит свою очередь.
 2. School ID никогда не берётся из запроса агента — выводится из привязки устройства
    (п. 12; ADR-005).
 3. Каждый замер хранит фактические значения вместе с порогами, применёнными при оценке —
@@ -221,7 +231,9 @@ Dev-пользователи после `make seed` (пароль у всех `P
 12. Блокировка учётной записи и устройства — без удаления истории (п. 16, п. 20; ADR-005, ADR-008).
 13. Персональные данные — только контакты ответственных (п. 15); ученики и учителя — никогда
     (п. 12); в LLM ПД не передаются (ADR-011).
-14. Пароли и токены — только хэшами (argon2); секреты — в окружении (п. 12; ADR-005).
+14. Пароли и коды установки — argon2id, токен устройства — sha256 со сравнением за постоянное
+    время (секрет 256 бит, `backend/app/core/security.py`); сам секрет не хранится нигде.
+    Секреты — в окружении (п. 12; ADR-005).
 15. AI-текст обращения редактируется человеком до отправки; номер присваивается после
     отправки (п. 17; ADR-011).
 16. Экспорт XLSX и CSV обязателен с минимальным набором колонок: школа, компьютер, кабинет,
