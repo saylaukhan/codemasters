@@ -1,0 +1,408 @@
+/* School cabinet, DESIGN.md §3.27 and mockups School.html / SchoolPhone.html: 1040px in the middle,
+ * blocks of one gap, cards without inner lines. At 768px and narrower everything is one column, the
+ * tiles stand one under another and «Кому звонить» becomes call rows (§9.3). */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-block);
+  max-width: var(--cabinet-width);
+  margin: 0 auto;
+}
+
+/* «Школа-гимназия № 12 · Усть-Каменогорск · VKO-UK-001» over the verdict. */
+.context {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.code {
+  font-family: var(--font-mono);
+}
+
+/* The verdict itself: a status dot in a ring of its own light colour, then the phrase. */
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dot {
+  flex: none;
+  width: var(--verdict-dot);
+  height: var(--verdict-dot);
+  border-radius: 50%;
+  background: var(--status-main);
+  box-shadow: 0 0 0 var(--space-1) var(--status-bg);
+}
+
+.dot[data-status='normal'] {
+  --status-main: var(--status-normal-main);
+  --status-bg: var(--status-normal-bg);
+}
+.dot[data-status='unstable'] {
+  --status-main: var(--status-unstable-main);
+  --status-bg: var(--status-unstable-bg);
+}
+.dot[data-status='critical'] {
+  --status-main: var(--status-critical-main);
+  --status-bg: var(--status-critical-bg);
+}
+.dot[data-status='offline'] {
+  --status-main: var(--status-offline-main);
+  --status-bg: var(--status-offline-bg);
+}
+.dot[data-status='no_data'] {
+  --status-main: var(--status-no-data-main);
+  --status-bg: var(--status-no-data-bg);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--card-padding);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+}
+
+/* A card whose rows reach its edges: the tiles, the problems and the contacts of a phone. */
+.flush {
+  padding: 0;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.flush .head {
+  padding: var(--card-padding);
+  padding-bottom: 0;
+}
+
+.title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-block);
+  font-weight: var(--font-weight-semibold);
+}
+
+.summary {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: end;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-block);
+}
+
+/* Three tiles in a row; the hairline between them belongs to the card, not to the tile. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--card-padding);
+}
+
+.tile + .tile {
+  border-inline-start: var(--border-width) solid var(--border);
+}
+
+.tileCaption {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.term {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.figure {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.value {
+  color: var(--text-primary);
+  font-size: var(--font-size-hero);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: 1;
+}
+
+.unit {
+  color: var(--text-secondary);
+  font-size: var(--font-size-md);
+}
+
+.footer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-top: var(--border-width) solid var(--border);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.strong {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* «Провайдер и договор»: caption — value, the value never wraps under its caption. */
+.fields {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+
+.fields dt {
+  color: var(--text-secondary);
+}
+
+.fields dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.support {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* «Компьютер с агентом»: a square icon tile, the name with its hostname, the last signal. */
+.agent {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.agentIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  border-radius: var(--radius-dropdown);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+}
+
+.agentName {
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+}
+
+.note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Rows of «Проблемы и обращения» and of «Кому звонить»: the whole row is the link. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-top: var(--border-width) solid var(--border);
+  color: var(--text-primary);
+}
+
+.rowDot {
+  flex: none;
+  width: var(--badge-dot);
+  height: var(--badge-dot);
+  border-radius: 50%;
+  background: var(--status-main);
+}
+
+.rowDot[data-status='normal'] {
+  --status-main: var(--status-normal-main);
+}
+.rowDot[data-status='unstable'] {
+  --status-main: var(--status-unstable-main);
+}
+.rowDot[data-status='critical'] {
+  --status-main: var(--status-critical-main);
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rowTitle {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+}
+
+.rowMeta {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.chevron {
+  flex: none;
+  color: var(--text-muted);
+}
+
+/* «Кому звонить»: three cards in a row on a wide screen, call rows on a phone (§9.3). */
+.contacts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-block);
+  padding: var(--card-padding);
+  padding-top: 0;
+}
+
+.contact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  color: var(--text-primary);
+}
+
+.contactText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.contactRole {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.contactName {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.contactPhone {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.callIcon {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .page {
+    gap: var(--space-3);
+  }
+
+  .pair,
+  .tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tile + .tile {
+    border-inline-start: none;
+    border-top: var(--border-width) solid var(--border);
+  }
+
+  .value {
+    font-size: var(--font-size-kpi);
+  }
+
+  /* The tile turns into one line «подпись — число» with the bar under it (§9.3). */
+  .tileCaption {
+    justify-content: space-between;
+  }
+
+  .term {
+    display: none;
+  }
+
+  .footer {
+    padding: var(--space-3) var(--card-padding);
+  }
+
+  /* Every contact becomes a row with a call button instead of a printed number. */
+  .contacts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 0;
+  }
+
+  .contact {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: none;
+    border-top: var(--border-width) solid var(--border);
+    border-radius: 0;
+  }
+
+  .contactPhone {
+    display: none;
+  }
+
+  .callIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    border-radius: var(--radius-dropdown);
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+  }
+}
