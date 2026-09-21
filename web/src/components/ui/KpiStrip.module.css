@@ -22,6 +22,11 @@
   border-inline-start: var(--border-width) solid var(--border);
 }
 
+/* The first cell of a row touches the card edge, so it keeps no line of its own. */
+.cell:nth-child(4n + 1) {
+  border-inline-start: none;
+}
+
 .cell:nth-child(n + 5) {
   border-block-start: var(--border-width) solid var(--border);
 }
