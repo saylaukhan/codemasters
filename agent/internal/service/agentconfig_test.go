@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/saylaukhan/codemasters/agent/internal/api"
+	"github.com/saylaukhan/codemasters/agent/internal/queue"
 	"github.com/saylaukhan/codemasters/agent/internal/scheduler"
 )
 
@@ -17,7 +19,7 @@ import (
 // refresh interval is a second, so a test does not wait for 15 minutes.
 func serverConfigJSON(start, end string) string {
 	return fmt.Sprintf(`{"timezone": "Asia/Almaty", "schedule_slots": [{"start": %q, "end": %q}],
-		"heartbeat_interval_s": 300, "config_refresh_interval_s": 1,
+		"heartbeat_interval_s": 300, "config_refresh_interval_s": 1, "queue_retention_days": 90,
 		"speedtest": {"librespeed_url": "https://speedtest.example.kz"}, "thresholds": {}}`, start, end)
 }
 
@@ -179,5 +181,50 @@ func TestAgentScheduleRejectsBadConfig(t *testing.T) {
 	cfg.ScheduleSlots[0].Start = "08:30:00"
 	if _, err := agentSchedule(cfg); err != nil {
 		t.Fatalf("agentSchedule: %v", err)
+	}
+}
+
+// TestQueueRetentionComesFromTheServer: how long the queue keeps a record is
+// queue_retention_days of GET /api/agent/config and nothing else (ТЗ п. 11,
+// п. 20; ADR-006). An answer without the field — an older server — leaves the
+// fallback of the queue in place instead of emptying it.
+func TestQueueRetentionComesFromTheServer(t *testing.T) {
+	if got := queueRetention(api.AgentConfig{QueueRetentionDays: 90}); got != 90*24*time.Hour {
+		t.Fatalf("queueRetention(90) = %v, ожидались 90 сут.", got)
+	}
+	if got := queueRetention(api.AgentConfig{}); got != 0 {
+		t.Fatalf("queueRetention без поля = %v, ожидался 0 (запасной срок очереди)", got)
+	}
+
+	logger, _ := testLogger()
+	q, err := queue.Open(filepath.Join(t.TempDir(), queue.FileName), logger)
+	if err != nil {
+		t.Fatalf("queue.Open: %v", err)
+	}
+	defer q.Close()
+
+	q.SetMaxAge(queueRetention(api.AgentConfig{QueueRetentionDays: 90}))
+	if q.MaxAge() != 90*24*time.Hour {
+		t.Fatalf("срок очереди = %v, ожидались 90 сут. из конфигурации", q.MaxAge())
+	}
+	q.SetMaxAge(queueRetention(api.AgentConfig{}))
+	if q.MaxAge() != 90*24*time.Hour {
+		t.Fatalf("срок очереди = %v, ожидались прежние 90 сут.", q.MaxAge())
+	}
+}
+
+// TestSameConfigSeesRetentionChange: only a changed configuration is applied,
+// so a new queue_retention_days must count as a change — otherwise the queue
+// would keep pruning by the old number.
+func TestSameConfigSeesRetentionChange(t *testing.T) {
+	a := api.AgentConfig{Timezone: "Asia/Almaty", HeartbeatIntervalS: 300,
+		ConfigRefreshIntervalS: 900, QueueRetentionDays: 30}
+	b := a
+	b.QueueRetentionDays = 90
+	if sameConfig(a, b) {
+		t.Fatal("sameConfig не заметил смену queue_retention_days")
+	}
+	if !sameConfig(a, a) {
+		t.Fatal("sameConfig счёл одинаковые конфигурации разными")
 	}
 }

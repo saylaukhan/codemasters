@@ -19,7 +19,14 @@ class SystemSettings(TimestampMixin, Base):
     """System settings; the table holds at most one row, ``id = 1``."""
 
     __tablename__ = "settings"
-    __table_args__ = (CheckConstraint("id = 1", name="single_row"),)
+    __table_args__ = (
+        CheckConstraint("id = 1", name="single_row"),
+        # A year is the outer bound: further back a resend is not the queue of a school that
+        # was offline but a rewrite of a period already reported (ТЗ п. 11, ADR-006).
+        CheckConstraint(
+            "agent_queue_retention_days BETWEEN 1 AND 365", name="agent_queue_retention_days"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, server_default=text("1"))
     # Main measurement server and the ndt7 fallback; NULL means no fallback (ADR-012).
@@ -55,3 +62,7 @@ class SystemSettings(TimestampMixin, Base):
     enrollment_code_ttl_days: Mapped[int] = mapped_column(server_default=text("7"))
     # A resolved incident is closed after this many hours (ADR-007, T-40).
     incident_auto_close_hours: Mapped[int] = mapped_column(server_default=text("24"))
+    # Days an agent keeps a measurement in its SQLite queue, and the depth of history the server
+    # accepts from it: the agent gets it from GET /api/agent/config, nothing is hard-coded on
+    # either side (ТЗ п. 11, п. 20; ADR-004, ADR-006).
+    agent_queue_retention_days: Mapped[int] = mapped_column(server_default=text("30"))

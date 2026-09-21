@@ -161,7 +161,7 @@ func (q *Queue) rejectOutage(ctx context.Context, startedAt time.Time, reason st
 // pruneOutages drops sent-out outages older than the queue age limit: they
 // would be refused as too old anyway (ADR-006).
 func (q *Queue) pruneOutages(ctx context.Context) error {
-	cutoff := q.now().Add(-q.maxAge).UnixMilli()
+	cutoff := q.now().Add(-q.MaxAge()).UnixMilli()
 	res, err := q.db.ExecContext(ctx,
 		`DELETE FROM outages WHERE ended_at IS NOT NULL AND ended_at < ?`, cutoff)
 	if err != nil {

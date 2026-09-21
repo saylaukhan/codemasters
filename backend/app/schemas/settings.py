@@ -63,6 +63,13 @@ class SettingsDetail(BaseModel):
         examples=[24],
         description="Инцидент в resolved переходит в closed через столько часов (ADR-007)",
     )
+    agent_queue_retention_days: int = Field(
+        ge=1,
+        le=365,
+        examples=[30],
+        description="Сколько суток агент хранит замер в очереди и насколько старый замер "
+        "принимает сервер (ADR-006)",
+    )
 
 
 class SettingsUpdate(BaseModel):
@@ -83,6 +90,7 @@ class SettingsUpdate(BaseModel):
     export_sync_max_rows: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
     export_retention_days: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
     incident_auto_close_hours: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    agent_queue_retention_days: Annotated[int, Field(ge=1, le=365)] | SkipJsonSchema[None] = None
 
     @field_validator(
         "speedtest",
@@ -98,6 +106,7 @@ class SettingsUpdate(BaseModel):
         "export_sync_max_rows",
         "export_retention_days",
         "incident_auto_close_hours",
+        "agent_queue_retention_days",
         mode="before",
     )
     @classmethod

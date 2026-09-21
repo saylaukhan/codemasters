@@ -158,6 +158,9 @@ func runAgent(ctx context.Context, cfg Config, configPath string, logger *slog.L
 		var sched *scheduler.Scheduler
 		// apply runs only in the goroutine of runConfig, so sched is not shared.
 		apply := func(ac api.AgentConfig, s scheduler.Schedule) {
+			// The queue drops what the server would refuse as too old, by the
+			// number the server itself named (ТЗ п. 11, п. 20; ADR-006).
+			q.SetMaxAge(queueRetention(ac))
 			if sched != nil {
 				sched.SetSchedule(s)
 				return

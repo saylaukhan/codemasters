@@ -1,9 +1,11 @@
 """Devices in the admin panel (T-36, ТЗ п. 12, п. 20): installation codes, the list, rebinding,
 blocking and the token rotation (ADR-005).
 
-An installation code is shown once: the row keeps its argon2 hash, the code starts with the id
-of the row so that registration finds it (``app/core/security.py``). Its lifetime is
-``enrollment_code_ttl_days`` of the system settings, never a constant (ТЗ п. 20).
+An installation code is shown once: the row keeps its argon2 hash — it is short and typed by
+hand, so the check is held back on purpose — and the code starts with the id of the row so that
+registration finds it. A device token is random and long, so its row keeps a sha256 hash
+instead (``app/core/security.py``). The lifetime of a code is ``enrollment_code_ttl_days`` of
+the system settings, never a constant (ТЗ п. 20).
 
 Blocking and rebinding keep the device and its measurements: a measurement stores the line it
 went through, so the history stays where it was taken (ТЗ п. 16, п. 20). The update channel of a
@@ -26,7 +28,8 @@ from app.core.deps import PageParams
 from app.core.security import (
     format_device_token,
     format_enrollment_code,
-    hash_secret,
+    hash_secret_async,
+    hash_token,
     new_device_secret,
     new_enrollment_secret,
 )
@@ -48,7 +51,7 @@ async def issue_enrollment_code(
     settings = await system_settings(session)
     secret = new_enrollment_secret()
     entry = EnrollmentCode(
-        code_hash=hash_secret(secret),
+        code_hash=await hash_secret_async(secret),
         school_id=school_id,
         expires_at=datetime.now(UTC) + timedelta(days=settings.enrollment_code_ttl_days),
     )
@@ -147,7 +150,7 @@ async def request_token_rotation(session: AsyncSession, device_id: int) -> Chang
 async def rotate_token(session: AsyncSession, device: Device) -> str:
     """New token of the device; the old one stops working with this commit (ADR-005)."""
     secret = new_device_secret()
-    device.token_hash = hash_secret(secret)
+    device.token_hash = hash_token(secret)
     device.token_rotation_requested_at = None
     await session.commit()
     return format_device_token(device.id, secret)

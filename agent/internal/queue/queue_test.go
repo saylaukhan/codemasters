@@ -155,7 +155,7 @@ func TestLimitsDropOldestFirst(t *testing.T) {
 	}
 
 	q.maxRecords = MaxRecords
-	if err := q.Add(ctx, measurement(9, t0.Add(-MaxAge-time.Minute))); err != nil {
+	if err := q.Add(ctx, measurement(9, t0.Add(-DefaultMaxAge-time.Minute))); err != nil {
 		t.Fatalf("Add: %v", err)
 	}
 	if err := q.Add(ctx, measurement(5, t0)); err != nil { // same uuid again: no second record
@@ -267,5 +267,41 @@ func TestInvalidRecordDoesNotBlockQueue(t *testing.T) {
 	var kept int
 	if err := q.db.QueryRow(`SELECT count(*) FROM measurements WHERE rejected IS NOT NULL`).Scan(&kept); err != nil || kept != 1 {
 		t.Fatalf("rejected records = %d, %v; want 1 kept in the file", kept, err)
+	}
+}
+
+// TestSetMaxAgeFromServerRetention: the age limit is queue_retention_days of
+// the server, not a constant of the agent (ТЗ п. 11, п. 20; ADR-006). A wider
+// retention keeps a record the default would have dropped, a narrower one
+// drops it, and a value the server did not send leaves the fallback in place.
+func TestSetMaxAgeFromServerRetention(t *testing.T) {
+	q := openQueue(t, filepath.Join(t.TempDir(), FileName))
+	ctx := context.Background()
+	old := measurement(1, t0.Add(-60*24*time.Hour))
+
+	if q.MaxAge() != DefaultMaxAge {
+		t.Fatalf("до конфигурации MaxAge = %v, ожидался запасной %v", q.MaxAge(), DefaultMaxAge)
+	}
+
+	q.SetMaxAge(90 * 24 * time.Hour)
+	if err := q.Add(ctx, old); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if got := uuids(t, q); len(got) != 1 {
+		t.Fatalf("при сроке 90 сут. в очереди %v, ожидался замер 60-суточной давности", got)
+	}
+
+	// The server did not say: the limit in force stays the one it said before.
+	q.SetMaxAge(0)
+	if q.MaxAge() != 90*24*time.Hour {
+		t.Fatalf("после нулевого срока MaxAge = %v, ожидались прежние 90 сут.", q.MaxAge())
+	}
+
+	q.SetMaxAge(7 * 24 * time.Hour)
+	if err := q.Add(ctx, measurement(2, t0)); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if got := uuids(t, q); fmt.Sprint(got) != fmt.Sprint([]string{measurement(2, t0).MeasurementUUID}) {
+		t.Fatalf("при сроке 7 сут. в очереди %v, ожидался только свежий замер", got)
 	}
 }

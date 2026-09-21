@@ -213,7 +213,7 @@ installer/wix/          MSI
 
 | Таблица | Ключевые поля |
 |---|---|
-| `devices` | id, device_uid, monitoring_point_id, hostname, os, agent_version, token_hash (argon2), registered_at, last_seen_at, status (active/blocked) |
+| `devices` | id, device_uid, monitoring_point_id, hostname, os, agent_version, token_hash (sha256, ADR-005), registered_at, last_seen_at, status (active/blocked) |
 | `enrollment_codes` | code_hash, school_id, expires_at, used_at |
 | `measurements` (hypertable) | id, measurement_uuid (unique), device_id, line_id, measured_at, received_at, download_mbps, upload_mbps, ping_ms, jitter_ms, packet_loss_pct, connection_status, duration_s, external_ip, server, iface_type, agent_version, thresholds_snapshot (jsonb), quality_status, contract_ok |
 | `heartbeats` (hypertable) | device_id, ts, online |
@@ -384,10 +384,11 @@ Security в PostgreSQL по `app.user_scope`. Блокировка пользо�
 ## 13. Безопасность (п. 12)
 
 - TLS 1.2+ везде (Caddy), HSTS; возможен WireGuard-канал для агентов, если заказчик потребует VPN.
-- Токен устройства хранится хэшем (argon2) на сервере и через DPAPI на клиенте; ротация по кнопке.
+- Токен устройства хранится хэшем (sha256, секрет 256 бит — ADR-005) на сервере и через DPAPI на
+  клиенте; ротация по кнопке.
 - School ID никогда не берётся из запроса агента, а выводится из привязки устройства → защита от
   подмены.
-- Пароли: argon2; секреты — в переменных окружения/Docker secrets.
+- Пароли и коды установки: argon2id; секреты — в переменных окружения/Docker secrets.
 - Rate limit на API агентов, валидация диапазонов метрик (отсечение явного мусора).
 - Журналы: входы, административные действия, ошибки передачи, отправка уведомлений.
 - Персональные данные: собираются только контакты ответственных; учеников и учителей система не

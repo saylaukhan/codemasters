@@ -15,11 +15,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.models import AuditLog
-from app.schemas.agent import MAX_QUEUE_AGE, MAX_SPEED_MBPS
+from app.schemas.agent import MAX_SPEED_MBPS, queue_window, too_old_message
 from tests.conftest import MemoryCounter
-from tests.factories import create_school, primary_point, register_device
+from tests.factories import create_school, create_settings, primary_point, register_device
 from tests.test_agent_measurements import agent, count, measurement
 from tests.test_agent_register import as_device, heartbeat, problem
+
+# How far back a moment may point is settings.agent_queue_retention_days plus a day of margin;
+# 30 is the value of «Решения по умолчанию» a seeded database and ``create_settings`` have.
+DEFAULT_RETENTION_DAYS = 30
+DEFAULT_WINDOW = queue_window(DEFAULT_RETENTION_DAYS)
 
 MEASUREMENTS = "/api/measurements"
 BATCH = "/api/measurements/batch"
@@ -113,10 +118,7 @@ async def test_the_batch_names_the_item_out_of_range(
     ("shift", "message"),
     [
         (timedelta(hours=1), "Момент в будущем: проверьте часы компьютера"),
-        (
-            -MAX_QUEUE_AGE - timedelta(days=1),
-            f"Момент старше срока очереди агента: {MAX_QUEUE_AGE.days} сут.",
-        ),
+        (-DEFAULT_WINDOW - timedelta(days=1), too_old_message(DEFAULT_WINDOW)),
     ],
     ids=["future", "older-than-the-queue"],
 )
@@ -124,6 +126,7 @@ async def test_measured_at_outside_the_window_of_the_queue_is_refused(
     session: AsyncSession, api_client: AsyncClient, shift: timedelta, message: str
 ) -> None:
     _, token, _ = await agent(session)
+    await create_settings(session)
     moment = datetime.now(UTC) + shift
 
     response = await api_client.post(
@@ -140,6 +143,7 @@ async def test_a_measurement_resent_from_a_month_of_queue_is_stored(
 ) -> None:
     """Школа без связи месяц досылает очередь: это работа агента, а не мусор (ADR-006)."""
     _, token, _ = await agent(session)
+    await create_settings(session)
     moment = datetime.now(UTC) - timedelta(days=29)
 
     response = await api_client.post(
@@ -149,11 +153,78 @@ async def test_a_measurement_resent_from_a_month_of_queue_is_stored(
     assert response.status_code == 201, response.text
 
 
+async def test_the_window_follows_the_setting_of_the_installation(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """Глубина очереди — настройка, а не константа кода (ТЗ п. 11, п. 20; ADR-004, ADR-006).
+
+    Тот же замер, который при 30 сут. отклонён как слишком старый, принимается после того, как
+    администратор поднял ``agent_queue_retention_days``: симулятор T-55 так и заливает 90 сут.
+    """
+    _, token, _ = await agent(session)
+    settings = await create_settings(session)
+    moment = datetime.now(UTC) - timedelta(days=60)
+
+    refused = await api_client.post(
+        MEASUREMENTS, json=measurement(measured_at=moment.isoformat()), headers=as_device(token)
+    )
+    assert fields(problem(refused, 422, "validation_error")) == {
+        "measured_at": too_old_message(DEFAULT_WINDOW)
+    }
+
+    settings.agent_queue_retention_days = 90
+    await session.flush()
+
+    accepted = await api_client.post(
+        MEASUREMENTS, json=measurement(measured_at=moment.isoformat()), headers=as_device(token)
+    )
+    assert accepted.status_code == 201, accepted.text
+    assert await count(session) == 1
+
+
+async def test_a_narrowed_setting_moves_the_border_back(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """Сузили срок хранения — сервер перестал принимать то, что принимал вчера (ADR-006)."""
+    _, token, _ = await agent(session)
+    settings = await create_settings(session)
+    settings.agent_queue_retention_days = 7
+    await session.flush()
+    moment = datetime.now(UTC) - timedelta(days=20)
+
+    response = await api_client.post(
+        MEASUREMENTS, json=measurement(measured_at=moment.isoformat()), headers=as_device(token)
+    )
+
+    assert fields(problem(response, 422, "validation_error")) == {
+        "measured_at": too_old_message(queue_window(7))
+    }
+    assert await count(session) == 0
+
+
+async def test_the_batch_names_the_item_older_than_the_queue(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """Досылка очереди: индекс слишком старой записи — в errors[], как и вышедшее за диапазон."""
+    _, token, _ = await agent(session)
+    await create_settings(session)
+    old = datetime.now(UTC) - DEFAULT_WINDOW - timedelta(days=1)
+    items = [measurement(), measurement(measured_at=old.isoformat()), measurement()]
+
+    response = await api_client.post(BATCH, json={"items": items}, headers=as_device(token))
+
+    assert fields(problem(response, 422, "validation_error")) == {
+        "items[1].measured_at": too_old_message(DEFAULT_WINDOW)
+    }
+    assert await count(session) == 0
+
+
 async def test_an_outage_outside_the_window_of_the_queue_is_refused(
     session: AsyncSession, api_client: AsyncClient
 ) -> None:
     _, token, _ = await agent(session)
-    started_at = datetime.now(UTC) - MAX_QUEUE_AGE - timedelta(days=1)
+    await create_settings(session)
+    started_at = datetime.now(UTC) - DEFAULT_WINDOW - timedelta(days=1)
     body = {
         "started_at": started_at.isoformat(),
         "ended_at": (started_at + timedelta(minutes=5)).isoformat(),

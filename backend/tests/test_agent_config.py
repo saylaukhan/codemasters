@@ -87,6 +87,8 @@ async def test_config_carries_the_schedule_thresholds_and_servers(
         "ndt7_url": "ws://n",
     }
     assert (body["heartbeat_interval_s"], body["config_refresh_interval_s"]) == (300, 900)
+    # Срок очереди тоже приходит с сервера: в агенте его нет (ADR-006).
+    assert body["queue_retention_days"] == 30
     # No release is published yet, so the agent is not asked to update (T-50).
     assert body["latest_version"] is None
     assert response.headers["etag"].startswith('"')

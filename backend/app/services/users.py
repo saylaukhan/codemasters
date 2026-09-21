@@ -20,7 +20,7 @@ from app.auth.deps import AuthUser
 from app.auth.permissions import ROLE_PERMISSIONS
 from app.core.deps import PageParams
 from app.core.errors import ApiError
-from app.core.security import hash_password
+from app.core.security import hash_password_async
 from app.models import Provider, Region, School, User
 from app.models import UserScope as ScopeRow
 from app.schemas.audit import AuditAction
@@ -167,7 +167,7 @@ async def create_user(session: AsyncSession, body: UserCreate) -> UserDetail:
         email=email,
         full_name=body.full_name.strip(),
         role=body.role,
-        password_hash=hash_password(body.password.get_secret_value()),
+        password_hash=await hash_password_async(body.password.get_secret_value()),
         telegram_chat_id=body.telegram_chat_id or None,
     )
     session.add(user)
@@ -236,7 +236,7 @@ async def update_user(
 
     action: AuditAction | None = None
     if body.password is not None:
-        user.password_hash = hash_password(body.password.get_secret_value())
+        user.password_hash = await hash_password_async(body.password.get_secret_value())
         action = "password_reset"
     if "is_active" in changes:
         action = "unblock" if user.is_active else "block"

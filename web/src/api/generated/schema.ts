@@ -37,8 +37,8 @@ export interface paths {
          * Регистрация устройства по коду установки
          * @description Exchange a one-time installation code for device credentials (ADR-005).
          *
-         *     The token is returned once and stored as an argon2 hash; the school comes from the code,
-         *     the line from the monitoring point the device is bound to.
+         *     The token is returned once and stored as a sha256 hash (``app/core/security.py``); the
+         *     school comes from the code, the line from the monitoring point the device is bound to.
          */
         post: operations["register_device"];
         delete?: never;
@@ -1321,7 +1321,7 @@ export interface paths {
         head?: never;
         /**
          * Изменить системные настройки
-         * @description Объекты speedtest и default_working_hours заменяются целиком: speedtest без ndt7_url отключает резервный сервер. Агенты получают новые значения со следующей конфигурацией: новый ETag в GET /api/agent/config (T-17). offline_after_s не больше heartbeat_interval_s с учётом сохранённых значений — 422.
+         * @description Объекты speedtest и default_working_hours заменяются целиком: speedtest без ndt7_url отключает резервный сервер. Агенты получают новые значения со следующей конфигурацией: новый ETag в GET /api/agent/config (T-17). offline_after_s не больше heartbeat_interval_s с учётом сохранённых значений — 422. agent_queue_retention_days задаёт и глубину очереди агента, и то, насколько старый замер примет сервер: уменьшение отсекает досылку старых записей (ADR-006).
          */
         patch: operations["update_system_settings"];
         trace?: never;
@@ -1468,6 +1468,12 @@ export interface components {
              * @example 900
              */
             config_refresh_interval_s: number;
+            /**
+             * Queue Retention Days
+             * @description Сколько суток агент хранит замер в очереди; старше — сервер не примет (ADR-006)
+             * @example 30
+             */
+            queue_retention_days: number;
             speedtest: components["schemas"]["SpeedtestServers"];
             thresholds: components["schemas"]["ThresholdValues"];
             /**
@@ -2454,7 +2460,7 @@ export interface components {
         };
         /**
          * DeviceRegisterResponse
-         * @description Credentials of a registered device; the token is shown once (argon2 hash on server).
+         * @description Credentials of a registered device; the token is shown once (only its hash is kept).
          */
         DeviceRegisterResponse: {
             /** Device Id */
@@ -4533,6 +4539,12 @@ export interface components {
              * @example 24
              */
             incident_auto_close_hours: number;
+            /**
+             * Agent Queue Retention Days
+             * @description Сколько суток агент хранит замер в очереди и насколько старый замер принимает сервер (ADR-006)
+             * @example 30
+             */
+            agent_queue_retention_days: number;
         };
         /**
          * SettingsUpdate
@@ -4565,6 +4577,8 @@ export interface components {
             export_retention_days?: number;
             /** Incident Auto Close Hours */
             incident_auto_close_hours?: number;
+            /** Agent Queue Retention Days */
+            agent_queue_retention_days?: number;
         };
         /**
          * SpeedtestServers

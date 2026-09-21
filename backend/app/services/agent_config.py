@@ -64,6 +64,9 @@ async def agent_config(session: AsyncSession, device: Device) -> AgentConfigResp
         schedule_slots=[ScheduleSlot.model_validate(slot) for slot in schedule.slots],
         heartbeat_interval_s=settings.heartbeat_interval_s,
         config_refresh_interval_s=settings.config_refresh_interval_s,
+        # The agent prunes its queue by this and the server refuses what is older (ADR-006):
+        # one value, set in the admin panel, never a constant of the agent (ТЗ п. 11, п. 20).
+        queue_retention_days=settings.agent_queue_retention_days,
         speedtest=SpeedtestServers(
             librespeed_url=settings.librespeed_url, ndt7_url=settings.ndt7_url
         ),

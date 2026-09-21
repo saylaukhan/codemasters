@@ -318,3 +318,48 @@ async def test_settings_and_thresholds_reach_the_agent_with_a_new_etag(
         "validation_error",
     )
     assert ok(await api_client.get("/api/admin/settings", headers=oblast))["offline_after_s"] == 900
+
+
+async def test_the_queue_retention_is_changed_in_the_panel_and_reaches_the_agent(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """Срок очереди агента — настройка админки, а не константа кода (ТЗ п. 11, п. 20; ADR-006).
+
+    Изменение попадает в журнал администратора, как и у соседних полей, и приходит агенту
+    новой конфигурацией с новым ETag (T-17).
+    """
+    school = await create_school(session)
+    await create_settings(session)
+    _, token = await register_device(session, await primary_point(session, school))
+    device = {"Authorization": f"Device {token}"}
+    oblast = bearer(await create_user(session, "oblast"))
+
+    first = await api_client.get("/api/agent/config", headers=device)
+    etag = first.headers["etag"]
+    settings = ok(
+        await api_client.patch(
+            "/api/admin/settings", json={"agent_queue_retention_days": 95}, headers=oblast
+        )
+    )
+    changed = await api_client.get("/api/agent/config", headers=device | {"If-None-Match": etag})
+
+    assert first.json()["queue_retention_days"] == 30
+    assert settings["agent_queue_retention_days"] == 95
+    assert changed.status_code == 200, changed.text
+    assert changed.headers["etag"] != etag
+    assert changed.json()["queue_retention_days"] == 95
+    audit = await session.scalar(
+        select(AuditLog.changes).where(
+            AuditLog.entity_type == "setting", AuditLog.action == "update"
+        )
+    )
+    assert audit is not None
+    assert audit["agent_queue_retention_days"] == {"old": 30, "new": 95}
+    # Год — внешняя граница: дальше это уже не досылка очереди, а переписывание истории.
+    problem(
+        await api_client.patch(
+            "/api/admin/settings", json={"agent_queue_retention_days": 400}, headers=oblast
+        ),
+        422,
+        "validation_error",
+    )

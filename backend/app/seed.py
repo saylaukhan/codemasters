@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import get_engine, get_session_factory
-from app.core.security import hash_password
+from app.core.security import hash_password_async
 from app.models import (
     ConnectionType,
     Line,
@@ -222,7 +222,10 @@ async def seed_users(session: AsyncSession) -> int:
         if email in existing:
             continue
         user = User(
-            email=email, full_name=full_name, role=role, password_hash=hash_password(DEV_PASSWORD)
+            email=email,
+            full_name=full_name,
+            role=role,
+            password_hash=await hash_password_async(DEV_PASSWORD),
         )
         session.add(user)
         await session.flush()

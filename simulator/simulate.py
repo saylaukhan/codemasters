@@ -20,10 +20,13 @@ exception is ``UNSTABLE_OVER``: the configuration of an agent carries no
 ``unstable_deviation_pct``, so how far «Нестабильно» goes past a limit is decided here — the
 only assumption about the thresholds the generator makes, and README names it.
 
-Two limits the demo data live with, both written down in README: the server refuses a
-measurement older than the queue of an agent (31 days, ADR-006), so «3 месяца» of T-55 cannot be
-filled through this API at all; and the statuses of the schools hold only as long as the
-computers count as alive, which is one ``offline_after_s`` after the run ends.
+How deep the history may go is not a limit of the code any more: the server accepts what the
+queue of an agent holds, and that is ``agent_queue_retention_days`` of the admin panel (ТЗ п. 11,
+п. 20; ADR-004, ADR-006). So ``--days 90`` of T-55 works through the API of the agent: the
+simulator raises the setting to the depth it needs before the load and puts the previous value
+back afterwards — after an error and after Ctrl+C too. One limit is left, and README says it: the
+statuses of the schools hold only as long as the computers count as alive, which is one
+``offline_after_s`` after the run ends.
 
 Standard library only: the simulator is started by ``make simulate`` with the interpreter of
 ``backend/.venv``, but it must not depend on anything installed there.
@@ -44,6 +47,7 @@ import urllib.parse
 import urllib.request
 from collections.abc import Iterable, Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta, timezone, tzinfo
 from datetime import time as clock
@@ -77,16 +81,11 @@ MAX_LATENCY_MS = 60_000.0
 MAX_LOSS_PCT = 100.0
 MAX_DURATION_S = 3600.0
 
-# The queue of an agent holds 31 days (MAX_QUEUE_AGE, ADR-006): a measurement dated earlier is
-# refused with 422, whatever ``--days`` asks for. A day of margin keeps the oldest record inside
-# the window while a long run is still going.
-#
-# The «3 месяца истории» of T-55 therefore cannot be filled through the API of the agent at all:
-# the requirement of the task and the contract of the server contradict each other, and the
-# simulator says so out loud on every run instead of quietly shortening the history. Filling
-# 90 days means writing into the database past the API — a decision of the lead, not of this
-# file (see simulator/README.md, «Ограничения»).
-HISTORY_WINDOW_DAYS = 30
+# Name of the setting that says how deep the history may go, and its bounds on the server
+# (backend/app/schemas/settings.py). The run raises it to ``--days`` and puts it back at the end.
+RETENTION_SETTING = "agent_queue_retention_days"
+MAX_RETENTION_DAYS = 365
+SETTINGS_PATH = "/api/admin/settings"
 
 # Namespace of the simulated measurements: derived, not invented, so it is the same everywhere.
 SIM_NAMESPACE = uuid5(NAMESPACE_URL, "vko-monitor/simulator")
@@ -567,24 +566,14 @@ def slot_moments(device_uid: str, day: date, slots: Sequence[Slot], tz: tzinfo) 
 
 
 def history_days(days: int, now: datetime, tz: tzinfo) -> list[date]:
-    """Days to fill, oldest first: everything the queue window of the server still accepts."""
-    today = now.astimezone(tz).date()
-    depth = min(days, HISTORY_WINDOW_DAYS)
-    return [today - timedelta(days=step) for step in range(depth - 1, -1, -1)]
+    """Days to fill, oldest first: exactly the depth that was asked for.
 
-
-def history_warning(asked: int, given: int) -> str:
-    """Why the history is shorter than asked — said before the run, not after it.
-
-    The requirement of T-55 («3 месяца истории», ``make simulate days=90``) and the contract of
-    the server (``MAX_QUEUE_AGE`` — 31 days, ADR-006) contradict each other, and the simulator
-    is on the side of the contract: it writes only what an agent may send.
+    Nothing is cut here any more: how far back the server accepts a measurement is
+    ``agent_queue_retention_days`` of the settings, and ``queue_retention`` raises it to this
+    depth for the length of the run (ТЗ п. 11, п. 20; ADR-006).
     """
-    return (
-        f"История будет за {given} сут., а не за {asked}: сервер отклоняет замер старше очереди "
-        "агента (31 сут., ADR-006), и через API агента «3 месяца» из T-55 не залить. "
-        "Прямая запись в БД мимо API — решение лида; см. simulator/README.md, «Ограничения»."
-    )
+    today = now.astimezone(tz).date()
+    return [today - timedelta(days=step) for step in range(days - 1, -1, -1)]
 
 
 def device_measurements(
@@ -903,6 +892,56 @@ class Counters:
 
 
 # --- Steps of a run ---------------------------------------------------------------------------
+
+
+@contextmanager
+def queue_retention(admin: AdminSession, days: int) -> Iterator[int]:
+    """Raise ``agent_queue_retention_days`` to ``days`` for the run and put it back after it.
+
+    The server refuses a measurement older than the queue of an agent, and that depth is a
+    setting now (ТЗ п. 11, п. 20; ADR-006) — so «3 месяца истории» of T-55 is filled through the
+    API of the agent, without writing into the database past it. The previous value is printed
+    and restored in ``finally``: after an error and after Ctrl+C too, because an installation
+    left with a year-deep queue would keep accepting history nobody asked for.
+
+    A setting that is already deep enough is not touched at all. Yields the value in force.
+    """
+    current = admin.request("GET", SETTINGS_PATH)
+    if current.status != 200:
+        raise SimulatorError(f"настройки сервера: {current.status} {current.detail}")
+    settings = current.payload if isinstance(current.payload, dict) else {}
+    if RETENTION_SETTING not in settings:
+        raise SimulatorError(
+            f"сервер не знает настройку {RETENTION_SETTING}: это сборка до того, как срок "
+            "очереди агента стал настройкой. Обновите сервер или запустите симулятор с "
+            "--days 30 — глубже старый сервер не примет (ADR-006)"
+        )
+    previous = int(settings[RETENTION_SETTING])
+    say(f"Срок очереди агента на сервере: {previous} сут.")
+    if previous >= days:
+        yield previous
+        return
+    if days > MAX_RETENTION_DAYS:
+        raise SimulatorError(
+            f"--days {days}: сервер принимает историю не глубже {MAX_RETENTION_DAYS} сут."
+        )
+
+    set_retention(admin, days)
+    say(f"Срок очереди агента поднят до {days} сут. на время прогона")
+    try:
+        yield days
+    finally:
+        set_retention(admin, previous)
+        say(f"Срок очереди агента возвращён: {previous} сут.")
+
+
+def set_retention(admin: AdminSession, days: int) -> None:
+    """One PATCH of the setting; a refusal is a reason to stop, not to go on quietly."""
+    response = admin.request("PATCH", SETTINGS_PATH, body={RETENTION_SETTING: days})
+    if response.status != 200:
+        raise SimulatorError(
+            f"срок очереди агента не изменён на {days} сут.: {response.status} {response.detail}"
+        )
 
 
 def fetch_schools(admin: AdminSession, limit: int) -> list[SimSchool]:
@@ -1260,12 +1299,7 @@ def plan_lines(
         "План симуляции:",
         f"  школ:       {args.schools}",
         f"  устройств:  {args.devices}",
-        f"  дней:       {args.days}"
-        + (
-            f" (сервер примет {len(days)}: очередь агента — 31 сут.)"
-            if args.days > len(days)
-            else ""
-        ),
+        f"  дней:       {len(days)}",
         f"  слотов:     {len(slots)} в день",
         f"  замеров:    {measurements} (батчей по {MAX_BATCH_SIZE}: {batches})",
         f"  простоев:   {outages}",
@@ -1345,8 +1379,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--days",
         type=positive_int,
         default=DEFAULT_DAYS,
-        help=f"глубина истории в днях (по умолчанию {DEFAULT_DAYS};"
-        f" сервер принимает не больше {HISTORY_WINDOW_DAYS})",
+        help=f"глубина истории в днях (по умолчанию {DEFAULT_DAYS}; на время прогона симулятор "
+        f"поднимает {RETENTION_SETTING} до этой глубины и возвращает прежнее значение)",
     )
     parser.add_argument(
         "--api",
@@ -1443,7 +1477,10 @@ def run(args: argparse.Namespace) -> int:
 
     counters = Counters()
     say(f"Замеры: {len(days)} сут. × {len(slots)} слотов × {len(devices)} ПК")
-    send_history(api, devices, state, days, slots, tz, thresholds, now, args.workers, counters)
+    # The depth the server accepts is raised for the length of the load and put back after it
+    # — including after Ctrl+C, so the installation is left as it was found (ADR-006).
+    with queue_retention(admin, len(days)):
+        send_history(api, devices, state, days, slots, tz, thresholds, now, args.workers, counters)
     send_heartbeats(api, devices, state, args.workers, counters)
     save_state(args.state, state)
 
@@ -1464,11 +1501,9 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     now = datetime.now(UTC)
     tz = zone(FALLBACK_TIMEZONE)
+    # The plan shows the depth that will really be filled: nothing is cut any more, the run
+    # raises agent_queue_retention_days to it and puts the old value back (ADR-006).
     days = history_days(args.days, now, tz)
-    # Said before anything is sent: a run over a thousand computers takes hours, and the depth
-    # of the history must not come as a surprise at the end of it.
-    if args.days > len(days):
-        warn(history_warning(args.days, len(days)))
     if args.dry_run:
         say("\n".join(plan_lines(args, days, FALLBACK_SLOTS, tz, now)))
         say("\n".join(sample_lines(days, FALLBACK_SLOTS, tz)))

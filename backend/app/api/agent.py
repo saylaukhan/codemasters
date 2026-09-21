@@ -10,12 +10,13 @@ the ranges its numbers must fit into live in ``app/schemas/agent.py``.
 
 import logging
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from ipaddress import IPv4Address, IPv6Address, ip_address
 from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
@@ -26,12 +27,20 @@ from app.core.deps import current_device
 from app.core.errors import ApiError
 from app.core.security import (
     format_device_token,
-    hash_secret,
+    hash_token,
     new_device_secret,
     parse_enrollment_code,
-    verify_secret,
+    verify_secret_async,
 )
-from app.models import Device, EnrollmentCode, Heartbeat, Measurement, MonitoringPoint, Outage
+from app.models import (
+    Device,
+    EnrollmentCode,
+    Heartbeat,
+    Measurement,
+    MonitoringPoint,
+    Outage,
+    SystemSettings,
+)
 from app.schemas.agent import (
     AgentConfigResponse,
     AgentReleaseResponse,
@@ -46,12 +55,14 @@ from app.schemas.agent import (
     OutageAccepted,
     OutageCreate,
     WhoAmIResponse,
+    queue_window,
+    too_old_message,
 )
 from app.schemas.errors import Problem
 from app.services import device_admin
 from app.services.agent_config import agent_config, config_etag, etag_matches
 from app.services.agent_releases import latest_release
-from app.services.settings import NOT_CONFIGURED_DETAIL
+from app.services.settings import NOT_CONFIGURED_DETAIL, SETTINGS_ID
 from app.services.status import Evaluation, evaluate, line_rules
 
 # Every endpoint of the agent is bounded by the rate limit (``app/core/ratelimit.py``, T-51).
@@ -88,6 +99,67 @@ NO_RELEASE = "Для канала этого устройства нет опу�
 logger = logging.getLogger(__name__)
 
 
+async def current_queue_window(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> timedelta | None:
+    """How far back a moment of an agent may point in this installation (ТЗ п. 11, п. 20).
+
+    The window is ``settings.agent_queue_retention_days`` — the very number the agent prunes
+    its queue by, taken from ``GET /api/agent/config`` — plus a day of margin (ADR-006). It is
+    a dependency and not a validator of the schema because reading it needs a session, and a
+    pydantic validator has none: the schema keeps the half of the check that needs no database
+    (``not_in_the_future``), the half that is a setting is checked here.
+
+    ``None`` — no ``settings`` row — is «the policy is not set», not «the policy is 30 days»:
+    an installation that never ran ``make seed`` has told no agent any retention, so it refuses
+    nothing on that ground. It is the one place of the repository that answers such a database
+    with something other than the 503 of ``app/services/settings.py``, and it is deliberate on
+    two counts. A dependency is solved before the body, so a 503 raised here would take the
+    place of the 422 of a malformed request — and a rejected agent request is audited by its
+    status (``app/auth/audit.py``), so the journal would stop calling it a transfer error. And
+    there is no device to check: a device is born from an installation code, and
+    ``device_admin.issue_enrollment_code`` reads the same settings row through ``system_settings``
+    and answers 503 without it, so on a database with no settings no token was ever handed out.
+    The choice is a line of ``docs/known-limitations.md`` (T-55), not only of this docstring.
+    """
+    settings = await session.get(SystemSettings, SETTINGS_ID)
+    if settings is None:
+        return None
+    return queue_window(settings.agent_queue_retention_days)
+
+
+QueueWindow = Annotated[timedelta | None, Depends(current_queue_window)]
+
+
+def check_queue_window(
+    window: timedelta | None, moments: Sequence[tuple[tuple[str | int, ...], datetime]]
+) -> None:
+    """Refuse the moments older than ``window`` the way the schema refused them (ADR-009).
+
+    ``RequestValidationError`` and not ``ApiError``: the answer must stay the 422 of a
+    validation error with ``errors[].field`` naming the field — ``measured_at`` for one record
+    and ``items[3].measured_at`` inside a batch — so an agent still learns which records the
+    server will never accept and drops exactly them (T-51).
+    """
+    if window is None:
+        return
+    oldest = datetime.now(UTC) - window
+    message = too_old_message(window)
+    errors = [
+        {
+            "type": "value_error",
+            "loc": ("body", *path),
+            "msg": f"Value error, {message}",
+            "input": value.isoformat(),
+            "ctx": {"error": message},
+        }
+        for path, value in moments
+        if value < oldest
+    ]
+    if errors:
+        raise RequestValidationError(errors)
+
+
 @router.post(
     "/devices/register",
     status_code=status.HTTP_201_CREATED,
@@ -108,8 +180,8 @@ async def register_device(
 ) -> DeviceRegisterResponse:
     """Exchange a one-time installation code for device credentials (ADR-005).
 
-    The token is returned once and stored as an argon2 hash; the school comes from the code,
-    the line from the monitoring point the device is bound to.
+    The token is returned once and stored as a sha256 hash (``app/core/security.py``); the
+    school comes from the code, the line from the monitoring point the device is bound to.
     """
     code = await valid_enrollment_code(session, body.enrollment_code)
     point = await binding_point(session, code.school_id, body.room)
@@ -122,7 +194,7 @@ async def register_device(
     device.hostname = body.hostname
     device.os = body.os
     device.agent_version = body.agent_version
-    device.token_hash = hash_secret(secret)
+    device.token_hash = hash_token(secret)
     session.add(device)
     try:
         await session.flush()
@@ -145,7 +217,7 @@ async def valid_enrollment_code(session: AsyncSession, code: str) -> EnrollmentC
         raise ApiError(400, "invalid_enrollment_code", CODE_NOT_FOUND)
     code_id, secret = parsed
     entry = await session.get(EnrollmentCode, code_id)
-    if entry is None or not verify_secret(secret, entry.code_hash):
+    if entry is None or not await verify_secret_async(secret, entry.code_hash):
         raise ApiError(400, "invalid_enrollment_code", CODE_NOT_FOUND)
     if entry.used_at is not None:
         raise ApiError(400, "used_enrollment_code", "Код установки уже использован")
@@ -345,12 +417,14 @@ async def create_measurement(
     body: MeasurementCreate,
     device: Annotated[Device, Depends(current_device)],
     session: Annotated[AsyncSession, Depends(get_session)],
+    window: QueueWindow,
 ) -> MeasurementAccepted:
     """Store one measurement (ADR-006).
 
     The device comes from the token and the line from its monitoring point; a repeat of the
     same ``measurement_uuid`` answers 409, which the agent treats as «stored» too.
     """
+    check_queue_window(window, [(("measured_at",), body.measured_at)])
     stored = await store_measurements(session, device, [body])
     if body.measurement_uuid not in stored:
         raise ApiError(409, "duplicate_measurement", DUPLICATE_MEASUREMENT)
@@ -374,12 +448,20 @@ async def create_measurement_batch(
     body: MeasurementBatchRequest,
     device: Annotated[Device, Depends(current_device)],
     session: Annotated[AsyncSession, Depends(get_session)],
+    window: QueueWindow,
 ) -> MeasurementBatchResponse:
     """Store the new measurements of a resent queue and report each item (ADR-006).
 
     A record the server already has — including a record the batch repeats itself — gets 409
     instead of 201; both mean «delete from the queue», so one batch never comes back twice.
     """
+    check_queue_window(
+        window,
+        [
+            (("items", index, "measured_at"), item.measured_at)
+            for index, item in enumerate(body.items)
+        ],
+    )
     stored = await store_measurements(session, device, body.items)
     await session.commit()
     if stored:
@@ -510,6 +592,7 @@ async def create_outage(
     body: OutageCreate,
     device: Annotated[Device, Depends(current_device)],
     session: Annotated[AsyncSession, Depends(get_session)],
+    window: QueueWindow,
 ) -> OutageAccepted:
     """Store a period the agent spent without connection (ТЗ п. 2, ADR-006).
 
@@ -517,6 +600,10 @@ async def create_outage(
     and ``started_at``, so a resent outage gets 409 instead of a second row — for the agent
     both answers mean «delete from the queue».
     """
+    check_queue_window(
+        window,
+        [(("started_at",), body.started_at), (("ended_at",), body.ended_at)],
+    )
     line_id = await measured_line(session, device)
     outage_id = await session.scalar(
         insert(Outage)
