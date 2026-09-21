@@ -1,0 +1,22 @@
+/* Status stepper and event timeline, DESIGN.md §2.3, §3.17: AntD in tokens, nothing redrawn. */
+.stepper {
+  font-size: var(--font-size-sm);
+}
+
+.stepper :global(.ant-steps-item-title) {
+  font-size: var(--font-size-sm);
+}
+
+/* The step the record stands on now is the only heavy one (DESIGN.md §3.17). */
+.stepper :global(.ant-steps-item-process .ant-steps-item-title) {
+  font-weight: var(--font-weight-semibold);
+}
+
+.timeline {
+  font-size: var(--font-size-md);
+}
+
+.timeline :global(.ant-timeline-item-content) {
+  min-width: 0;
+  color: var(--text-primary);
+}
