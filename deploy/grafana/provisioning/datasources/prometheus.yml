@@ -1,0 +1,12 @@
+# Источник данных Grafana создаётся при старте контейнера: руками в интерфейсе ничего
+# добавлять не нужно (T-54).
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: vko-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

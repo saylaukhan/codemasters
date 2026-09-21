@@ -92,6 +92,12 @@ services:
   worker:
     <<: *backend
     command: celery -A app.workers.celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      # A prefork worker counts in its children: they write the counters here and the parent
+      # process collects them for Prometheus (app/core/observability.py, T-54).
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus-multiproc
 
   beat:
     <<: *backend
@@ -119,8 +125,48 @@ services:
       - web
     restart: unless-stopped
 
+  prometheus:
+    # Метрики самого сервера (T-54): запросы к API, задачи Celery. Качество интернета школ
+    # сюда не попадает — это замеры агентов в таблице measurements.
+    image: prom/prometheus:v3.1.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Метрики сервера нужны, чтобы понять вчерашний сбой, а не для годовых отчётов.
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    # Порт не публикуется: Prometheus смотрят через Grafana, снаружи он не нужен.
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      # Панель мониторинга ВКО открыта по своему адресу, а Grafana — инструмент
+      # администратора: вход по паролю, регистрация закрыта.
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    ports:
+      # Loopback only: смотреть через ssh-туннель, наружу Grafana не публикуется.
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:
   caddy_data:
   caddy_config:
+  prometheus_data:
+  grafana_data:

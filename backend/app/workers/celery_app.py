@@ -2,13 +2,19 @@
 
 Broker and result backend are Redis (``Settings.redis_url``). Scheduled tasks are stored in
 UTC and displayed in the school time zone (ADR-014).
+
+``install_worker_metrics`` connects the task signals and, when the worker starts, Sentry and
+the HTTP server of the metrics (``app/core/observability.py``, T-54).
 """
 
 from celery import Celery
 
 from app.core.config import get_settings
+from app.core.observability import install_worker_metrics
 
 settings = get_settings()
+
+install_worker_metrics()
 
 celery_app = Celery(
     "vko_monitor",

@@ -19,6 +19,8 @@ dependencies = [
     "pydantic-settings>=2.4",
     "celery[redis]>=5.4",
     "redis>=5.0",
+    "sentry-sdk[fastapi]>=2.14",
+    "prometheus-client>=0.21",
 ]
 
 [project.optional-dependencies]
