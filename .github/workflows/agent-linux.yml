@@ -1,0 +1,163 @@
+# Собирает агент под Linux и пакеты vko-agent .deb и .rpm (T-52, plan.md §15).
+# Формат пакета в плане не зафиксирован («решение лида»), поэтому собираются оба из одного
+# agent/installer/linux/nfpm.yaml.
+#
+# В отличие от Agent MSI, здесь пакет ещё и ставится: job install-deb поднимает .deb на
+# ubuntu-latest (это полноценная ВМ с systemd) и проверяет «сделано, когда» из задачи —
+# служба включена и работает, конфигурация с нужными правами, удаление убирает unit.
+name: Agent Linux
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: "Адрес API сервера мониторинга; попадает в agent.yaml как значение по умолчанию"
+        required: false
+        default: "https://monitor.example.kz"
+  push:
+    branches: [developing]
+    paths:
+      - "agent/**"
+      - ".github/workflows/agent-linux.yml"
+    tags: ["v*"]
+
+env:
+  # Версия nfpm закреплена: состав пакета не должен меняться сам по себе между демо и поставкой.
+  NFPM_VERSION: "v2.38.0"
+
+jobs:
+  build:
+    name: build-${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    defaults:
+      run:
+        shell: bash
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: agent/go.mod
+          cache: false
+
+      - name: Resolve version (tag or short sha)
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Версия пакета — semver, как требует nfpm: тег v1.2.3 очищается, сборка без тега
+      # получает номер прогона, чтобы обновление видело, что версия выросла.
+      - name: Resolve package version
+        id: pkg_version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF#refs/tags/v}"
+          else
+            version="0.1.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Build vko-agent
+        env:
+          GOOS: linux
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: "0"
+        run: >
+          go build
+          -ldflags "-X github.com/saylaukhan/codemasters/agent/internal/buildinfo.Version=${{ steps.version.outputs.version }}"
+          -o "dist/vko-agent-linux-${{ matrix.arch }}" ./cmd/vko-agent
+
+      # Аналог свойства SERVER_URL в MSI: адрес API, с которого агент спрашивает пороги,
+      # расписание и сервер замеров (ADR-004, ADR-012). Сами они в пакет не попадают.
+      - name: Bake default server URL
+        run: |
+          server_url="${{ inputs.server_url }}"
+          server_url="${server_url:-${{ vars.AGENT_SERVER_URL }}}"
+          server_url="${server_url:-https://monitor.example.kz}"
+          printf '%s\n' "$server_url" > dist/server-url
+
+      - name: Install nfpm
+        working-directory: .
+        run: go install "github.com/goreleaser/nfpm/v2/cmd/nfpm@${NFPM_VERSION}"
+
+      - name: Build vko-agent .deb and .rpm
+        env:
+          VKO_VERSION: ${{ steps.pkg_version.outputs.version }}
+          VKO_ARCH: ${{ matrix.arch }}
+        run: |
+          nfpm package -f installer/linux/nfpm.yaml -p deb -t dist/
+          nfpm package -f installer/linux/nfpm.yaml -p rpm -t dist/
+          ls -l dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vko-agent-linux-${{ matrix.arch }}
+          path: |
+            agent/dist/vko-agent-linux-${{ matrix.arch }}
+            agent/dist/*.deb
+            agent/dist/*.rpm
+          if-no-files-found: error
+
+  install-deb:
+    name: install-deb
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vko-agent-linux-amd64
+          path: dist
+
+      # Переменные передаются через `sudo env`, а не через `sudo -E`: postinstall читает их
+      # из окружения dpkg, и так же их задаёт администратор школы (installer/linux/README.md).
+      - name: Install package
+        run: |
+          sudo env VKO_SERVER_URL=https://monitor.example.kz \
+                   VKO_ENROLL_CODE=VKO-TEST-CI00 \
+                   VKO_ROOM="Кабинет CI" \
+                   apt-get install -y ./dist/*.deb
+
+      # «Сделано, когда»: служба стартует при загрузке и работает. Регистрация на
+      # несуществующем сервере не удаётся — это не фатально, служба остаётся поднятой
+      # и ждёт связи (ADR-006), поэтому is-active здесь — настоящая проверка.
+      - name: Service is enabled and running
+        run: |
+          systemctl is-enabled vko-agent
+          systemctl is-active vko-agent
+          test "$(systemctl show -p User --value vko-agent)" = vko-agent
+
+      - name: Config and data directory have the right owner and mode
+        run: |
+          test "$(stat -c '%U:%G %a' /etc/vko-agent/agent.yaml)" = "root:vko-agent 640"
+          test "$(stat -c '%U:%G %a' /var/lib/vko-agent)" = "vko-agent:vko-agent 750"
+          sudo grep -q 'enroll_code: VKO-TEST-CI00' /etc/vko-agent/agent.yaml
+
+      - name: vko-agent status reports the service
+        run: |
+          status="$(sudo -u vko-agent /usr/bin/vko-agent status)"
+          echo "$status"
+          grep -q 'Служба vko-agent: работает' <<<"$status"
+
+      # «Сделано, когда»: удаление пакета убирает unit.
+      - name: Purge removes the unit
+        run: |
+          sudo apt-get purge -y vko-agent
+          test ! -f /lib/systemd/system/vko-agent.service
+          test ! -f /etc/sysctl.d/90-vko-agent.conf
+          ! systemctl list-unit-files vko-agent.service | grep -q vko-agent
+          # Папка данных остаётся намеренно: в ней неотправленные замеры и токен (ADR-006).
+          test -d /var/lib/vko-agent

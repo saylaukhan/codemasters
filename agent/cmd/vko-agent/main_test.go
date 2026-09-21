@@ -187,7 +187,7 @@ func TestStatusWithoutStateFile(t *testing.T) {
 	if code != exitOK {
 		t.Fatalf("status: exit code = %d, want %d; stderr: %s", code, exitOK, stderr)
 	}
-	for _, want := range []string{"Служба VKOMonitorAgent:", "Последний замер: нет данных", "Очередь на отправку"} {
+	for _, want := range []string{"Служба " + service.Name + ":", "Последний замер: нет данных", "Очередь на отправку"} {
 		if !strings.Contains(stdout, want) {
 			t.Fatalf("status: stdout %q does not contain %q", stdout, want)
 		}
@@ -225,7 +225,7 @@ func TestStatusWithMissingConfigFails(t *testing.T) {
 	if code != exitError {
 		t.Fatalf("status without config: exit code = %d, want %d", code, exitError)
 	}
-	if !strings.Contains(stdout, "Служба VKOMonitorAgent:") || !strings.Contains(stderr, "missing.yaml") {
+	if !strings.Contains(stdout, "Служба "+service.Name+":") || !strings.Contains(stderr, "missing.yaml") {
 		t.Fatalf("status without config: stdout %q / stderr %q", stdout, stderr)
 	}
 }

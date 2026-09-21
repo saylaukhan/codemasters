@@ -25,9 +25,10 @@ import (
 	"github.com/saylaukhan/codemasters/agent/internal/secure"
 )
 
-// Service identity; the MSI (plan.md §4.1) uses the same name.
+// Service identity. Name is per platform: VKOMonitorAgent for the Windows
+// service of the MSI, vko-agent for the systemd unit of the Linux package
+// (installer/wix, installer/linux).
 const (
-	Name        = "VKOMonitorAgent"
 	DisplayName = "Мониторинг интернета ВКО"
 	Description = "Фоновые замеры качества интернет-соединения школы и отправка результатов на сервер мониторинга."
 )
@@ -53,7 +54,7 @@ func definition(configPath string) *kservice.Config {
 		DisplayName: DisplayName,
 		Description: Description,
 		Arguments:   []string{"run", "--config", configPath},
-		UserName:    windowsUserName,
+		UserName:    serviceUserName(),
 		Option: kservice.KeyValue{
 			// Windows: "Automatic (Delayed Start)"; recovery actions are set in setRecoveryActions.
 			"DelayedAutoStart": true,

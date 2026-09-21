@@ -40,7 +40,7 @@ HTTPS/TLS отправляет результаты в API, а тот сохра
 
 | Слой | Технология |
 |---|---|
-| Агент | Go 1.23, служба Windows (`kardianos/service`) и systemd на Linux, SQLite-очередь, установщик MSI (WiX v4) |
+| Агент | Go 1.23, служба Windows (`kardianos/service`) и systemd на Linux, SQLite-очередь, установщики MSI (WiX v4) и `.deb` / `.rpm` (nfpm) |
 | Замеры | свой LibreSpeed-сервер (основной) + ndt7 (резерв), оба в Казахстане |
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic v2 |
 | Фоновые задачи | Redis + Celery (+ Celery Beat) |
@@ -56,7 +56,7 @@ HTTPS/TLS отправляет результаты в API, а тот сохра
 Функции разложены по задачам `docs/tasks/README.md`; что в какой папке:
 
 ```text
-agent/               Go — агент: служба Windows / systemd, замеры, очередь, MSI
+agent/               Go — агент: служба Windows / systemd, замеры, очередь, MSI и пакет Linux
 backend/             Python — FastAPI, модели, миграции Alembic, Celery, тесты
 web/                 React + TypeScript + Vite — веб-панель
 simulator/           симулятор агентов: 350 школ, 1000 ПК, 3 месяца истории
@@ -83,7 +83,7 @@ make worker        # celery worker + beat
 make web           # vite dev server на http://localhost:5173
 make agent-run     # go run ./cmd/vko-agent run --config ./agent/dev.yaml (без установки службы)
 make check         # ВСЁ: check-agent + check-backend + check-web — перед каждым слиянием
-make backup        # разовый полный бэкап БД (pgBackRest); восстановление — deploy/pgbackrest/README.md
+make backup        # разовый полный бэкап БД; восстановление — deploy/pgbackrest/README.md
 ```
 
 Установка с нуля: `git clone git@github.com:saylaukhan/codemasters.git && cd codemasters && cp .env.example .env && make install && make up && make migrate && make seed`.
@@ -102,19 +102,19 @@ Pull Request'ов нет. Гейт перед слиянием — [docs/checkli
 
 ## Статус
 
-Сентябрь 2026. Реализовано 53 задачи из 58; все задачи волны MVP закрыты, кроме поставочных
+Сентябрь 2026. Реализовано 55 задач из 58; все задачи волны MVP закрыты, кроме поставочных
 (T-55, T-57, T-58). Работает сквозной путь данных: агент — служба Windows и systemd —
 регистрируется по коду установки, замеряет по расписанию со случайным смещением, копит
 результаты в SQLite-очереди при обрыве связи и дошлёт их сам; API принимает замеры, считает
 статусы, ведёт инциденты с гистерезисом, уведомления, обращения провайдеру с AI-черновиком и
 выгрузки; панель показывает карту ВКО, карточки школы и ПК, аналитику, инциденты, кабинет
-провайдера и админку. Есть MSI-установщик и самообновление агента, ролевая модель с RLS и
-аудитом, экспорт в XLSX, CSV, JSON и PDF, резервное копирование БД и наблюдаемость сервера.
+провайдера и админку. Есть MSI-установщик, пакеты `.deb` и `.rpm`, самообновление агента,
+ролевая модель с RLS и аудитом, экспорт в XLSX, CSV, JSON и PDF, резервное копирование БД и
+наблюдаемость сервера.
 
-Осталось: T-52 (Linux-пакет агента), T-55 (симулятор агентов), T-56 (нагрузочный тест),
-T-57 (документация поставки), T-58 (сценарий демонстрации и контрольный прогон). До T-55
-история замеров наполняется только реальными агентами: `simulator/simulate.py` — заглушка
-из T-01.
+Осталось: T-55 (симулятор агентов), T-56 (нагрузочный тест), T-57 (документация поставки)
+и T-58 (сценарий демонстрации и контрольный прогон). До T-55 история замеров наполняется
+только реальными агентами: `simulator/simulate.py` — заглушка из T-01.
 
 Что заведомо не доделано — [docs/known-limitations.md](docs/known-limitations.md); статусы
 задач (`todo | in-progress | done (дата)`) — в [docs/tasks/README.md](docs/tasks/README.md);

@@ -1,0 +1,54 @@
+# Служба агента «Мониторинг интернета ВКО» (T-52, plan.md §15).
+#
+# Ставится пакетом .deb / .rpm в /lib/systemd/system/vko-agent.service. Имя unit'а
+# совпадает с service.Name в agent/internal/service — иначе `vko-agent status` не найдёт
+# службу; за совпадением следит тест systemd_unit_test.go.
+#
+# Пороги, расписание и адрес сервера замеров сюда не попадают: агент получает их с сервера
+# (ADR-004, ADR-012). Локальная настройка — /etc/vko-agent/agent.yaml.
+
+[Unit]
+Description=Мониторинг интернета ВКО — агент
+Documentation=https://github.com/saylaukhan/codemasters
+# Замер и регистрация начинаются с обращения к серверу: ждём поднятой сети.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/vko-agent run --config /etc/vko-agent/agent.yaml
+User=vko-agent
+Group=vko-agent
+
+# Перезапуск после сбоя — аналог политики Windows 1 / 1 / 5 мин (plan.md §4.1).
+# StartLimit не задаётся: служба должна подниматься и после долгой череды падений.
+Restart=on-failure
+RestartSec=60
+
+# /var/lib/vko-agent: очередь замеров, журнал, device.json и токен устройства.
+# systemd создаёт папку и отдаёт её User= сам, права 0750 (токен внутри — 600, ADR-005).
+StateDirectory=vko-agent
+StateDirectoryMode=0750
+
+# Минимум прав: агент только читает конфигурацию и пишет в свою папку данных.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+# AF_NETLINK нужен netinfo для списка интерфейсов и адресов (agent/internal/netinfo).
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX
+# Серия ping идёт через unprivileged ICMP (SOCK_DGRAM): право даёт не capability, а
+# net.ipv4.ping_group_range — его выставляет postinstall. Без него probe уходит в TCP-connect.
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

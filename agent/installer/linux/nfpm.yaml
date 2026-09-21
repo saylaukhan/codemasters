@@ -1,0 +1,76 @@
+# Пакет агента «Мониторинг интернета ВКО» для Linux с systemd (T-52, plan.md §15).
+#
+# Один файл — два формата: .deb (Debian, Ubuntu, Astra) и .rpm (RED OS, ALT, RHEL). Формат
+# поставки в plan.md §15 не зафиксирован («решение лида»), поэтому собираются оба.
+#
+# Собирается только в CI: .github/workflows/agent-linux.yml, `nfpm pkg -p deb|rpm`.
+# Запускается из папки agent/ — все пути src отсчитываются от неё.
+# Значения VKO_VERSION и VKO_ARCH подставляет workflow.
+
+name: vko-agent
+arch: ${VKO_ARCH}
+platform: linux
+version: ${VKO_VERSION}
+version_schema: semver
+section: net
+priority: optional
+maintainer: Управление образования ВКО <noreply@example.kz>
+vendor: Управление образования ВКО
+homepage: https://github.com/saylaukhan/codemasters
+license: Proprietary
+description: |
+  Агент мониторинга качества интернет-соединения школы.
+  Фоновая служба systemd без интерфейса: замеряет скорость, ping, jitter и потери пакетов
+  по расписанию с сервера и отправляет результаты в панель мониторинга ВКО.
+
+# systemd — не опциональная зависимость: без него unit ставить некуда.
+depends:
+  - systemd
+
+contents:
+  - src: dist/vko-agent-linux-${VKO_ARCH}
+    dst: /usr/bin/vko-agent
+    file_info:
+      mode: 0755
+
+  # Unit кладётся туда, где его ждёт формат пакета: на Debian /lib/systemd/system (на
+  # системах без usrmerge это не симлинк), на RPM — /usr/lib/systemd/system, потому что
+  # rpm отказывается ставить файлы в каталог-симлинк.
+  - src: installer/linux/systemd/vko-agent.service
+    dst: /lib/systemd/system/vko-agent.service
+    packager: deb
+    file_info:
+      mode: 0644
+  - src: installer/linux/systemd/vko-agent.service
+    dst: /usr/lib/systemd/system/vko-agent.service
+    packager: rpm
+    file_info:
+      mode: 0644
+
+  # Адрес сервера мониторинга по умолчанию — аналог свойства SERVER_URL в MSI. Файл
+  # создаёт workflow; postinstall берёт его только при первой установке.
+  - src: dist/server-url
+    dst: /usr/share/vko-agent/server-url
+    file_info:
+      mode: 0644
+
+  - src: installer/linux/README.md
+    dst: /usr/share/doc/vko-agent/README.md
+    file_info:
+      mode: 0644
+
+  # Права и владельца назначает postinstall: учётной записи vko-agent на момент
+  # распаковки файлов ещё нет.
+  - dst: /etc/vko-agent
+    type: dir
+    file_info:
+      mode: 0750
+  - dst: /var/lib/vko-agent
+    type: dir
+    file_info:
+      mode: 0750
+
+scripts:
+  postinstall: installer/linux/scripts/postinstall.sh
+  preremove: installer/linux/scripts/preremove.sh
+  postremove: installer/linux/scripts/postremove.sh
