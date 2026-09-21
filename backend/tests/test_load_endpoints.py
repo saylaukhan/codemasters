@@ -18,10 +18,12 @@ Two measurements, the two the task asks for:
 What the numbers are, and what they are not: the application runs in this process over ASGI on
 an engine whose pool repeats the one a deployment gets by default — ``app/core/db.py`` sets
 neither ``pool_size`` nor ``max_overflow`` — so RLS of ADR-008 and the rate limit of T-51 apply
-as they do behind Caddy. But every agent request checks its token with argon2id in the event
-loop (``app/core/deps.py``) and ``backend/Dockerfile`` runs one uvicorn worker, so the batch
-numbers are CPU as much as database: the run prints the cost of that check apart, to be
-subtracted before anything is concluded about indexes, because no index shortens it.
+as they do behind Caddy. One event loop here and one uvicorn process there
+(``backend/Dockerfile``), so the width is the same as well, and what is left is that a run of
+this file hashes its own tokens instead of issuing them. The token check itself is no longer
+part of the cost — a device token is hashed with sha256 now, not argon2id
+(``app/core/security.py``) — but the run still prints it, so whoever reads the table can see
+that it is a rounding error and stop subtracting it.
 
 This file has never been executed: it was written in a session with neither Docker nor
 ``backend/.venv``. The three criteria of «Сделано, когда» of T-56 are met by a run, not by the
@@ -51,7 +53,14 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.db import get_session
-from app.core.security import format_device_token, hash_secret, new_device_secret, verify_secret
+from app.core.security import (
+    format_device_token,
+    hash_secret,
+    hash_token,
+    new_device_secret,
+    verify_secret,
+    verify_token,
+)
 from app.main import create_app
 from app.models import (
     Device,
@@ -181,12 +190,26 @@ class QueryCounter:
 
 
 def token_check_ms() -> float:
-    """Milliseconds one argon2id check of a device token costs on this machine (ADR-005).
+    """Milliseconds one check of a device token costs on this machine (ADR-005).
 
-    ``current_device`` calls ``verify_secret`` straight in the event loop, before any query, so
-    on the single uvicorn worker these milliseconds are serial: they sit inside every batch
-    number below and no index shortens them. Measured so the reader can subtract them.
+    ``current_device`` runs it in the event loop before any query, so on one worker these
+    milliseconds are serial and sit inside every batch number below. They used to be argon2id
+    — tens of them per request of every agent; the check is a sha256 comparison now, and this
+    is the number that says so. ``argon2_check_ms`` measures what it replaced, on the same
+    machine, so the two can be printed side by side.
     """
+    secret = new_device_secret()
+    hashed = hash_token(secret)
+    taken = []
+    for _ in range(REPEATS):
+        started = time.perf_counter()
+        verify_token(secret, hashed)
+        taken.append((time.perf_counter() - started) * 1000)
+    return statistics.median(taken)
+
+
+def argon2_check_ms() -> float:
+    """Milliseconds the argon2id check of the same token used to cost (ТЗ п. 3, T-56)."""
     secret = new_device_secret()
     hashed = hash_secret(secret)
     taken = []
@@ -273,17 +296,16 @@ async def load_devices(
 ) -> AsyncIterator[list[str]]:
     """``count`` devices of the run on existing monitoring points; yields their tokens.
 
-    They are registered the way T-14 does it — only the argon2 hash of the secret is stored
-    (ADR-005). One secret is hashed once and the same hash goes to every device: what a request
-    verifies costs exactly the same either way, while hashing a thousand of them here would add
-    minutes of CPU to the fixture alone.
+    They are registered the way T-14 does it — only the sha256 hash of the secret is stored
+    (ADR-005, ``app/core/security.py``). One secret is hashed once and the same hash goes to
+    every device: what a request verifies costs exactly the same either way.
 
     The cleanup runs in ``finally``, which a killed interpreter never reaches. A run cut short
     leaves ``load-…`` devices and their measurements on live schools, where they count towards
     the status of the school (ADR-004, T-16); the SQL that removes them is in §2 of the document.
     """
     secret = new_device_secret()
-    token_hash = hash_secret(secret)
+    token_hash = hash_token(secret)
     async with sessions() as session:
         points = list(await session.scalars(select(MonitoringPoint.id)))
         if not points:
@@ -374,8 +396,8 @@ def report(timings: Sequence[Timing], check_ms: float) -> None:
             f"{timing.worst:>8.0f}{timing.statements:>6}  {verdict}"
         )
     print(
-        f"Проверка токена argon2: {check_ms:.0f} мс в каждом ответе батча — это процессор, "
-        "не база, и индексами не лечится."
+        f"Проверка токена: {check_ms:.3f} мс в каждом ответе батча "
+        f"(argon2 на этой же машине: {argon2_check_ms():.0f} мс)."
     )
     slow = [timing.name for timing in timings if not timing.fits]
     if slow:
@@ -426,7 +448,7 @@ async def test_concurrent_batches(
     This is the moment of ADR-006 the intake is built for: the connection comes back and every
     school sends what it saved while it was down. Nothing may be refused and nothing lost, so
     the check is on the answers; the clock is only reported, and the report says how much of it
-    is the argon2 check of the tokens rather than the database.
+    is the token check rather than the database.
     """
     client, _ = load_client
     check_ms = token_check_ms()
@@ -457,7 +479,7 @@ async def test_concurrent_batches(
         f"Время: {elapsed:.1f} с. Принято записей: {stored} из {DEVICES * BATCH_ITEMS}."
     )
     print(
-        f"Из них argon2 на токенах: около {DEVICES * check_ms / 1000:.0f} с — проверка идёт "
-        "в event loop одного воркера, до любого обращения к базе."
+        f"Из них проверка токенов: около {DEVICES * check_ms / 1000:.2f} с "
+        f"(argon2 стоил бы {DEVICES * argon2_check_ms() / 1000:.0f} с на этом же прогоне)."
     )
     assert stored == DEVICES * BATCH_ITEMS

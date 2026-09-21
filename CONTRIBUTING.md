@@ -272,7 +272,7 @@ Backend (`backend/`, Python):
 | Проверка прав, область видимости | `backend/app/auth/` — `require(permission)`, scope, `rls.py` | T-20 |
 | Бизнес-логика | `backend/app/services/` — `status.py`, `incidents.py`, `availability.py`, `exports/`, `appeals/`, `llm/` | статусы — T-16, T-18; инциденты — T-40 |
 | Фоновая задача Celery | `backend/app/workers/tasks/`, расписание — `celery_app.py` | T-40 |
-| Конфигурация, БД, argon2, JWT | `backend/app/core/` | T-01, безопасность — T-14, T-20 |
+| Конфигурация, БД, хэши секретов (argon2id и sha256), JWT | `backend/app/core/` | T-01, безопасность — T-14, T-20 |
 | Middleware ошибок и аудита | `backend/app/main.py`; обработчики problem+json — `backend/app/core/errors.py`, контракт ошибок в OpenAPI — `backend/app/core/openapi.py` | ошибки — T-03, аудит — T-20 |
 | Контракт для панели | `make openapi` → `docs/reference/openapi.json`, `web/src/api/generated/*` | T-03 |
 | Тест (pytest, testcontainers для Postgres) | `backend/tests/` | дымовой — T-01, первый настоящий — T-02 |

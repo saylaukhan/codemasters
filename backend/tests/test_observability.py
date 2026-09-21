@@ -43,6 +43,37 @@ def test_request_is_counted_under_its_route_template() -> None:
     assert after[health] == before.get(health, 0.0) + 1
 
 
+def test_an_endpoint_of_an_included_router_answers_and_is_counted() -> None:
+    """Regression: the routers of ``app/api`` are attached with ``include_router``.
+
+    Matching the top level of ``app.routes`` finds the object that stands for such a router,
+    which carries no path at all — reading a template off it turned every ``/api/*`` request
+    into 500. The template is read after the router has run instead.
+    """
+    client = TestClient(create_app())
+
+    response = client.get("/api/schools")
+
+    # No token: 401 is the answer of the endpoint, and any 5xx means the metrics broke routing.
+    assert response.status_code == 401, response.text
+    counted = samples(client.get("/metrics").text, "vko_http_requests_total")
+    paths = {dict(labels)["path"] for labels in counted}
+    assert "/api/schools" in paths
+    assert not any(p == UNMATCHED for p in paths if p == "/api/schools")
+
+
+def test_a_path_parameter_is_replaced_by_its_name() -> None:
+    """One label per endpoint, not one per school: the id must not reach the label."""
+    client = TestClient(create_app())
+
+    client.get("/api/schools/7/devices")
+
+    counted = samples(client.get("/metrics").text, "vko_http_requests_total")
+    paths = {dict(labels)["path"] for labels in counted}
+    assert not any("/7/" in p for p in paths), paths
+    assert any(p.startswith("/api/schools/{") for p in paths), paths
+
+
 def test_unknown_path_does_not_create_a_label_of_its_own() -> None:
     client = TestClient(create_app())
 

@@ -21,12 +21,12 @@ from app.core.db import get_session
 from app.core.deps import refresh_cookie
 from app.core.errors import ApiError
 from app.core.security import (
-    burn_password_check,
+    burn_password_check_async,
     decode_jwt,
     encode_jwt,
-    hash_password,
+    hash_password_async,
     password_needs_rehash,
-    verify_password,
+    verify_password_async,
 )
 from app.models import Region, User
 from app.schemas.auth import AccessTokenResponse, CurrentUser, LoginRequest, UserScope
@@ -127,9 +127,9 @@ async def login(
     email = body.email.strip().lower()
     password = body.password.get_secret_value()
     user = await session.scalar(select(User).where(User.email == email))
-    if user is None or not verify_password(password, user.password_hash):
+    if user is None or not await verify_password_async(password, user.password_hash):
         if user is None:
-            burn_password_check(password)
+            await burn_password_check_async(password)
         record_login(
             session,
             request,
@@ -145,7 +145,7 @@ async def login(
         await session.commit()
         raise account_blocked()
     if password_needs_rehash(user.password_hash):
-        user.password_hash = hash_password(password)
+        user.password_hash = await hash_password_async(password)
     user.last_login_at = datetime.now(UTC)
     record_login(session, request, email=email, user_id=user.id)
     await session.commit()

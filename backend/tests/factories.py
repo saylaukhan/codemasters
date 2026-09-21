@@ -1,8 +1,9 @@
 """Rows the API tests start from: a school with a line and a point, codes, devices.
 
 Issuing an installation code and a device token repeats what T-14 and T-36 do in the
-application: the secret is generated once, the database keeps only its argon2 hash, and the id
-of the row is the part that finds it back (``app/core/security.py``, ADR-005).
+application: the secret is generated once, the database keeps only its hash — argon2 for the
+code, sha256 for the token — and the id of the row is the part that finds it back
+(``app/core/security.py``, ADR-005).
 """
 
 from datetime import UTC, datetime, timedelta
@@ -17,6 +18,7 @@ from app.core.security import (
     format_enrollment_code,
     hash_password,
     hash_secret,
+    hash_token,
     new_device_secret,
     new_enrollment_secret,
 )
@@ -116,7 +118,7 @@ async def register_device(
     device = Device(
         device_uid=device_uid,
         monitoring_point_id=point.id,
-        token_hash=hash_secret(secret),
+        token_hash=hash_token(secret),
         agent_version="0.1.0",
     )
     session.add(device)

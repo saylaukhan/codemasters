@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import PROBLEM_MEDIA_TYPE
-from app.core.security import parse_device_token, verify_secret
+from app.core.security import TOKEN_HASH_PREFIX, hash_secret, parse_device_token, verify_token
 from app.models import Device, EnrollmentCode
 from tests.factories import (
     add_point,
@@ -64,12 +64,13 @@ async def test_valid_code_creates_a_device_and_returns_a_token_once(
     assert device.status == "active"
     # The school comes from the code: the device hangs on the point of that school (ADR-005).
     assert device.monitoring_point_id == (await primary_point(session, school)).id
-    # The token itself is nowhere in the database, only its argon2 hash (ТЗ п. 12).
+    # The token itself is nowhere in the database, only its hash (ТЗ п. 12), and the hash
+    # says which algorithm made it (``app/core/security.py``).
     device_id, secret = parse_device_token(body["device_token"]) or (0, "")
     assert device_id == device.id
-    assert device.token_hash.startswith("$argon2id$")
+    assert device.token_hash.startswith(TOKEN_HASH_PREFIX)
     assert secret not in device.token_hash
-    assert verify_secret(secret, device.token_hash)
+    assert verify_token(secret, device.token_hash)
     # The code is one-time: it is spent by this registration.
     spent = (await session.scalars(select(EnrollmentCode))).one()
     assert spent.used_at is not None
@@ -102,6 +103,39 @@ async def test_token_of_the_device_opens_the_agent_api(
     for refused in (without, wrong_secret, unknown_device, beyond_bigint, wrong_scheme):
         assert problem(refused, 401, "unauthorized")["detail"]
         assert refused.headers["www-authenticate"] == "Device"
+
+
+async def test_token_hashed_by_argon2_is_accepted_and_upgraded(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """A device registered before the token left argon2 keeps working, and pays argon2 once.
+
+    Its token was handed out once and never stored, so no migration could rehash the row: the
+    agent brings the token back on its first request and the row is upgraded then
+    (``app/core/deps.py``). A wrong secret must still be 401 and must change nothing.
+    """
+    school = await create_school(session)
+    device, token = await register_device(session, await primary_point(session, school))
+    _, secret = parse_device_token(token) or (0, "")
+    device.token_hash = hash_secret(secret)
+    await session.flush()
+
+    accepted = await api_client.post(HEARTBEAT, json=heartbeat(), headers=as_device(token))
+    await session.refresh(device)
+    upgraded = device.token_hash
+    wrong_secret = await api_client.post(
+        HEARTBEAT, json=heartbeat(), headers=as_device(f"{device.id}.not-the-right-secret")
+    )
+    again = await api_client.post(HEARTBEAT, json=heartbeat(), headers=as_device(token))
+
+    assert accepted.status_code == 204, accepted.text
+    assert again.status_code == 204, again.text
+    problem(wrong_secret, 401, "unauthorized")
+    # The row now holds the new format, and it is the hash of the same token as before.
+    assert upgraded.startswith(TOKEN_HASH_PREFIX)
+    assert verify_token(secret, upgraded)
+    await session.refresh(device)
+    assert device.token_hash == upgraded
 
 
 async def test_blocked_device_is_refused_on_every_request(

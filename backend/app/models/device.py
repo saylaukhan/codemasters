@@ -23,7 +23,10 @@ class Device(TimestampMixin, Base):
     hostname: Mapped[str | None]
     os: Mapped[str | None]
     agent_version: Mapped[str | None]
-    # argon2 hash of the device token; the token itself is never stored (ADR-005).
+    # Hash of the device token; the token itself is never stored (ADR-005). ``sha256$…`` —
+    # the token is 256 random bits, so a holding function buys nothing and costs the event
+    # loop a request (``app/core/security.py``); an argon2 value here is a row written
+    # before that and is replaced by the first request of its agent.
     token_hash: Mapped[str]
     registered_at: Mapped[datetime] = mapped_column(server_default=func.now())
     last_seen_at: Mapped[datetime | None]
