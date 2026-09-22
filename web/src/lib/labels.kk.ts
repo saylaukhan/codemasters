@@ -146,7 +146,7 @@ export const INCIDENT_COLUMN_LABELS = {
 
 /** Footer of a paged table: «1–25 из 143». */
 export const TABLE_PAGINATION_LABELS = {
-  total: (from: number, to: number, count: number) => `${from}–${to} из ${count}`,
+  total: (from: number, to: number, count: number) => `${from}–${to} / ${count}`,
 } as const
 
 /** Columns of the appeal list (T-48). */
@@ -642,7 +642,7 @@ export const RESPONSIVE_TABLE_LABELS = {
 /** Rating of «Аналитика»: a phone card carries the place in place of the status pill (§3.12). */
 export const RATING_LABELS = {
   place: 'Орны',
-  placeOf: (rank: string) => `Место ${rank}`,
+  placeOf: (rank: string) => `${rank}-орын`,
   wholeRegion: 'Бүкіл ШҚО',
 } as const
 
@@ -670,7 +670,7 @@ export const OVERVIEW_LABELS = {
   firstData: 'алғашқы деректер',
   /** Caption of the context above the title: «Вся область · 350 школ» (DESIGN.md §3.7). */
   context: (scope: string, count: string, noun: string) => `${scope} · ${count} ${noun}`,
-  subtitle: (time: string) => `Данные на ${time} · основные линии`,
+  subtitle: (time: string) => `Деректер ${time} жағдайына · негізгі арналар`,
   /** «Нет данных» is display-only (ADR-004): a footnote under the strip, not a fifth column. */
   noData: (count: string, noun: string) => `${SCHOOL_STATUS_LABELS.no_data}: ${count} ${noun}`,
 } as const
@@ -679,8 +679,8 @@ export const OVERVIEW_LABELS = {
 export const OVERVIEW_VERDICT_LABELS = {
   loading: 'Деректер жиналуда',
   empty: 'Берілген сүзгілер бойынша мектеп жоқ',
-  all: (count: string, noun: string) => `Все ${count} ${noun} сегодня в норме`,
-  part: (normal: string, noun: string, total: string) => `${normal} ${noun} из ${total} сегодня в норме`,
+  all: (count: string, noun: string) => `Барлық ${count} ${noun} бүгін қалыпты`,
+  part: (normal: string, noun: string, total: string) => `${total} ${noun} ішінен ${normal} бүгін қалыпты`,
 } as const
 
 /** The eight KPIs of ТЗ п. 4 on the main screen; the captions are those of `Main.html`. */
@@ -693,8 +693,8 @@ export const OVERVIEW_KPI_LABELS = {
   avgUpload: 'Орташа жүктеп жіберу',
   avgPing: 'Орташа жауап уақыты',
   problemDevices: 'Проблемалы құрылғылар',
-  registry: (total: string) => `из ${total} в реестре`,
-  of: (total: string) => `из ${total}`,
+  registry: (total: string) => `тізілімдегі ${total} ішінен`,
+  of: (total: string) => `${total} ішінен`,
 } as const
 
 /** Why a row of «Требуют внимания» is there; an incident says its metric instead (§4.1). */
@@ -720,9 +720,9 @@ export const ATTENTION_METRIC_LABELS: Record<IncidentMetric, string> = {
 
 /** Second line of a row of «Требуют внимания»: since when it has been so. */
 export const ATTENTION_LABELS = {
-  since: (moment: string) => `с ${moment}`,
-  unassignedSince: (moment: string) => `без ответственного с ${moment}`,
-  more: (count: string, noun: string) => `Ещё ${count} ${noun}`,
+  since: (moment: string) => `${moment} бастап`,
+  unassignedSince: (moment: string) => `${moment} бастап жауапты тағайындалмаған`,
+  more: (count: string, noun: string) => `Тағы ${count} ${noun}`,
   empty: 'Назар қажет ететін ештеңе жоқ',
   emptyHint: 'Байланысы жоқ мектептер, жауаптысы жоқ инциденттер және жауапсыз өтініштер осында шығады.',
 } as const
@@ -913,4 +913,23 @@ export const LOCALE_LABELS = {
   title: 'Язык интерфейса',
   ru: 'Рус',
   kk: 'Қаз',
+} as const
+
+/** Экран входа (DESIGN.md §3.26) и профиль в шапке (§3.5): строки, которые раньше жили в компонентах. */
+export const SIGN_IN_LABELS = {
+  title: 'Жүйеге кіру',
+  email: 'E-mail',
+  password: 'Құпиясөз',
+  emailRequired: 'E-mail енгізіңіз',
+  passwordRequired: 'Құпиясөз енгізіңіз',
+  submit: 'Кіру',
+  failed: 'Кіру мүмкін болмады, қайталап көріңіз',
+} as const
+
+/** Действия шапки: переключатель темы и меню профиля (DESIGN.md §3.5). */
+export const HEADER_LABELS = {
+  lightTheme: 'Ашық тақырып',
+  darkTheme: 'Қараңғы тақырып',
+  logout: 'Шығу',
+  profileMenu: 'Профиль мәзірі',
 } as const

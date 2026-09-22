@@ -911,3 +911,22 @@ export const LOCALE_LABELS = {
   ru: 'Рус',
   kk: 'Қаз',
 } as const
+
+/** Экран входа (DESIGN.md §3.26) и профиль в шапке (§3.5): строки, которые раньше жили в компонентах. */
+export const SIGN_IN_LABELS = {
+  title: 'Вход в систему',
+  email: 'E-mail',
+  password: 'Пароль',
+  emailRequired: 'Введите e-mail',
+  passwordRequired: 'Введите пароль',
+  submit: 'Войти',
+  failed: 'Не удалось войти, попробуйте ещё раз',
+} as const
+
+/** Действия шапки: переключатель темы и меню профиля (DESIGN.md §3.5). */
+export const HEADER_LABELS = {
+  lightTheme: 'Светлая тема',
+  darkTheme: 'Тёмная тема',
+  logout: 'Выйти',
+  profileMenu: 'Меню профиля',
+} as const

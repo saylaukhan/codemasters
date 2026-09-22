@@ -7,7 +7,7 @@ import { NotificationBell } from '../components/notifications/NotificationBell'
 import { Button } from '../components/ui/Button'
 import { LocaleSwitch } from '../components/ui/LocaleSwitch'
 import { APP_NAME } from '../lib/app-info'
-import { NAVIGATION_LABELS, ROLE_LABELS } from '../lib/labels'
+import { HEADER_LABELS, NAVIGATION_LABELS, ROLE_LABELS } from '../lib/labels'
 import { SIZES } from '../styles/theme'
 import styles from './AppLayout.module.css'
 import { useThemeMode } from './themeMode'
@@ -49,7 +49,7 @@ export function AppHeader({ onOpenNavigation }: AppHeaderProps) {
         { type: 'divider' },
         {
           key: 'logout',
-          label: 'Выйти',
+          label: HEADER_LABELS.logout,
           icon: <LogOut size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} />,
           onClick: () => logout(),
         },
@@ -77,7 +77,7 @@ export function AppHeader({ onOpenNavigation }: AppHeaderProps) {
         {user?.permissions.includes(NOTIFICATIONS_PERMISSION) && <NotificationBell />}
         <Button
           kind="flat"
-          tooltip={mode === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+          tooltip={mode === 'dark' ? HEADER_LABELS.lightTheme : HEADER_LABELS.darkTheme}
           icon={
             mode === 'dark' ? (
               <Sun size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} />
@@ -89,7 +89,7 @@ export function AppHeader({ onOpenNavigation }: AppHeaderProps) {
         />
         {user && (
           <Dropdown menu={{ items: profileItems }} trigger={['click']} placement="bottomRight">
-            <button type="button" className={styles.profile} aria-label="Меню профиля">
+            <button type="button" className={styles.profile} aria-label={HEADER_LABELS.profileMenu}>
               <span className={styles.avatar}>{initials(user.fullName)}</span>
               <span className={styles.profileMeta}>
                 <strong>{user.fullName}</strong>
