@@ -5313,7 +5313,7 @@
           "appeals"
         ],
         "summary": "AI-черновик обращения поставщику",
-        "description": "Ничего не сохраняет и номер не присваивает. Контекст собирает сервер, в модель не уходят ФИО, телефоны и e-mail (ADR-011). Модель недоступна или не настроена — не ошибка: ai_generated=false, текст — пустой шаблон (T-47). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.",
+        "description": "Ничего не сохраняет и номер не присваивает. Письмо пишется по шаблону template_id (без него — по шаблону по умолчанию, T-86): сервер заполняет шаблон фактами, модель пишет по нему. Контекст собирает сервер, в модель не уходят ФИО, телефоны и e-mail (ADR-011). Модель недоступна или не настроена — не ошибка: ai_generated=false, текст — заполненный шаблон (T-47). Неизвестный incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый template_id — 422.",
         "operationId": "generate_appeal_draft",
         "requestBody": {
           "content": {
@@ -5362,6 +5362,82 @@
             "BearerAuth": []
           }
         ]
+      }
+    },
+    "/api/appeals/templates": {
+      "get": {
+        "tags": [
+          "appeals"
+        ],
+        "summary": "Шаблоны писем для выбора в редакторе черновика",
+        "description": "Только действующие шаблоны, по умолчанию — первым (T-86).",
+        "operationId": "list_appeal_template_options",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealTemplateOptionPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/appeals": {
@@ -5571,7 +5647,7 @@
           "appeals"
         ],
         "summary": "Отправить обращение: номер, письмо поставщику, PDF",
-        "description": "Номер присваивается здесь. Контекст сервер пересобирает за тот же период; статус после отправки — sent_to_provider. Обращение из инцидента в статусе new переводит его в sent_to_provider с записью в incident_events; инцидент в другом статусе не меняется (T-63). SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.",
+        "description": "Номер присваивается здесь. Контекст сервер пересобирает за тот же период; вид письма — по template_id черновика; статус после отправки — sent_to_provider. Обращение из инцидента в статусе new переводит его в sent_to_provider с записью в incident_events; инцидент в другом статусе не меняется (T-63). SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый template_id — 422.",
         "operationId": "create_appeal",
         "security": [
           {
@@ -8573,6 +8649,7 @@
           "admin"
         ],
         "summary": "Правила формирования инцидентов",
+        "description": "Порядок: правила области, затем правила школ по названию школы. Правило школы заменяет для её линий правило области по тому же показателю (T-85).",
         "operationId": "list_incident_rules",
         "security": [
           {
@@ -8580,6 +8657,58 @@
           }
         ],
         "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/IncidentRuleScope"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scope"
+            }
+          },
+          {
+            "name": "school_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Название правила, школа или School ID",
+              "title": "Q"
+            },
+            "description": "Название правила, школа или School ID"
+          },
           {
             "name": "page",
             "in": "query",
@@ -8646,7 +8775,7 @@
           "admin"
         ],
         "summary": "Создать правило инцидентов",
-        "description": "Без consecutive_violations и duration_min — 422.",
+        "description": "Без consecutive_violations и duration_min — 422. Для scope=school обязателен school_id; неизвестная школа — 422.",
         "operationId": "create_incident_rule",
         "security": [
           {
@@ -8703,7 +8832,7 @@
           "admin"
         ],
         "summary": "Изменить или отключить правило инцидентов",
-        "description": "Следующая детекция применяет новые значения (T-40). Если после изменения consecutive_violations и duration_min оба пусты — 422.",
+        "description": "Следующая детекция применяет новые значения (T-40). Если после изменения consecutive_violations и duration_min оба пусты — 422. Показатель, уровень и школа правила не меняются: другая цель — новое правило.",
         "operationId": "update_incident_rule",
         "security": [
           {
@@ -8773,6 +8902,396 @@
             }
           }
         }
+      }
+    },
+    "/api/admin/appeal-templates": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Шаблоны писем поставщику: обращения и претензии",
+        "description": "Порядок: шаблон по умолчанию, затем по названию. Модель пишет письмо по шаблону, заполненному фактами обращения; без модели редактор открывается с заполненным шаблоном (ADR-011).",
+        "operationId": "list_appeal_templates",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Название или его часть",
+              "title": "Q"
+            },
+            "description": "Название или его часть"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealTemplateDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Создать шаблон письма",
+        "description": "Неизвестная подстановка в теме или тексте — 422 на поле. is_default переносит признак с прежнего шаблона по умолчанию.",
+        "operationId": "create_appeal_template",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealTemplateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealTemplateDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/appeal-templates/placeholders": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Подстановки шаблона письма",
+        "description": "Что сервер подставляет вместо {{имя}} в тему и текст шаблона.",
+        "operationId": "list_appeal_placeholders",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealPlaceholderList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/appeal-templates/{template_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить или отключить шаблон письма",
+        "description": "Действует со следующего черновика; отправленные письма не меняются. Шаблон по умолчанию нельзя отключить или лишить признака — сначала назначьте другой (409).",
+        "operationId": "update_appeal_template",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealTemplateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealTemplateDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Шаблон письма не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Шаблон по умолчанию нельзя отключить или лишить признака (type default_template_required)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/contracts/import/preview": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Проверить файл договоров: что изменится, без записи",
+        "description": "Колонки файла (заголовок — первая строка; регистр и порядок не важны): School ID, Поставщик — обязательные; Идентификатор линии, Статус линии (основная/резервная), Тип подключения, Номер договора, Дата договора (ДД.ММ.ГГГГ), Download по договору, Upload по договору (Мбит/с) — по наличию. Пустая ячейка ничего не меняет. Строка находит линию по School ID и поставщику — и по идентификатору линии, если он есть; без такой линии строка создаёт новую: основную, если у школы её нет, иначе резервную. Нечитаемый файл, файл без обязательных колонок или другого формата — 422 на content. Ничего не записывается и в журнал не попадает.",
+        "operationId": "preview_contract_import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractImportReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/contracts/import": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Импортировать договоры в линии школ",
+        "description": "То же, что предпросмотр, но с записью: строки с ошибкой пропускаются, остальные применяются вместе. Пустая ячейка ничего не меняет; статус существующей линии файл не меняет. Одна запись в журнале аудита: файл, число строк, созданных и изменённых линий.",
+        "operationId": "run_contract_import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractImportReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/admin/digests": {
@@ -10994,6 +11513,18 @@
             "title": "Period To",
             "description": "Конец периода, не включая; для инцидента — restored_at или текущий момент"
           },
+          "template_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id",
+            "description": "Шаблон письма (обращение или претензия, T-86); пусто — шаблон по умолчанию. Неизвестный или отключённый — 422"
+          },
           "subject": {
             "type": "string",
             "maxLength": 255,
@@ -11055,6 +11586,22 @@
           "status": {
             "$ref": "#/components/schemas/IncidentStatus"
           },
+          "kind": {
+            "$ref": "#/components/schemas/AppealKind",
+            "description": "Обращение или претензия (T-86)"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id",
+            "description": "Шаблон, по которому написано письмо; пусто у писем до появления шаблонов"
+          },
           "subject": {
             "type": "string",
             "title": "Subject"
@@ -11113,6 +11660,8 @@
           "id",
           "number",
           "status",
+          "kind",
+          "template_id",
           "subject",
           "text",
           "user_comment",
@@ -11139,7 +11688,7 @@
           "ai_generated": {
             "type": "boolean",
             "title": "Ai Generated",
-            "description": "false — модель недоступна или не настроена: subject и text — пустой шаблон"
+            "description": "false — модель недоступна или не настроена: subject и text — шаблон, заполненный фактами"
           },
           "recipient_email": {
             "anyOf": [
@@ -11153,6 +11702,19 @@
             "title": "Recipient Email",
             "description": "appeals_email поставщика; пусто — адрес не задан, письмо не уйдёт"
           },
+          "template_id": {
+            "type": "integer",
+            "title": "Template Id",
+            "description": "Шаблон, по которому написано письмо (T-86)"
+          },
+          "template_name": {
+            "type": "string",
+            "title": "Template Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AppealKind",
+            "description": "Вид письма по шаблону: обращение или претензия"
+          },
           "context": {
             "$ref": "#/components/schemas/AppealContext"
           }
@@ -11163,6 +11725,9 @@
           "text",
           "ai_generated",
           "recipient_email",
+          "template_id",
+          "template_name",
+          "kind",
           "context"
         ],
         "title": "AppealDraft",
@@ -11217,6 +11782,18 @@
             "format": "date-time",
             "title": "Period To",
             "description": "Конец периода, не включая; для инцидента — restored_at или текущий момент"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id",
+            "description": "Шаблон письма (обращение или претензия, T-86); пусто — шаблон по умолчанию. Неизвестный или отключённый — 422"
           }
         },
         "type": "object",
@@ -11281,6 +11858,13 @@
         "title": "AppealEventDetail",
         "description": "Entry of the appeal history: sending, status change or comment (ТЗ п. 17)."
       },
+      "AppealKind": {
+        "type": "string",
+        "enum": [
+          "appeal",
+          "claim"
+        ]
+      },
       "AppealListItem": {
         "properties": {
           "id": {
@@ -11296,6 +11880,10 @@
           },
           "status": {
             "$ref": "#/components/schemas/IncidentStatus"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AppealKind",
+            "description": "Обращение или претензия (T-86)"
           },
           "subject": {
             "type": "string",
@@ -11365,6 +11953,7 @@
           "id",
           "number",
           "status",
+          "kind",
           "subject",
           "incident_id",
           "incident_number",
@@ -11414,6 +12003,319 @@
         ],
         "title": "AppealListItemPage",
         "description": "Page of appeals, newest ``sent_at`` first."
+      },
+      "AppealPlaceholder": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Имя внутри {{…}}",
+            "examples": [
+              "school_name"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "description"
+        ],
+        "title": "AppealPlaceholder",
+        "description": "One placeholder a template may use and what the server puts in its place."
+      },
+      "AppealPlaceholderList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AppealPlaceholder"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "AppealPlaceholderList",
+        "description": "Every placeholder the server fills, in the order of the letter."
+      },
+      "AppealTemplateCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "examples": [
+              "Претензионное письмо"
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AppealKind"
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Subject",
+            "description": "Тема письма с подстановками {{…}}",
+            "examples": [
+              "Претензия по договору {{contract_number}}: {{school_code}}"
+            ]
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Body",
+            "description": "Текст письма в Markdown с подстановками {{…}}: сервер заполняет их фактами обращения, модель пишет письмо по заполненному шаблону (ADR-011)"
+          },
+          "ai_instructions": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Instructions",
+            "description": "Что модель должна учесть сверх фактов: тон, ссылки на договор, требования"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "description": "Шаблон, который черновик берёт без выбора; он один",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "subject",
+          "body"
+        ],
+        "title": "AppealTemplateCreate",
+        "description": "New template of a letter; ``is_default`` takes the mark from the current default."
+      },
+      "AppealTemplateDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AppealKind"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject",
+            "description": "Тема письма с подстановками {{…}}"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body",
+            "description": "Текст письма в Markdown с подстановками {{…}}"
+          },
+          "ai_instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Instructions"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "description": "Черновик без выбора шаблона пишется по нему"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "Отключённый шаблон не предлагается, его письма остаются"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "subject",
+          "body",
+          "ai_instructions",
+          "is_default",
+          "is_active",
+          "updated_at"
+        ],
+        "title": "AppealTemplateDetail",
+        "description": "Template of a letter as the admin panel edits it."
+      },
+      "AppealTemplateDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AppealTemplateDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "AppealTemplateDetailPage",
+        "description": "Page of the templates: the default first, then by name."
+      },
+      "AppealTemplateOption": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AppealKind"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "is_default"
+        ],
+        "title": "AppealTemplateOption",
+        "description": "Template to choose in the editor of a draft (T-47): active ones only."
+      },
+      "AppealTemplateOptionPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AppealTemplateOption"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "AppealTemplateOptionPage",
+        "description": "Active templates, the default first."
+      },
+      "AppealTemplateUpdate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AppealKind",
+            "title": "Kind"
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Subject"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Body"
+          },
+          "ai_instructions": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Instructions"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "AppealTemplateUpdate",
+        "description": "Changes of a template; the default one cannot be switched off."
       },
       "AppealUpdate": {
         "properties": {
@@ -11758,6 +12660,7 @@
           "password_reset",
           "status_change",
           "export",
+          "import",
           "transfer_error"
         ]
       },
@@ -11781,6 +12684,7 @@
           "agent_release",
           "incident",
           "appeal",
+          "appeal_template",
           "export"
         ]
       },
@@ -12436,6 +13340,216 @@
         ],
         "title": "ContractCompliance",
         "description": "Sustained mismatch of a line with its contract speed (ТЗ п. 14, T-29).\n\nThe window and the share threshold come from the settings, not from code."
+      },
+      "ContractImportAction": {
+        "type": "string",
+        "enum": [
+          "create",
+          "update",
+          "unchanged",
+          "error"
+        ]
+      },
+      "ContractImportReport": {
+        "properties": {
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "description": "true — предпросмотр: ничего не записано"
+          },
+          "rows_total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rows Total",
+            "description": "Строк данных в файле без заголовка"
+          },
+          "created": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Created",
+            "description": "Новых линий"
+          },
+          "updated": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Updated",
+            "description": "Линий с изменёнными полями договора"
+          },
+          "unchanged": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unchanged"
+          },
+          "failed": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Failed",
+            "description": "Строк с ошибкой; они пропущены, остальные применены"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContractImportRow"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_name",
+          "dry_run",
+          "rows_total",
+          "created",
+          "updated",
+          "unchanged",
+          "failed",
+          "items"
+        ],
+        "title": "ContractImportReport",
+        "description": "What the file did, or would do, to the lines of the schools."
+      },
+      "ContractImportRequest": {
+        "properties": {
+          "file_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "File Name",
+            "description": "Имя файла: .csv или .xlsx",
+            "examples": [
+              "contracts.xlsx"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "format": "base64",
+            "contentMediaType": "application/octet-stream",
+            "title": "Content",
+            "description": "Содержимое файла в base64, не больше 2 МиБ. Колонки файла (заголовок — первая строка; регистр и порядок не важны): School ID, Поставщик — обязательные; Идентификатор линии, Статус линии (основная/резервная), Тип подключения, Номер договора, Дата договора (ДД.ММ.ГГГГ), Download по договору, Upload по договору (Мбит/с) — по наличию. Пустая ячейка ничего не меняет."
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_name",
+          "content"
+        ],
+        "title": "ContractImportRequest",
+        "description": "File of the registry: its name says the format, the content goes as base64."
+      },
+      "ContractImportRow": {
+        "properties": {
+          "row": {
+            "type": "integer",
+            "minimum": 2.0,
+            "title": "Row",
+            "description": "Номер строки в файле; заголовок — строка 1"
+          },
+          "school_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Code",
+            "description": "School ID из файла"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Школа, если найдена"
+          },
+          "school_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Name"
+          },
+          "provider_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Name",
+            "description": "Поставщик из файла"
+          },
+          "line_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Id",
+            "description": "Найденная или созданная линия"
+          },
+          "action": {
+            "$ref": "#/components/schemas/ContractImportAction"
+          },
+          "changes": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changes",
+            "description": "Изменённые поля линии {поле: {old, new}}; у новой линии old пустой"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Почему строка не применена"
+          }
+        },
+        "type": "object",
+        "required": [
+          "row",
+          "school_code",
+          "school_id",
+          "school_name",
+          "provider_name",
+          "line_id",
+          "action",
+          "changes",
+          "error"
+        ],
+        "title": "ContractImportRow",
+        "description": "Verdict of the import on one row of the file."
       },
       "CurrentUser": {
         "properties": {
@@ -14848,6 +15962,23 @@
           "metric": {
             "$ref": "#/components/schemas/IncidentMetric"
           },
+          "scope": {
+            "$ref": "#/components/schemas/IncidentRuleScope",
+            "description": "global — все линии области; school — линии одной школы, для них правило заменяет глобальное по тому же показателю",
+            "default": "global"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Только и обязательно при scope=school"
+          },
           "consecutive_violations": {
             "anyOf": [
               {
@@ -14912,6 +16043,44 @@
           "metric": {
             "$ref": "#/components/schemas/IncidentMetric"
           },
+          "scope": {
+            "$ref": "#/components/schemas/IncidentRuleScope"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Только при scope=school"
+          },
+          "school_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Code",
+            "description": "School ID; только при scope=school"
+          },
+          "school_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Name"
+          },
           "consecutive_violations": {
             "anyOf": [
               {
@@ -14952,6 +16121,10 @@
           "id",
           "name",
           "metric",
+          "scope",
+          "school_id",
+          "school_code",
+          "school_name",
           "consecutive_violations",
           "duration_min",
           "recovery_normal_count",
@@ -14993,7 +16166,14 @@
           "page_size"
         ],
         "title": "IncidentRuleDetailPage",
-        "description": "Page of the incident rules."
+        "description": "Page of the incident rules: the rules of the oblast first, then those of schools."
+      },
+      "IncidentRuleScope": {
+        "type": "string",
+        "enum": [
+          "global",
+          "school"
+        ]
       },
       "IncidentRuleUpdate": {
         "properties": {
@@ -15039,7 +16219,7 @@
         },
         "type": "object",
         "title": "IncidentRuleUpdate",
-        "description": "Changes of a rule; ``metric`` is fixed: another metric is a new rule."
+        "description": "Changes of a rule; ``metric``, ``scope`` and the school are fixed: another target is a\nnew rule."
       },
       "IncidentStatus": {
         "type": "string",

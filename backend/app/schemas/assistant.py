@@ -7,9 +7,9 @@ dialog lives in the browser and travels whole with every question, so the server
 nothing of it (ТЗ п. 12).
 """
 
-from typing import Literal, Self
+from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 # Screens of the panel the assistant is told about: the sections of ``web/src/app/sections.ts``
 # and the cards inside them; ``other`` is an address without a screen of its own.
@@ -75,11 +75,16 @@ class AssistantQuestion(BaseModel):
         description="Диалог целиком, последняя реплика — вопрос пользователя",
     )
 
-    @model_validator(mode="after")
-    def check_last_line_is_a_question(self) -> Self:
-        if self.messages[-1].author != "user":
+    @field_validator("messages")
+    @classmethod
+    def check_last_line_is_a_question(
+        cls, messages: list[AssistantMessage]
+    ) -> list[AssistantMessage]:
+        # A validator of the field, not of the model: the 422 then names ``messages``, where
+        # the editor of the panel can show it, instead of the body as a whole.
+        if messages[-1].author != "user":
             raise ValueError("последняя реплика должна быть вопросом пользователя")
-        return self
+        return messages
 
 
 class AssistantAnswer(BaseModel):

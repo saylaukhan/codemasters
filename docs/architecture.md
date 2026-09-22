@@ -96,7 +96,7 @@ Caddy наружу отдаёт только два маршрута (`deploy/Ca
 
 ## 4. База данных
 
-30 моделей, одна таблица — один файл (`backend/app/models/`). Крупными блоками:
+35 моделей, одна таблица — один файл (`backend/app/models/`). Крупными блоками:
 
 | Блок | Таблицы |
 |---|---|
@@ -105,7 +105,7 @@ Caddy наружу отдаёт только два маршрута (`deploy/Ca
 | Временные ряды | `measurements`, `heartbeats`, `outages`, `m_hourly`, `m_daily` |
 | Настройки мониторинга | `settings`, `threshold_profiles`, `schedules`, `incident_rules` |
 | Инциденты и уведомления | `incidents`, `incident_events`, `notifications`, `notification_log` |
-| Обращения и выгрузки | `appeals`, `appeal_events`, `exports` |
+| Обращения и выгрузки | `appeals`, `appeal_events`, `appeal_templates`, `exports` |
 | Доступ и журнал | `users`, `roles`, `user_scopes`, `audit_log` |
 
 TimescaleDB по факту: гипертаблицы — `measurements` (по `measured_at`) и `heartbeats` (по
@@ -113,12 +113,20 @@ TimescaleDB по факту: гипертаблицы — `measurements` (по `
 границы часов и суток считаются в `Asia/Almaty`, хранение всегда UTC (ADR-014). Плюс
 агрегаты «ниже договора» (`20260918_0330_aggregates_below_contract.py`).
 
-Миграции — 20 ревизий в `backend/alembic/versions/`, **forward-only**: `downgrade()` кидает
+Миграции — 34 ревизии в `backend/alembic/versions/`, **forward-only**: `downgrade()` кидает
 `NotImplementedError`, ошибка исправляется новой ревизией (ADR-003). Порядок задаёт цепочка
 `down_revision`, а не имя файла.
 
 Договорные значения линии хранятся отдельно от порогов и сравниваются с фактом наравне с
-ними (ТЗ п. 11, п. 14); устойчивое несоответствие считает фоновая задача.
+ними (ТЗ п. 11, п. 14); устойчивое несоответствие считает фоновая задача. Заносятся они руками в
+карточке школы или импортом реестра договоров (CSV/XLSX → `POST /api/admin/contracts/import`,
+`app/services/contract_import.py`); импорт пишет в те же поля `lines` и оставляет одну запись
+`audit_log` с действием `import`.
+
+Правила инцидентов и шаблоны писем поставщику — тоже данные, а не код (ADR-018): правило
+`incident_rules` бывает для всей области или одной школы (правило школы заменяет глобальное по тому же
+показателю для её линий), а письмо обращения или претензии пишется моделью по шаблону
+`appeal_templates`, который сервер заполняет фактами (`app/services/appeals/template.py`).
 
 ## 5. Права: JWT → require → RLS
 
@@ -181,7 +189,7 @@ TimescaleDB по факту: гипертаблицы — `measurements` (по `
 контракт собирается в PDF: `make api-pdf` → `docs/reference/api.pdf`
 (`backend/app/openapi_pdf.py`).
 
-Сейчас в контракте 70 путей, 90 операций, 161 схема, 13 тегов. Ошибки у всех операций
+Сейчас в контракте 98 путей, 124 операции, 236 схем, 16 тегов. Ошибки у всех операций
 одинаковые — `application/problem+json` (RFC 9457, ADR-009), схемы `Problem` и
 `ValidationProblem`; формат собирает `app/core/openapi.py`.
 

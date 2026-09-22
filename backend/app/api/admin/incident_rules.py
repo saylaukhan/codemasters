@@ -1,13 +1,15 @@
 """Incident rule admin API (plan.md §10 «Админка», ТЗ п. 18, п. 20): list, create, change.
 
 There is no DELETE: a rule is switched off with ``is_active`` and its incidents keep the
-reference (ADR-007). The detection of T-40 applies a change from its next run. Rules are edited
-by the Oblast and Administrator roles (ADR-008 «Открыто»); every change goes to the audit log.
+reference (ADR-007). The detection of T-40 applies a change from its next run. A rule of the
+oblast watches every line; a rule of a school replaces it for the lines of that school (T-85).
+Rules are edited by the Oblast and Administrator roles (ADR-008 «Открыто»); every change goes
+to the audit log.
 """
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require
@@ -19,6 +21,7 @@ from app.schemas.incident_rules import (
     IncidentRuleCreate,
     IncidentRuleDetail,
     IncidentRuleDetailPage,
+    IncidentRuleScope,
     IncidentRuleUpdate,
 )
 from app.services import incident_rules
@@ -30,19 +33,38 @@ router = APIRouter(
 )
 
 
-@router.get("", summary="Правила формирования инцидентов")
+@router.get(
+    "",
+    summary="Правила формирования инцидентов",
+    description=(
+        "Порядок: правила области, затем правила школ по названию школы. Правило школы "
+        "заменяет для её линий правило области по тому же показателю (T-85)."
+    ),
+)
 async def list_incident_rules(
     params: Annotated[PageParams, Depends(page_params)],
+    scope: IncidentRuleScope | None = None,
+    school_id: int | None = None,
+    q: Annotated[
+        str | None,
+        Query(min_length=1, max_length=255, description="Название правила, школа или School ID"),
+    ] = None,
+    *,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> IncidentRuleDetailPage:
-    return await incident_rules.incident_rule_list(session, params)
+    return await incident_rules.incident_rule_list(
+        session, params, scope=scope, school_id=school_id, q=q
+    )
 
 
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
     summary="Создать правило инцидентов",
-    description="Без consecutive_violations и duration_min — 422.",
+    description=(
+        "Без consecutive_violations и duration_min — 422. Для scope=school обязателен "
+        "school_id; неизвестная школа — 422."
+    ),
 )
 async def create_incident_rule(
     body: IncidentRuleCreate, session: Annotated[AsyncSession, Depends(get_session)]
@@ -55,7 +77,8 @@ async def create_incident_rule(
     summary="Изменить или отключить правило инцидентов",
     description=(
         "Следующая детекция применяет новые значения (T-40). Если после изменения "
-        "consecutive_violations и duration_min оба пусты — 422."
+        "consecutive_violations и duration_min оба пусты — 422. Показатель, уровень и школа "
+        "правила не меняются: другая цель — новое правило."
     ),
     responses={404: {"model": Problem, "description": "Правило не найдено"}},
 )

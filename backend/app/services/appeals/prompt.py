@@ -1,13 +1,16 @@
-"""Prompt of the appeal: the facts of the context and nothing else (T-47, ADR-011, plan.md §8).
+"""Prompt of the appeal: the facts of the context, the filled template and nothing else (T-47,
+T-86, ADR-011, plan.md §8).
 
-Everything the model sees is built here out of ``AppealFacts``: School ID, the school, the
-provider, the contract, the period, the aggregates against the thresholds, the downtime and the
-excerpt of the measurements. Names, positions, phones and e-mails of ``school_contacts`` never
-get here — they are put into the ready text after the generation (``draft.py``), and the test of
-T-47 reads the prompt to prove it. Free text of the user is not in the prompt either: a draft is
-asked for by facts, and his comment travels next to the sent appeal (ТЗ п. 17, T-48).
+Everything the model sees is built here out of ``AppealFacts`` and the template of the admin
+panel: School ID, the school, the provider, the contract, the period, the aggregates against
+the thresholds, the downtime, the excerpt of the measurements, then the letter of the template
+filled with the same facts and the instructions the template carries. Names, positions, phones
+and e-mails of ``school_contacts`` never get here — they are put into the ready text after the
+generation (``draft.py``), and the test of T-47 reads the prompt to prove it. Free text of the
+user is not in the prompt either: a draft is asked for by facts, and his comment travels next to
+the sent appeal (ТЗ п. 17, T-48).
 
-The lines are Russian and are read by a person too: the same facts make the template the editor
+The lines are Russian and are read by a person too: the same facts fill the template the editor
 opens with when the model is silent. Numbers and durations are written as the panel writes them
 (``web/src/lib/format.ts``), the words of the columns and of the statuses are those of an export
 (ADR-013).
@@ -30,23 +33,17 @@ SYSTEM = (
     "ФИО, должности, телефоны и e-mail подставляются после генерации."
 )
 
-TASK = "Составь текст официального обращения к поставщику интернета по фактам ниже."
+TASK = "Составь текст официального письма поставщику интернета по фактам ниже."
 
-# Template of the letter (plan.md §8): who to and about what, the contract, the fact against the
-# threshold and against the contract, the demand and the term of the answer.
-STRUCTURE = "\n".join(
-    [
-        "Структура письма:",
-        "1. Обращение к поставщику: его наименование, наименование школы, School ID, "
-        "идентификатор линии.",
-        "2. Ссылка на договор: номер, дата и скорости по договору.",
-        "3. Факт: показатели за период против порогов качества и против договорных значений, "
-        "число проблемных замеров и простоев.",
-        "4. Требование устранить нарушение качества услуги и сообщить о принятых мерах в срок, "
-        "установленный договором.",
-        "Подпись не добавляй.",
-    ]
+# The letter of the template, filled with the facts, is the structure the model keeps
+# (plan.md §8): who to and about what, the contract, the fact against the threshold and against
+# the contract, the demand and the term of the answer.
+LETTER_TITLE = (
+    "Шаблон письма, заполненный фактами. Сохрани его структуру, реквизиты, цифры и "
+    "требования; изложи связным деловым текстом:"
 )
+INSTRUCTIONS_TITLE = "Дополнительные требования к письму:"
+NO_SIGNATURE = "Подпись не добавляй."
 
 # Threshold of each metric and how it is read: speeds from below, delays and losses from above.
 METRIC_LIMITS: dict[str, tuple[str, str]] = {
@@ -133,8 +130,9 @@ def excerpt_lines(facts: AppealFacts) -> list[str]:
     ]
 
 
-def build_prompt(facts: AppealFacts) -> str:
-    """The whole prompt: the task, the facts, the measurements and the template of the letter."""
+def build_prompt(facts: AppealFacts, *, letter: str, instructions: str | None = None) -> str:
+    """The whole prompt: the task, the facts, the measurements, the filled letter of the
+    template and the instructions of the template (T-86)."""
     return "\n".join(
         [
             TASK,
@@ -147,6 +145,11 @@ def build_prompt(facts: AppealFacts) -> str:
             "",
             *excerpt_lines(facts),
             "",
-            STRUCTURE,
+            LETTER_TITLE,
+            "",
+            letter,
+            "",
+            *([INSTRUCTIONS_TITLE, instructions.strip(), ""] if instructions else []),
+            NO_SIGNATURE,
         ]
     )

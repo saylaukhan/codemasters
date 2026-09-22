@@ -127,7 +127,9 @@ export type ScheduleUpdate = Schema<'ScheduleUpdate'>
 export type SettingsDetail = Schema<'SettingsDetail'>
 export type SettingsUpdate = Schema<'SettingsUpdate'>
 
-// Incident rules of the administration (T-40): N in a row or T minutes open an incident, M normal restore it.
+// Incident rules of the administration (T-40): N in a row or T minutes open an incident, M normal restore it;
+// a rule of one school replaces the global rule of its metric for that school (T-85).
+export type IncidentRuleScope = Schemas['IncidentRuleScope']
 export type IncidentRuleDetail = Schema<'IncidentRuleDetail'>
 export type IncidentRuleCreate = Schema<'IncidentRuleCreate'>
 export type IncidentRuleUpdate = Schema<'IncidentRuleUpdate'>
@@ -142,6 +144,20 @@ export type IncidentCreate = Schema<'IncidentCreate'>
 export type IncidentUpdate = Schema<'IncidentUpdate'>
 export type IncidentStatusChange = Schema<'IncidentStatusChange'>
 export type IncidentCommentCreate = Schema<'IncidentCommentCreate'>
+
+// Contract import of the administration (T-87): a CSV or XLSX registry into the lines of schools.
+export type ContractImportRequest = Schema<'ContractImportRequest'>
+export type ContractImportReport = Schema<'ContractImportReport'>
+export type ContractImportRow = Schema<'ContractImportRow'>
+export type ContractImportAction = Schemas['ContractImportAction']
+
+// Letter templates of the administration (T-86): the model writes by a template filled with the facts.
+export type AppealKind = Schemas['AppealKind']
+export type AppealTemplateDetail = Schema<'AppealTemplateDetail'>
+export type AppealTemplateCreate = Schema<'AppealTemplateCreate'>
+export type AppealTemplateUpdate = Schema<'AppealTemplateUpdate'>
+export type AppealTemplateOption = Schema<'AppealTemplateOption'>
+export type AppealPlaceholder = Schema<'AppealPlaceholder'>
 
 // Appeals (T-47, ТЗ п. 17, ADR-011): the AI draft of a letter to the provider.
 export type AppealDraftRequest = Schema<'AppealDraftRequest'>

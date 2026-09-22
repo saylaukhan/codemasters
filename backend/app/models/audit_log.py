@@ -26,6 +26,7 @@ ACTIONS = (
     "password_reset",
     "status_change",
     "export",
+    "import",
     "transfer_error",
 )
 ENTITY_TYPES = (
@@ -46,6 +47,7 @@ ENTITY_TYPES = (
     "agent_release",
     "incident",
     "appeal",
+    "appeal_template",
     "export",
 )
 

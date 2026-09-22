@@ -4,7 +4,7 @@ import { Link } from 'react-router'
 import type { AppealListItem } from '../../api/types'
 import { appealCardPath, schoolCardPath } from '../../app/sections'
 import { formatDateTime } from '../../lib/format'
-import { APPEAL_COLUMN_LABELS, APPEAL_DELIVERY_LABELS, APPEAL_NOT_SENT_HINT } from '../../lib/labels'
+import { APPEAL_COLUMN_LABELS, APPEAL_DELIVERY_LABELS, APPEAL_KIND_LABELS, APPEAL_NOT_SENT_HINT } from '../../lib/labels'
 import { PAGE_SIZES } from '../schools/useSchoolListView'
 import { ResponsiveTable, type ResponsiveColumn } from '../ui/ResponsiveTable'
 import { IncidentStatusBadge } from '../ui/StatusBadge'
@@ -30,6 +30,7 @@ const COLUMNS: readonly ResponsiveColumn<AppealListItem>[] = [
     priority: 'primary',
     render: (_, item) => <IncidentStatusBadge status={item.status} />,
   },
+  { key: 'kind', title: APPEAL_COLUMN_LABELS.kind, render: (_, item) => APPEAL_KIND_LABELS[item.kind] },
   {
     key: 'school',
     title: APPEAL_COLUMN_LABELS.school,

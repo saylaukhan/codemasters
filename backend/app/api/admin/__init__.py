@@ -4,9 +4,11 @@ from fastapi import APIRouter
 
 from app.api.admin import (
     agent_releases,
+    appeal_templates,
     audit_log,
     calendar,
     connection_types,
+    contracts,
     digests,
     incident_rules,
     providers,
@@ -29,6 +31,8 @@ for resource in (
     schedules,
     settings,
     incident_rules,
+    appeal_templates,
+    contracts,
     digests,
     agent_releases,
     audit_log,

@@ -4,12 +4,14 @@ import type {
   AnalyticsLevel,
   AnalyticsPeriod,
   AppealDeliveryStatus,
+  AppealKind,
   AssistantScreen,
   AttentionReason,
   AuditAction,
   AuditEntityType,
   CalendarKind,
   CalendarScope,
+  ContractImportAction,
   DeviceStatus,
   DigestScope,
   ExportAggregateColumn,
@@ -20,6 +22,7 @@ import type {
   IfaceType,
   IncidentEventKind,
   IncidentMetric,
+  IncidentRuleScope,
   IncidentStatus,
   LineStatus,
   MeasurementSource,
@@ -171,6 +174,7 @@ export const APPEAL_COLUMN_LABELS = {
   subject: 'Тема',
   sentAt: 'Отправлено',
   delivery: 'Доставка письма',
+  kind: 'Вид',
 } as const
 
 /** Captions of the appeal card, left of the values (DESIGN.md §3.17). */
@@ -193,6 +197,7 @@ export const APPEAL_FIELD_LABELS = {
   outagesDuration: 'Длительность простоев',
   /** Next to the average of a metric: the threshold it was judged by (ТЗ п. 11, ADR-004). */
   threshold: 'порог',
+  kind: 'Вид письма',
 } as const
 
 /** Captions of the fields a person fills in: the editor of the draft (T-47) and the status form of the card (T-48). */
@@ -202,6 +207,7 @@ export const APPEAL_FORM_LABELS = {
   comment: 'Комментарий',
   requiredComment: 'Комментарий, обязателен',
   status: 'Новый статус',
+  template: 'Шаблон письма',
 } as const
 
 /**
@@ -474,6 +480,8 @@ export const ADMIN_TAB_LABELS = {
   audit: 'Аудит',
   events: 'События',
   calendar: 'Календарь',
+  'appeal-templates': 'Шаблоны писем',
+  contracts: 'Договоры',
 } as const
 
 export type AdminTabKey = keyof typeof ADMIN_TAB_LABELS
@@ -541,6 +549,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   status_change: 'Смена статуса',
   export: 'Экспорт',
   transfer_error: 'Ошибка передачи',
+  import: 'Импорт',
 }
 
 /** Kind of record an action of the audit log touched. */
@@ -563,6 +572,7 @@ export const AUDIT_ENTITY_LABELS: Record<AuditEntityType, string> = {
   incident: 'Инцидент',
   appeal: 'Обращение',
   export: 'Выгрузка',
+  appeal_template: 'Шаблон письма',
 }
 
 /** Why a sign-in or an agent request was refused: `type` of the problem (ADR-009); another code is shown as is. */
@@ -603,6 +613,18 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   slots: 'Слоты',
   workingHours: 'Рабочие часы',
   speedtest: 'Сервер замеров',
+  contractDate: 'Дата договора',
+  lineIdentifier: 'Идентификатор линии',
+  fileName: 'Файл',
+  rows: 'Строк',
+  created: 'Создано линий',
+  updated: 'Изменено линий',
+  failed: 'Строк с ошибкой',
+  kind: 'Вид письма',
+  subject: 'Тема',
+  body: 'Текст',
+  aiInstructions: 'Указания модели',
+  isDefault: 'По умолчанию',
 }
 
 /** Empty value of a changed field in the audit log. */
@@ -1308,3 +1330,55 @@ export const ASSISTANT_SUGGESTIONS: Record<AssistantScreen, readonly string[]> =
   admin: ['Как изменить пороги качества?', 'Как выдать код установки агента?', 'Как заблокировать пользователя?'],
   other: ['Как устроена панель?', 'Что означают статусы школ?', 'Как сменить язык интерфейса?'],
 }
+
+/** Whose lines an incident rule watches (T-85): every line, or the lines of one school in place of the global rule. */
+export const INCIDENT_RULE_SCOPE_LABELS: Record<IncidentRuleScope, string> = {
+  global: 'Вся область',
+  school: 'Школа',
+}
+
+/** A rule of the oblast in the list: it applies where a school has no rule of its own for the metric. */
+export const INCIDENT_RULE_GLOBAL_TARGET_LABEL = 'Все школы без своего правила'
+
+/** Kind of a letter to the provider by its template (T-86): an appeal asks, a claim cites the contract and demands. */
+export const APPEAL_KIND_LABELS: Record<AppealKind, string> = {
+  appeal: 'Обращение',
+  claim: 'Претензия',
+}
+
+/** What the import of a contract registry does with a row of the file (T-87). */
+export const CONTRACT_IMPORT_ACTION_LABELS: Record<ContractImportAction, string> = {
+  create: 'Новая линия',
+  update: 'Изменение',
+  unchanged: 'Без изменений',
+  error: 'Ошибка',
+}
+
+/** Captions of the contract import screen (T-87, ТЗ п. 14). */
+export const CONTRACT_IMPORT_LABELS = {
+  upload: 'Перетащите файл реестра договоров или нажмите, чтобы выбрать',
+  uploadHint: 'CSV или XLSX до 2 МиБ; первая строка — заголовки колонок',
+  chooseAnother: 'Выбрать другой файл',
+  check: 'Проверка файла',
+  apply: 'Импортировать',
+  applied: 'Договоры импортированы',
+  applyFailed: 'Импорт не выполнен',
+  previewFailed: 'Файл не проверен',
+  nothingToApply: 'В файле нет строк, которые что-то изменят',
+  preview: 'Предпросмотр: ничего не записано',
+  result: 'Результат импорта',
+  rowsTotal: 'строк',
+  created: 'новых линий',
+  updated: 'изменений',
+  unchanged: 'без изменений',
+  failed: 'с ошибкой',
+} as const
+
+/** Columns of the report of an import. */
+export const CONTRACT_IMPORT_COLUMN_LABELS = {
+  row: 'Строка',
+  school: 'Школа',
+  provider: 'Поставщик',
+  action: 'Действие',
+  changes: 'Изменения',
+} as const

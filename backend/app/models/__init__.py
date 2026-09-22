@@ -7,6 +7,7 @@ compares with the database (``alembic/env.py``).
 from app.models.agent_release import AgentRelease
 from app.models.appeal import Appeal
 from app.models.appeal_event import AppealEvent
+from app.models.appeal_template import AppealTemplate
 from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.calendar_event import CalendarEvent
@@ -43,6 +44,7 @@ __all__ = [
     "AgentRelease",
     "Appeal",
     "AppealEvent",
+    "AppealTemplate",
     "AuditLog",
     "Base",
     "CalendarEvent",

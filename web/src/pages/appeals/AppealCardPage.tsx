@@ -22,6 +22,7 @@ import { formatDateTime, NO_VALUE } from '../../lib/format'
 import {
   APPEAL_DELIVERY_LABELS,
   APPEAL_FIELD_LABELS,
+  APPEAL_KIND_LABELS,
   APPEAL_LABELS,
   APPEAL_NOT_SENT_HINT,
   APPEAL_STATUS_LABELS,
@@ -76,6 +77,7 @@ export function AppealCardPage() {
     })
 
   const pairs: [string, ReactNode][] = [
+    [APPEAL_FIELD_LABELS.kind, APPEAL_KIND_LABELS[card.kind]],
     [
       APPEAL_FIELD_LABELS.school,
       <span className={styles.stack}>
@@ -103,7 +105,7 @@ export function AppealCardPage() {
     ],
   ]
   if (context.incidentId !== null && context.incidentNumber !== null) {
-    pairs.splice(2, 0, [
+    pairs.splice(3, 0, [
       APPEAL_FIELD_LABELS.incident,
       <Link className={styles.code} to={incidentCardPath(context.incidentId)}>
         {context.incidentNumber}

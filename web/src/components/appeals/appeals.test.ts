@@ -18,6 +18,7 @@ import {
   readAppealListView,
   readAppealTarget,
   schoolAppealTarget,
+  withTemplate,
   writeAppealListView,
 } from './appeals'
 
@@ -68,6 +69,15 @@ describe('address of the editor', () => {
       periodFrom: '2026-09-06T09:00:00.000Z',
       periodTo: '2026-09-13T09:00:00.000Z',
     })
+  })
+
+  it('carries the chosen template there and back and leaves it out otherwise', () => {
+    const target = withTemplate(schoolAppealTarget(4, 7, NOW), 2)
+    const params = appealTargetQuery(target)
+    expect(params.get('template_id')).toBe('2')
+    expect(readAppealTarget(params)).toEqual({ ...schoolAppealTarget(4, 7, NOW), templateId: 2 })
+    expect(appealTargetQuery(schoolAppealTarget(4, 7, NOW)).has('template_id')).toBe(false)
+    expect(readAppealTarget(appealTargetQuery(schoolAppealTarget(4, 7, NOW)))).not.toHaveProperty('templateId')
   })
 
   it('has no target without a whole one', () => {

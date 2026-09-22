@@ -1,9 +1,10 @@
 """Appeal API of the panel (plan.md §10 «Обращения»): AI draft, sending, status, history, PDF.
 
-The draft is built by ``app/services/appeals`` (T-47): it stores nothing and assigns no number
-— the number is given by sending (ТЗ п. 17, ADR-011). There is no DELETE: a sent appeal and its
-history stay. Appeals are limited by the user's scope from T-20 (ADR-008), so the provider sees
-the appeals of his own lines and nothing else (T-44).
+The draft is built by ``app/services/appeals`` (T-47) by a template of the admin panel — an
+appeal or a formal claim (T-86): it stores nothing and assigns no number — the number is given
+by sending (ТЗ п. 17, ADR-011). There is no DELETE: a sent appeal and its history stay. Appeals
+are limited by the user's scope from T-20 (ADR-008), so the provider sees the appeals of his own
+lines and nothing else (T-44).
 """
 
 from datetime import UTC, datetime
@@ -18,6 +19,7 @@ from app.auth import AuthUser, current_user, require
 from app.auth.audit import describe_action
 from app.core.db import get_session
 from app.core.deps import PageParams, page_params
+from app.schemas.appeal_templates import AppealTemplateOptionPage
 from app.schemas.appeals import (
     AppealCreate,
     AppealDetail,
@@ -28,6 +30,7 @@ from app.schemas.appeals import (
 )
 from app.schemas.errors import Problem
 from app.schemas.statuses import IncidentStatus
+from app.services import appeal_templates
 from app.services import appeals as service
 
 router = APIRouter(
@@ -42,10 +45,12 @@ APPEAL_NOT_FOUND: dict[str, Any] = {"model": Problem, "description": "Обращ
     dependencies=[Depends(require("appeals:create"))],
     summary="AI-черновик обращения поставщику",
     description=(
-        "Ничего не сохраняет и номер не присваивает. Контекст собирает сервер, в модель не "
-        "уходят ФИО, телефоны и e-mail (ADR-011). Модель недоступна или не настроена — не "
-        "ошибка: ai_generated=false, текст — пустой шаблон (T-47). Неизвестный incident_id, "
-        "school_id или line_id, линия другой школы — 422."
+        "Ничего не сохраняет и номер не присваивает. Письмо пишется по шаблону template_id "
+        "(без него — по шаблону по умолчанию, T-86): сервер заполняет шаблон фактами, модель "
+        "пишет по нему. Контекст собирает сервер, в модель не уходят ФИО, телефоны и e-mail "
+        "(ADR-011). Модель недоступна или не настроена — не ошибка: ai_generated=false, текст — "
+        "заполненный шаблон (T-47). Неизвестный incident_id, school_id или line_id, линия "
+        "другой школы, неизвестный или отключённый template_id — 422."
     ),
 )
 async def generate_appeal_draft(
@@ -54,6 +59,19 @@ async def generate_appeal_draft(
     user: Annotated[AuthUser, Depends(current_user)],
 ) -> AppealDraft:
     return await service.appeal_draft(session, body, user, now=datetime.now(UTC))
+
+
+@router.get(
+    "/templates",
+    dependencies=[Depends(require("appeals:create"))],
+    summary="Шаблоны писем для выбора в редакторе черновика",
+    description="Только действующие шаблоны, по умолчанию — первым (T-86).",
+)
+async def list_appeal_template_options(
+    params: Annotated[PageParams, Depends(page_params)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AppealTemplateOptionPage:
+    return await appeal_templates.template_options(session, params)
 
 
 @router.get(
@@ -97,12 +115,13 @@ async def list_appeals(
     status_code=status.HTTP_201_CREATED,
     summary="Отправить обращение: номер, письмо поставщику, PDF",
     description=(
-        "Номер присваивается здесь. Контекст сервер пересобирает за тот же период; статус после "
-        "отправки — sent_to_provider. Обращение из инцидента в статусе new переводит его в "
-        "sent_to_provider с записью в incident_events; инцидент в другом статусе не меняется "
-        "(T-63). SMTP не настроен или у поставщика нет адреса — не ошибка: "
-        "delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, "
-        "school_id или line_id, линия другой школы — 422."
+        "Номер присваивается здесь. Контекст сервер пересобирает за тот же период; вид письма — "
+        "по template_id черновика; статус после отправки — sent_to_provider. Обращение из "
+        "инцидента в статусе new переводит его в sent_to_provider с записью в incident_events; "
+        "инцидент в другом статусе не меняется (T-63). SMTP не настроен или у поставщика нет "
+        "адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный "
+        "incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый "
+        "template_id — 422."
     ),
 )
 async def create_appeal(

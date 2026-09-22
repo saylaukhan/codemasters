@@ -36,12 +36,19 @@ BULLET_INDENT = 12.0
 
 NO_ADDRESS = "адрес поставщика не указан"
 
+# Heading of the PDF by the kind of the letter (T-86): ``APPEAL_KIND_LABELS`` of the panel.
+KIND_TITLES = {
+    "appeal": "Обращение к поставщику услуги",
+    "claim": "Претензия поставщику услуги",
+}
+
 
 @dataclass(frozen=True)
 class AppealLetter:
     """Everything the PDF of an appeal shows; the row of ``appeals`` is built from the same."""
 
     number: str
+    kind: str
     subject: str
     text: str
     user_comment: str | None
@@ -60,7 +67,7 @@ def clean(line: str) -> str:
 def heading(layout: Layout, letter: AppealLetter) -> None:
     zone = ZoneInfo(letter.timezone)
     layout.y += 10
-    layout.text(MARGIN, layout.y, "Обращение к поставщику услуги", 9, SECONDARY)
+    layout.text(MARGIN, layout.y, KIND_TITLES.get(letter.kind, KIND_TITLES["appeal"]), 9, SECONDARY)
     layout.y += 24
     layout.text(MARGIN, layout.y, letter.number, 17, TEXT, bold=True)
     layout.y += 16

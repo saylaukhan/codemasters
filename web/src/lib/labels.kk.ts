@@ -7,12 +7,14 @@ import type {
   AnalyticsLevel,
   AnalyticsPeriod,
   AppealDeliveryStatus,
+  AppealKind,
   AssistantScreen,
   AttentionReason,
   AuditAction,
   AuditEntityType,
   CalendarKind,
   CalendarScope,
+  ContractImportAction,
   DeviceStatus,
   DigestScope,
   ExportAggregateColumn,
@@ -23,6 +25,7 @@ import type {
   IfaceType,
   IncidentEventKind,
   IncidentMetric,
+  IncidentRuleScope,
   IncidentStatus,
   LineStatus,
   MeasurementSource,
@@ -174,6 +177,7 @@ export const APPEAL_COLUMN_LABELS = {
   subject: 'Тақырып',
   sentAt: 'Жіберілді',
   delivery: 'Хаттың жеткізілуі',
+  kind: 'Түрі',
 } as const
 
 /** Captions of the appeal card, left of the values (DESIGN.md §3.17). */
@@ -196,6 +200,7 @@ export const APPEAL_FIELD_LABELS = {
   outagesDuration: 'Іркілістердің ұзақтығы',
   /** Next to the average of a metric: the threshold it was judged by (ТЗ п. 11, ADR-004). */
   threshold: 'шек',
+  kind: 'Хат түрі',
 } as const
 
 /** Captions of the fields a person fills in: the editor of the draft (T-47) and the status form of the card (T-48). */
@@ -205,6 +210,7 @@ export const APPEAL_FORM_LABELS = {
   comment: 'Пікір',
   requiredComment: 'Пікір, міндетті',
   status: 'Жаңа мәртебе',
+  template: 'Хат үлгісі',
 } as const
 
 /**
@@ -477,6 +483,8 @@ export const ADMIN_TAB_LABELS = {
   audit: 'Аудит',
   events: 'Оқиғалар',
   calendar: 'Күнтізбе',
+  'appeal-templates': 'Хат үлгілері',
+  contracts: 'Шарттар',
 } as const
 
 export type AdminTabKey = keyof typeof ADMIN_TAB_LABELS
@@ -544,6 +552,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   status_change: 'Күйін өзгерту',
   export: 'Экспорт',
   transfer_error: 'Деректерді жіберу қатесі',
+  import: 'Импорт',
 }
 
 /** Kind of record an action of the audit log touched. */
@@ -566,6 +575,7 @@ export const AUDIT_ENTITY_LABELS: Record<AuditEntityType, string> = {
   incident: 'Инцидент',
   appeal: 'Өтініш',
   export: 'Экспорт файлы',
+  appeal_template: 'Хат үлгісі',
 }
 
 /** Why a sign-in or an agent request was refused: `type` of the problem (ADR-009); another code is shown as is. */
@@ -606,6 +616,18 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   slots: 'Слоттар',
   workingHours: 'Жұмыс уақыты',
   speedtest: 'Өлшеу сервері',
+  contractDate: 'Шарт күні',
+  lineIdentifier: 'Желі идентификаторы',
+  fileName: 'Файл',
+  rows: 'Жолдар',
+  created: 'Құрылған желілер',
+  updated: 'Өзгертілген желілер',
+  failed: 'Қателі жолдар',
+  kind: 'Хат түрі',
+  subject: 'Тақырып',
+  body: 'Мәтін',
+  aiInstructions: 'Модельге нұсқаулар',
+  isDefault: 'Әдепкі',
 }
 
 /** Empty value of a changed field in the audit log. */
@@ -1344,3 +1366,55 @@ export const ASSISTANT_SUGGESTIONS: Record<AssistantScreen, readonly string[]> =
   ],
   other: ['Панель қалай құрылған?', 'Мектеп мәртебелері нені білдіреді?', 'Интерфейс тілін қалай ауыстыруға болады?'],
 }
+
+/** Whose lines an incident rule watches (T-85). */
+export const INCIDENT_RULE_SCOPE_LABELS: Record<IncidentRuleScope, string> = {
+  global: 'Бүкіл облыс',
+  school: 'Мектеп',
+}
+
+/** A rule of the oblast in the list. */
+export const INCIDENT_RULE_GLOBAL_TARGET_LABEL = 'Өз ережесі жоқ барлық мектептер'
+
+/** Kind of a letter to the provider by its template (T-86). */
+export const APPEAL_KIND_LABELS: Record<AppealKind, string> = {
+  appeal: 'Өтініш',
+  claim: 'Наразылық',
+}
+
+/** What the import of a contract registry does with a row of the file (T-87). */
+export const CONTRACT_IMPORT_ACTION_LABELS: Record<ContractImportAction, string> = {
+  create: 'Жаңа желі',
+  update: 'Өзгеріс',
+  unchanged: 'Өзгеріссіз',
+  error: 'Қате',
+}
+
+/** Captions of the contract import screen (T-87). */
+export const CONTRACT_IMPORT_LABELS = {
+  upload: 'Шарттар тізілімінің файлын сүйреп әкеліңіз немесе таңдау үшін басыңыз',
+  uploadHint: 'CSV немесе XLSX, 2 МиБ-қа дейін; бірінші жол — бағандардың тақырыптары',
+  chooseAnother: 'Басқа файл таңдау',
+  check: 'Файлды тексеру',
+  apply: 'Импорттау',
+  applied: 'Шарттар импортталды',
+  applyFailed: 'Импорт орындалмады',
+  previewFailed: 'Файл тексерілмеді',
+  nothingToApply: 'Файлда бірдеңені өзгертетін жолдар жоқ',
+  preview: 'Алдын ала қарау: ештеңе жазылмады',
+  result: 'Импорт нәтижесі',
+  rowsTotal: 'жол',
+  created: 'жаңа желі',
+  updated: 'өзгеріс',
+  unchanged: 'өзгеріссіз',
+  failed: 'қателі',
+} as const
+
+/** Columns of the report of an import. */
+export const CONTRACT_IMPORT_COLUMN_LABELS = {
+  row: 'Жол',
+  school: 'Мектеп',
+  provider: 'Жеткізуші',
+  action: 'Әрекет',
+  changes: 'Өзгерістер',
+} as const

@@ -14,6 +14,10 @@ type Schemas = components['schemas']
 export const createAppealDraft = (body: AppealDraftRequest, signal?: AbortSignal) =>
   apiRequest<Schemas['AppealDraft']>('/appeals/draft', { method: 'POST', body, signal })
 
+/** Active templates the editor may write the letter by, the default first (T-86). */
+export const getAppealTemplateOptions = (signal?: AbortSignal) =>
+  apiRequest<Schemas['AppealTemplateOptionPage']>('/appeals/templates', { query: { page: 1, pageSize: 100 }, signal })
+
 export const getAppeals = (query: Record<string, QueryValue>, signal?: AbortSignal) =>
   apiRequest<Schemas['AppealListItemPage']>('/appeals', { query, signal })
 
