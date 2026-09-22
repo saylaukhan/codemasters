@@ -1,6 +1,6 @@
 import type { MeasurementListItem } from '../../api/types'
 import { NO_VALUE, formatDateTime, formatMs, formatNumber, formatSpeed } from '../../lib/format'
-import { IFACE_LABELS, IFACE_NOTE_LABELS } from '../../lib/labels'
+import { IFACE_LABELS, IFACE_NOTE_LABELS, MEASUREMENT_SOURCE_LABELS } from '../../lib/labels'
 import styles from '../schools/SchoolCard.module.css'
 import { ResponsiveTable, type ResponsiveColumn } from '../ui/ResponsiveTable'
 import { ConnectionStatusBadge } from '../ui/StatusBadge'
@@ -15,6 +15,9 @@ const above = (value: Metric, max: Metric): boolean => value != null && max != n
 
 // The history of measurements is the case of DESIGN.md §3.12 where columns cannot be merged: at
 // 769–1024 it pages sideways with the time pinned, at ≤ 768 every measurement becomes a card.
+/** A measurement outside the slots is marked, a planned one is not: the schedule is the norm (T-79). */
+const askedFor = (m: MeasurementListItem): boolean => m.source === 'manual'
+
 /** Wi-Fi measurements do not rate the line (ADR-012): the note travels with the interface. */
 const ifaceCaption = (m: MeasurementListItem): string => {
   if (!m.ifaceType) return NO_VALUE
@@ -28,7 +31,12 @@ const columns: readonly ResponsiveColumn<MeasurementListItem>[] = [
     title: 'Дата и время',
     priority: 'primary',
     fixed: 'left',
-    render: (_, m) => <span className={styles.number}>{formatDateTime(m.measuredAt)}</span>,
+    render: (_, m) => (
+      <div className={styles.stack}>
+        <span className={styles.number}>{formatDateTime(m.measuredAt)}</span>
+        {askedFor(m) && <span className={styles.muted}>{MEASUREMENT_SOURCE_LABELS.manual}</span>}
+      </div>
+    ),
   },
   {
     key: 'download',
@@ -111,7 +119,8 @@ export function MeasurementTable({ items, total, page, pageSize, loading, onPage
       card={{
         title: (m) => formatDateTime(m.measuredAt),
         status: (m) => (m.qualityStatus ? <ConnectionStatusBadge status={m.qualityStatus} /> : NO_VALUE),
-        description: (m) => ifaceCaption(m),
+        description: (m) =>
+          askedFor(m) ? `${MEASUREMENT_SOURCE_LABELS.manual} · ${ifaceCaption(m)}` : ifaceCaption(m),
       }}
       pagination={{ current: page, pageSize, total, showSizeChanger: true, onChange: onPageChange }}
     />

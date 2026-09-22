@@ -21,6 +21,7 @@ import type {
   IncidentMetric,
   IncidentStatus,
   LineStatus,
+  MeasurementSource,
   NotificationChannel,
   NotificationKind,
   NotificationResult,
@@ -278,6 +279,12 @@ export const TOKEN_ROTATION_PENDING_LABEL = 'Ждёт замены токена'
 /** A measurement is asked for in the panel and its agent has not taken it yet (T-79). */
 export const MEASURE_PENDING_LABEL = 'Ждёт замера'
 
+/** What started a measurement (T-79, ADR-016); the history marks only the manual one. */
+export const MEASUREMENT_SOURCE_LABELS: Record<MeasurementSource, string> = {
+  schedule: 'По расписанию',
+  manual: 'По запросу',
+}
+
 /** Network interface of a measurement; Wi-Fi does not rate the line (ADR-012). */
 export const IFACE_LABELS: Record<IfaceType, string> = {
   ethernet: 'Ethernet',
@@ -398,6 +405,7 @@ export const EXPORT_COLUMN_LABELS: Record<ExportColumn, string> = {
   external_ip: 'Внешний IP',
   server: 'Сервер замера',
   agent_version: 'Версия агента',
+  source: 'Источник замера',
 }
 
 /**
