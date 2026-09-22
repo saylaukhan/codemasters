@@ -19,6 +19,7 @@ ADR — короткий файл с одним принятым решение�
 | [012](012-measurement-engine.md) | Движок замеров и методика |
 | [013](013-web-panel-antd-theme.md) | Веб-панель: Refine + Ant Design 5 с темой из DESIGN.md, русский интерфейс |
 | [014](014-time-and-working-hours.md) | Время: UTC в хранении, Asia/Almaty в интерфейсе, рабочие часы школы |
+| [015](015-per-school-rules-letter-templates-contract-import.md) | Правила инцидентов по школам, шаблоны писем и импорт договоров — данные, а не код |
 
 Если ADR расходится с `docs/product/plan.md`, прав ADR: он новее и принят осознанно.
 
