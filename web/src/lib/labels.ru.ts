@@ -421,6 +421,7 @@ export const SECTION_LABELS = {
   analytics: 'Аналитика',
   incidents: 'Инциденты',
   appeals: 'Обращения',
+  rollout: 'Внедрение',
   exports: 'Отчёты и экспорт',
   admin: 'Администрирование',
 } as const
@@ -1019,4 +1020,68 @@ export const DIGEST_LABELS = {
   removed: 'Рассылка удалена',
   created: 'Рассылка добавлена',
   changed: 'Рассылка изменена',
+} as const
+
+/** Lists of «Внедрение» (T-69, docs/design/README.md §6.4); the key is the `filter` of the endpoint. */
+export const ROLLOUT_FILTER_LABELS = {
+  not_connected: 'Не подключены',
+  silent: 'Молчат',
+  code_unused: 'Код не использован',
+  old_version: 'Старая версия агента',
+} as const
+
+/** Columns of the two tables of the rollout: the districts and the schools of a list (DESIGN.md §3.30). */
+export const ROLLOUT_COLUMN_LABELS = {
+  region: 'Район или город',
+  schools: 'Школ',
+  connected: 'Подключено',
+  alive: 'На связи',
+  share: 'Доля подключённых',
+  school: 'Школа',
+  reason: 'Что не так',
+  devices: 'Компьютеров',
+  version: 'Версия агента',
+} as const
+
+/** Cells of the «Ход внедрения» strip of Rollout.html: the three colours and the agent versions. */
+export const ROLLOUT_KPI_LABELS = {
+  connected: 'Подключены',
+  alive: 'На связи',
+  silent: 'Установлен, но молчит',
+  notConnected: 'Не подключены',
+  oldVersion: 'На старых версиях',
+} as const
+
+/** Captions of the rollout screen (T-69, DESIGN.md §3.30). */
+export const ROLLOUT_LABELS = {
+  progress: 'Ход внедрения',
+  regions: 'По районам и городам',
+  lists: 'Кто ждёт действий',
+  registry: (total: string) => `из ${total} в реестре`,
+  context: (scope: string) => `Внедрение · ${scope}`,
+  verdict: (connected: string, total: string, noun: string) =>
+    `${connected} из ${total} ${noun} подключены`,
+  subtitle: (alive: string, time: string) => `На связи ${alive} · данные на ${time}`,
+  release: (version: string) => `Текущий релиз агента ${version}`,
+  noRelease: 'Релиз агента не опубликован',
+  silentWindow: (days: string, noun: string) => `Молчат дольше ${days} ${noun}`,
+  dayForms: ['день', 'дня', 'дней'] as [string, string, string],
+  deviceForms: ['компьютер', 'компьютера', 'компьютеров'] as [string, string, string],
+  silentSince: (days: string, noun: string) => `последний сигнал ${days} ${noun} назад`,
+  neverSeen: 'ни разу не выходил на связь',
+  codeAge: (days: string, noun: string) => `код не использован ${days} ${noun}`,
+  noDevices: 'нет ни одного компьютера',
+  noContact: 'нет ответственного',
+  emptyTitle: 'В этом списке никого нет',
+  emptyDescription: 'Школы появятся здесь, как только подойдут под критерий списка.',
+  assign: 'Назначить обновление',
+  assignConfirmTitle: (version: string) => `Назначить обновление ${version}?`,
+  assignConfirmText:
+    'Выбранные компьютеры перейдут в канал этой версии и поставят её при следующем обновлении ' +
+    'конфигурации агента. История и замеры не меняются.',
+  assignConfirmOk: 'Назначить',
+  assignConfirmCancel: 'Отмена',
+  assigned: (count: string, noun: string) => `Обновление назначено: ${count} ${noun}`,
+  assignFailed: 'Обновление не назначено',
+  assignNoRelease: 'Нет действующего релиза агента: опубликуйте его в администрировании',
 } as const

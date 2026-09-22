@@ -36,6 +36,7 @@ const FIELDS = [
   'incidentAutoCloseHours',
   'attentionIncidentUnassignedHours',
   'attentionAppealNoAnswerHours',
+  'rolloutSilentDays',
   'passwordResetTtlMinutes',
   'supportContact',
 ]
@@ -175,6 +176,11 @@ function SettingsForm({ settings }: { settings: SettingsDetail }) {
               name="attentionAppealNoAnswerHours"
               label="Обращение без ответа, ч"
               extra="Через столько часов обращение «Передан поставщику» считается оставшимся без ответа."
+            />
+            <NumberField
+              name="rolloutSilentDays"
+              label="Молчащий агент, суток"
+              extra="Через столько суток без heartbeat школа попадает в список «Молчат» раздела «Внедрение»."
             />
           </section>
           <section className={styles.section}>
