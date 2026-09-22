@@ -6,6 +6,7 @@ import { BrowserRouter, Outlet, Route, Routes } from 'react-router'
 import { APP_NAME } from '../lib/app-info'
 import { SECTION_LABELS } from '../lib/labels'
 import { LoginPage } from '../pages/login/LoginPage'
+import { PasswordResetPage } from '../pages/login/PasswordResetPage'
 import { LandingRoute } from '../pages/section/LandingRoute'
 import { NotFoundPage } from '../pages/section/NotFoundPage'
 import { SectionRoute } from '../pages/section/SectionRoute'
@@ -62,6 +63,7 @@ export function App() {
               }
             >
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/password-reset" element={<PasswordResetPage />} />
             </Route>
           </Routes>
           <DocumentTitleHandler handler={documentTitle} />

@@ -1,13 +1,17 @@
 import { useGo, useInvalidateAuthStore, useLogin, useParsed } from '@refinedev/core'
+import { useQuery } from '@tanstack/react-query'
 import { Alert, Card, Form, Input } from 'antd'
 import { Wifi } from 'lucide-react'
 import { useState } from 'react'
 
+import { getLoginInfo } from '../../api/auth'
 import { ApiError } from '../../api/client'
 import { Button } from '../../components/ui/Button'
 import { APP_NAME } from '../../lib/app-info'
+import { PASSWORD_RESET_LABELS } from '../../lib/labels'
 import { SIZES } from '../../styles/theme'
 import styles from './LoginPage.module.css'
+import { PasswordResetModal } from './PasswordResetModal'
 
 interface LoginValues {
   email: string
@@ -20,6 +24,11 @@ const messageOf = (error: unknown): string =>
 /** Sign-in by e-mail and password (DESIGN.md §3.26); the error stays inline above the button. */
 export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
+  const [resetOpen, setResetOpen] = useState(false)
+  // Three states of the query (DESIGN.md §2.7) on a screen that has no room for a skeleton:
+  // while it is pending, and if it fails, the sign-in shows neither the link nor a contact —
+  // both are promises the panel cannot keep without the answer (T-65).
+  const loginInfo = useQuery({ queryKey: ['login-info'], queryFn: ({ signal }) => getLoginInfo(signal) })
   const go = useGo()
   const invalidateAuthStore = useInvalidateAuthStore()
   const { params } = useParsed<{ to?: string }>()
@@ -62,11 +71,22 @@ export function LoginPage() {
           <Form.Item label="Пароль" name="password" rules={[{ required: true, message: 'Введите пароль' }]}>
             <Input.Password autoComplete="current-password" />
           </Form.Item>
+          {loginInfo.data?.passwordResetAvailable && (
+            <Button className={styles.reset} kind="link" onClick={() => setResetOpen(true)}>
+              {PASSWORD_RESET_LABELS.link}
+            </Button>
+          )}
           {error && <Alert className={styles.error} type="error" showIcon message={error} />}
           <Button kind="action" htmlType="submit" size="large" block loading={isPending}>
             Войти
           </Button>
         </Form>
+        {loginInfo.data && !loginInfo.data.passwordResetAvailable && loginInfo.data.supportContact && (
+          <p className={styles.support}>
+            {PASSWORD_RESET_LABELS.supportTitle}: {loginInfo.data.supportContact}
+          </p>
+        )}
+        <PasswordResetModal open={resetOpen} onClose={() => setResetOpen(false)} />
       </Card>
     </main>
   )

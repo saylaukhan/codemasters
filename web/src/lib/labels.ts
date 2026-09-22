@@ -567,6 +567,7 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   lineId: 'Линия',
   room: 'Кабинет',
   contractNumber: 'Номер договора',
+  resetLink: 'Ссылка на смену пароля',
   contractDownMbps: 'Download по договору',
   contractUpMbps: 'Upload по договору',
   thresholds: 'Пороги',
@@ -871,3 +872,32 @@ export const CABINET_METRIC_LABELS: Record<IncidentMetric, string> = {
   packet_loss_pct: 'Теряются пакеты',
   no_connection: 'Не было связи',
 }
+
+
+/**
+ * «Забыли пароль?» of the sign-in screen and the page of the link from the letter (T-65,
+ * docs/design/README.md §4.6). The answer of the API says nothing about the address, so the
+ * notice after a request is the same for every e-mail.
+ */
+export const PASSWORD_RESET_LABELS = {
+  link: 'Забыли пароль?',
+  requestTitle: 'Смена пароля',
+  requestHint: 'Пришлём ссылку на смену пароля на e-mail учётной записи.',
+  email: 'E-mail',
+  emailRequired: 'Введите e-mail',
+  send: 'Отправить ссылку',
+  cancel: 'Отмена',
+  sent: 'Если такой адрес есть, мы отправили на него ссылку',
+  requestFailed: 'Не удалось отправить ссылку, попробуйте ещё раз',
+  supportTitle: 'Пароль меняет администратор',
+  confirmTitle: 'Новый пароль',
+  confirmHint: 'Ссылка действует один раз. После смены пароля войдите с новым паролем.',
+  password: 'Новый пароль',
+  repeat: 'Повторите пароль',
+  repeatRequired: 'Повторите пароль',
+  mismatch: 'Пароли не совпадают',
+  save: 'Сохранить пароль',
+  invalid: 'Ссылка недействительна или устарела — запросите новую',
+  done: 'Пароль изменён, войдите с новым паролем',
+  toLogin: 'Вернуться к входу',
+} as const
