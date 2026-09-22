@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 
+import { BrandMark } from './BrandMark'
 import { DayStrip } from './DayStrip'
 import { FactBar } from './FactBar'
 import { FilterChip } from './FilterBar'
@@ -143,5 +144,18 @@ describe('ResponsiveTable (DESIGN.md §3.12)', () => {
 
     expect(html).toContain('Школа-гимназия № 12')
     expect(html).toContain('Усть-Каменогорск')
+  })
+})
+
+describe('BrandMark (DESIGN.md §1)', () => {
+  it('is decorative: hidden from assistive technology, no text of its own', () => {
+    const html = renderToStaticMarkup(<BrandMark />)
+    expect(html).toContain('aria-hidden="true"')
+    expect(html).toContain('<svg')
+    expect(html).not.toMatch(/>[^<]+</)
+  })
+
+  it('takes the wall size on the wall', () => {
+    expect(renderToStaticMarkup(<BrandMark size="lg" />)).toMatch(/class="_mark_[^"]* _lg_/)
   })
 })

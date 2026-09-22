@@ -1,16 +1,15 @@
 import { useGo, useInvalidateAuthStore, useLogin, useParsed } from '@refinedev/core'
 import { useQuery } from '@tanstack/react-query'
 import { Alert, Card, Form, Input } from 'antd'
-import { Wifi } from 'lucide-react'
 import { useState } from 'react'
 
 import { getLoginInfo } from '../../api/auth'
 import { ApiError } from '../../api/client'
+import { BrandMark } from '../../components/ui/BrandMark'
 import { Button } from '../../components/ui/Button'
 import { LocaleSwitch } from '../../components/ui/LocaleSwitch'
 import { APP_NAME } from '../../lib/app-info'
 import { PASSWORD_RESET_LABELS, SIGN_IN_LABELS } from '../../lib/labels'
-import { SIZES } from '../../styles/theme'
 import styles from './LoginPage.module.css'
 import { PasswordResetModal } from './PasswordResetModal'
 
@@ -64,7 +63,7 @@ export function LoginPage() {
       </div>
       <Card className={styles.card}>
         <div className={styles.brand}>
-          <Wifi size={SIZES.iconMd} strokeWidth={SIZES.iconStroke} aria-hidden />
+          <BrandMark />
           {APP_NAME}
         </div>
         <h1 className={styles.title}>{SIGN_IN_LABELS.title}</h1>

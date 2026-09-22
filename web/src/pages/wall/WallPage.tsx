@@ -1,5 +1,4 @@
 import { ConfigProvider } from 'antd'
-import { Activity } from 'lucide-react'
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 
@@ -14,6 +13,7 @@ import { AttentionCard } from '../../components/overview/AttentionCard'
 import { useDashboardAttention, useDashboardSummary } from '../../components/overview/queries'
 import { kpiStripItems, noDataFootnote, statusStripItems } from '../../components/overview/strips'
 import { overviewVerdict, selectedSchools } from '../../components/overview/verdict'
+import { BrandMark } from '../../components/ui/BrandMark'
 import { ContentSkeleton } from '../../components/ui/ContentSkeleton'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { KpiStrip } from '../../components/ui/KpiStrip'
@@ -26,7 +26,7 @@ import {
   WALL_LABELS,
   WHOLE_OBLAST_SCOPE_LABEL,
 } from '../../lib/labels'
-import { COMPACT_SCREEN, darkTheme, SIZES } from '../../styles/theme'
+import { COMPACT_SCREEN, darkTheme } from '../../styles/theme'
 import { tickerEvents, WALL_CLOCK_MS, wallKpiItems } from './wall'
 import styles from './WallPage.module.css'
 
@@ -107,9 +107,7 @@ function WallScreen() {
         <div className={styles.wall}>
           <header className={styles.header}>
             <div className={styles.brand}>
-              <span className={styles.mark} aria-hidden>
-                <Activity size={SIZES.iconMd} strokeWidth={SIZES.iconStroke} />
-              </span>
+              <BrandMark size="lg" />
               <span className={styles.brandText}>
                 <span className={styles.brandName}>{APP_NAME}</span>
                 <span className={styles.caption}>{context}</span>

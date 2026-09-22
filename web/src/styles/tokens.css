@@ -116,6 +116,11 @@
   --accent-border: rgba(46, 107, 230, 0.25);
   --text-on-accent: #ffffff;
 
+  /* Brand mark of Jyldam (DESIGN.md §1): the only decorative colour. A navy gradient, so the mark
+   * is not read as the blue Action button next to it. */
+  --brand-mark-bg: linear-gradient(135deg, #1d3461 0%, #2f5fb3 100%);
+  --brand-mark-fg: #ffffff;
+
   /* colors.status: main — marker, pill dot, day strip, cluster ring; bg and text — pill */
   --status-normal-main: #1a9e5c;
   --status-normal-bg: #e3f6eb;
@@ -282,6 +287,9 @@
   --accent-soft: rgba(91, 141, 255, 0.16);
   --accent-border: rgba(91, 141, 255, 0.32);
   --text-on-accent: #0f1115;
+
+  --brand-mark-bg: linear-gradient(135deg, #24457f 0%, #3f75d6 100%);
+  --brand-mark-fg: #ffffff;
 
   --status-normal-main: #2fbf72;
   --status-normal-bg: rgba(47, 191, 114, 0.18);
