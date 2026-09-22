@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { getLoginInfo } from '../../api/auth'
 import { ApiError } from '../../api/client'
 import { Button } from '../../components/ui/Button'
+import { LocaleSwitch } from '../../components/ui/LocaleSwitch'
 import { APP_NAME } from '../../lib/app-info'
 import { PASSWORD_RESET_LABELS } from '../../lib/labels'
 import { SIZES } from '../../styles/theme'
@@ -21,7 +22,11 @@ interface LoginValues {
 const messageOf = (error: unknown): string =>
   error instanceof ApiError ? (error.detail ?? error.title) : 'Не удалось войти, попробуйте ещё раз'
 
-/** Sign-in by e-mail and password (DESIGN.md §3.26); the error stays inline above the button. */
+/**
+ * Sign-in by e-mail and password (DESIGN.md §3.26); the error stays inline above the button.
+ * The language switch stands in the corner above the card: the screen is picked before anyone
+ * is signed in, so the choice lives in the browser until a profile can keep it (T-66).
+ */
 export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [resetOpen, setResetOpen] = useState(false)
@@ -54,6 +59,9 @@ export function LoginPage() {
 
   return (
     <main className={styles.page}>
+      <div className={styles.locale}>
+        <LocaleSwitch />
+      </div>
       <Card className={styles.card}>
         <div className={styles.brand}>
           <Wifi size={SIZES.iconMd} strokeWidth={SIZES.iconStroke} aria-hidden />

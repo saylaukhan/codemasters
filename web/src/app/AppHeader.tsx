@@ -5,6 +5,7 @@ import { Activity, LogOut, Menu as MenuIcon, Moon, Sun } from 'lucide-react'
 import type { CurrentUser } from '../api/types'
 import { NotificationBell } from '../components/notifications/NotificationBell'
 import { Button } from '../components/ui/Button'
+import { LocaleSwitch } from '../components/ui/LocaleSwitch'
 import { APP_NAME } from '../lib/app-info'
 import { NAVIGATION_LABELS, ROLE_LABELS } from '../lib/labels'
 import { SIZES } from '../styles/theme'
@@ -30,9 +31,10 @@ interface AppHeaderProps {
 /**
  * Header, DESIGN.md §3.5: 64px on `--bg-page` without a line under it. On the left the 28px mark
  * and «Jyldam» 16/600, preceded by the menu button once the side navigation has moved into a
- * drawer; on the right the bell with its counter, the theme switch and the 40px profile chip,
- * which is the avatar alone at 1024px and narrower (§9.3). The panel has no header search —
- * search belongs to each screen through `components/ui/SearchInput`; the language switch is T-66.
+ * drawer; on the right the language pill «Қаз · Рус», the bell with its counter, the theme
+ * switch and the 40px profile chip, which is the avatar alone at 1024px and narrower (§9.3).
+ * The panel has no header search — search belongs to each screen through
+ * `components/ui/SearchInput`.
  */
 export function AppHeader({ onOpenNavigation }: AppHeaderProps) {
   const { mode, toggle } = useThemeMode()
@@ -71,6 +73,7 @@ export function AppHeader({ onOpenNavigation }: AppHeaderProps) {
         {APP_NAME}
       </div>
       <div className={styles.tools}>
+        <LocaleSwitch />
         {user?.permissions.includes(NOTIFICATIONS_PERMISSION) && <NotificationBell />}
         <Button
           kind="flat"
