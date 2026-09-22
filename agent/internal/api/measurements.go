@@ -12,6 +12,13 @@ import (
 // (backend/app/schemas/agent.py MAX_BATCH_SIZE).
 const MaxBatchSize = 100
 
+// Sources of a measurement (backend/app/schemas/statuses.py MeasurementSource):
+// the schedule of the agent or «Замерить сейчас» of the panel (T-79, ADR-016).
+const (
+	SourceSchedule = "schedule"
+	SourceManual   = "manual"
+)
+
 // Measurement is the body of POST /api/measurements
 // (backend/app/schemas/agent.py MeasurementCreate). Values are raw: the
 // status is set by the server (ADR-004); there is no school field (ADR-005).
@@ -32,6 +39,9 @@ type Measurement struct {
 	Server       string `json:"server,omitempty"`
 	IfaceType    string `json:"iface_type,omitempty"`
 	AgentVersion string `json:"agent_version"`
+	// Source is what started the measurement: SourceSchedule or SourceManual.
+	// Empty is read by the server as the schedule, so an older agent keeps working.
+	Source string `json:"source,omitempty"`
 }
 
 // BatchResult is the answer for one item of a batch, in request order:
