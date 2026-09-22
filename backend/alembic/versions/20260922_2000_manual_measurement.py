@@ -11,8 +11,8 @@ computer was off — simply grows older than ``MEASURE_REQUEST_TTL`` of
 ``app/schemas/agent.py`` and stops being handed out.
 
 Revision ID: a7f2c9d41b85
-Revises: c3d9f1a7b6e4
-Create Date: 2026-09-22 16:00:00.000000+05:00
+Revises: b8e1c4a90d75
+Create Date: 2026-09-22 20:00:00.000000+05:00
 
 """
 
@@ -23,7 +23,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "a7f2c9d41b85"
-down_revision: str | None = "c3d9f1a7b6e4"
+down_revision: str | None = "b8e1c4a90d75"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
