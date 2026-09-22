@@ -8,6 +8,7 @@ import type {
   AuditEntityType,
   AnalyticsPeriod,
   DeviceStatus,
+  DigestScope,
   ExportAggregateColumn,
   ExportColumn,
   ExportFormat,
@@ -18,7 +19,9 @@ import type {
   IncidentMetric,
   IncidentStatus,
   LineStatus,
+  NotificationChannel,
   NotificationKind,
+  NotificationResult,
   QualityStatus,
   ScheduleScope,
   SchoolStatus,
@@ -900,4 +903,93 @@ export const PASSWORD_RESET_LABELS = {
   invalid: 'Ссылка недействительна или устарела — запросите новую',
   done: 'Пароль изменён, войдите с новым паролем',
   toLogin: 'Вернуться к входу',
+} as const
+
+
+/** Вкладки экрана «Отчёты и экспорт» (T-67): конструктор выгрузок и рассылка сводки. */
+export const EXPORT_TAB_LABELS = {
+  builder: 'Выгрузки',
+  digests: 'Сводки',
+} as const
+
+export type ExportTabKey = keyof typeof EXPORT_TAB_LABELS
+
+/** День недели рассылки: 1 — понедельник, как хранит digest_settings (ADR-014). */
+export const DIGEST_WEEKDAY_LABELS: Record<number, string> = {
+  1: 'Понедельник',
+  2: 'Вторник',
+  3: 'Среда',
+  4: 'Четверг',
+  5: 'Пятница',
+  6: 'Суббота',
+  7: 'Воскресенье',
+}
+
+/** Охват выпуска сводки (T-67, §6.2 дизайна). */
+export const DIGEST_SCOPE_LABELS: Record<DigestScope, string> = {
+  oblast: 'Вся область',
+  region: 'Район или город',
+}
+
+/** Канал доставки сводки и что из него вышло: те же коды, что notification_log (ТЗ п. 18). */
+export const DIGEST_CHANNEL_LABELS: Record<NotificationChannel, string> = {
+  panel: 'Панель',
+  telegram: 'Telegram',
+  email: 'Почта',
+}
+
+export const DIGEST_RESULT_LABELS: Record<NotificationResult, string> = {
+  sent: 'отправлено',
+  failed: 'не отправлено',
+  skipped: 'канал не настроен',
+}
+
+/**
+ * Рассылка сводки для руководителя (T-67, §6.2 дизайна, DESIGN.md §3.32): список, drawer,
+ * «Отправить сейчас» с подтверждением и «Предпросмотр», который скачивает тот же PDF.
+ */
+export const DIGEST_LABELS = {
+  title: 'Сводка для руководителя',
+  subtitle: 'Одна страница раз в неделю: почта и Telegram',
+  lead:
+    'Выпуск собирается по данным панели за неделю и уходит по расписанию письмом с PDF и ' +
+    'сообщением в Telegram. Каждая отправка попадает в журнал уведомлений.',
+  add: 'Новая рассылка',
+  addAction: 'Добавить рассылку',
+  edit: 'Изменить рассылку',
+  emptyTitle: 'Рассылок пока нет',
+  emptyDescription: 'Добавьте рассылку: охват, день недели, час и получателей.',
+  scope: 'Охват',
+  region: 'Район или город',
+  regionPlaceholder: 'Выберите из списка',
+  regionRequired: 'Выберите район или город',
+  when: 'Когда',
+  weekday: 'День недели',
+  hour: 'Час',
+  hourHint: 'Местное время Алматы; расписание хранится в настройке рассылки.',
+  recipients: 'Получатели',
+  recipientsPlaceholder: 'Введите адрес и нажмите Enter',
+  recipientsHint: 'Адреса электронной почты руководителей.',
+  recipientsInvalid: 'Введите адрес вида name@example.kz',
+  channels: 'Каналы',
+  telegram: 'Чат Telegram',
+  telegramPlaceholder: 'Идентификатор чата',
+  active: 'Рассылка действует',
+  activeHint: 'Отключённая рассылка не уходит по расписанию, «Отправить сейчас» работает.',
+  lastSent: 'Последняя отправка',
+  neverSent: 'Ещё не уходила',
+  sendNow: 'Отправить сейчас',
+  sendConfirmTitle: 'Отправить сводку сейчас?',
+  sendConfirmText: 'Письмо с PDF и сообщение в Telegram уйдут получателям рассылки вне расписания.',
+  sendConfirmOk: 'Отправить',
+  sendConfirmCancel: 'Отмена',
+  sent: 'Сводка отправлена',
+  preview: 'Предпросмотр',
+  previewFailed: 'Предпросмотр не сформирован',
+  remove: 'Удалить',
+  removeConfirmTitle: 'Удалить рассылку?',
+  removeConfirmText: 'Выпуски, которые уже ушли, останутся в журнале уведомлений.',
+  removed: 'Рассылка удалена',
+  created: 'Рассылка добавлена',
+  changed: 'Рассылка изменена',
 } as const
