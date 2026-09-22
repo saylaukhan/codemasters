@@ -1,0 +1,26 @@
+/* The mark is the one place where colour is decoration and not meaning (DESIGN.md §1, rule 3). */
+.mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--mark-size);
+  height: var(--mark-size);
+  border-radius: var(--radius-control);
+  background: var(--brand-mark-bg);
+  color: var(--brand-mark-fg);
+}
+
+.md {
+  --mark-size: var(--brand-mark-size);
+}
+
+.lg {
+  --mark-size: var(--wall-mark-size);
+}
+
+/* The icon fills about two thirds of the square: 18px in the 28px mark, as the old one did. */
+.icon {
+  width: 64%;
+  height: 64%;
+}

@@ -1,10 +1,11 @@
 import { useGetIdentity, useLogout } from '@refinedev/core'
 import { Dropdown, type MenuProps } from 'antd'
-import { Activity, LogOut, Menu as MenuIcon, Moon, Sun } from 'lucide-react'
+import { LogOut, Menu as MenuIcon, Moon, Sun } from 'lucide-react'
 
 import type { CurrentUser } from '../api/types'
 import { AssistantButton } from '../components/assistant/AssistantButton'
 import { NotificationBell } from '../components/notifications/NotificationBell'
+import { BrandMark } from '../components/ui/BrandMark'
 import { Button } from '../components/ui/Button'
 import { LocaleSwitch } from '../components/ui/LocaleSwitch'
 import { APP_NAME } from '../lib/app-info'
@@ -69,9 +70,7 @@ export function AppHeader({ onOpenNavigation }: AppHeaderProps) {
             onClick={onOpenNavigation}
           />
         )}
-        <span className={styles.mark} aria-hidden>
-          <Activity size={SIZES.iconNav} strokeWidth={SIZES.iconStroke} />
-        </span>
+        <BrandMark />
         {APP_NAME}
       </div>
       <div className={styles.tools}>

@@ -28,19 +28,6 @@
   text-overflow: ellipsis;
 }
 
-/* The mark is the one place where colour is decoration and not meaning (DESIGN.md §1, rule 3). */
-.mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: var(--brand-mark-size);
-  height: var(--brand-mark-size);
-  border-radius: var(--radius-control);
-  background: var(--accent);
-  color: var(--text-on-accent);
-}
-
 .tools {
   display: flex;
   align-items: center;

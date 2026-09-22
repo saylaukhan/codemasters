@@ -1,16 +1,15 @@
 import { useGo, useNotification, useParsed } from '@refinedev/core'
 import { useMutation } from '@tanstack/react-query'
 import { Alert, Card, Form, Input } from 'antd'
-import { Wifi } from 'lucide-react'
 import { useState } from 'react'
 
 import { confirmPasswordReset } from '../../api/auth'
 import { ApiError } from '../../api/client'
 import { PASSWORD_RULES } from '../../components/admin/users'
+import { BrandMark } from '../../components/ui/BrandMark'
 import { Button } from '../../components/ui/Button'
 import { APP_NAME } from '../../lib/app-info'
 import { PASSWORD_RESET_LABELS as LABELS } from '../../lib/labels'
-import { SIZES } from '../../styles/theme'
 import styles from './LoginPage.module.css'
 
 interface ConfirmValues {
@@ -46,7 +45,7 @@ export function PasswordResetPage() {
     <main className={styles.page}>
       <Card className={styles.card}>
         <div className={styles.brand}>
-          <Wifi size={SIZES.iconMd} strokeWidth={SIZES.iconStroke} aria-hidden />
+          <BrandMark />
           {APP_NAME}
         </div>
         <h1 className={styles.title}>{LABELS.confirmTitle}</h1>
