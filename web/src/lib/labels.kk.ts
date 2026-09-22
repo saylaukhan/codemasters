@@ -10,6 +10,8 @@ import type {
   AttentionReason,
   AuditAction,
   AuditEntityType,
+  CalendarKind,
+  CalendarScope,
   DeviceStatus,
   DigestScope,
   ExportAggregateColumn,
@@ -462,6 +464,7 @@ export const ADMIN_TAB_LABELS = {
   settings: 'Параметрлер',
   audit: 'Аудит',
   events: 'Оқиғалар',
+  calendar: 'Күнтізбе',
 } as const
 
 export type AdminTabKey = keyof typeof ADMIN_TAB_LABELS
@@ -1163,4 +1166,70 @@ export const ROLLOUT_LABELS = {
   assigned: (count: string, noun: string) => `Жаңарту тағайындалды: ${count} ${noun}`,
   assignFailed: 'Жаңарту тағайындалмады',
   assignNoRelease: 'Агенттің қолданыстағы релизі жоқ: оны әкімшілендіруде жариялаңыз',
+} as const
+
+/** Тип события календаря (T-70, docs/design/README.md §6.5). */
+export const CALENDAR_KIND_LABELS: Record<CalendarKind, string> = {
+  vacation: 'Демалыс',
+  holiday: 'Мереке',
+  planned_works: 'Жоспарлы жұмыстар',
+}
+
+/** Чьи данные закрывает событие календаря. */
+export const CALENDAR_SCOPE_LABELS: Record<CalendarScope, string> = {
+  oblast: 'Бүкіл облыс',
+  district: 'Аудан немесе қала',
+  school: 'Мектеп',
+}
+
+/** Почему нет данных: школа не работает по календарю (DESIGN.md §4.1, T-70). */
+export const CALENDAR_NO_DATA_HINTS: Record<CalendarKind, string> = {
+  vacation: 'Күнтізбе бойынша демалыс',
+  holiday: 'Мереке күні',
+  planned_works: 'Жеткізушінің жоспарлы жұмыстары',
+}
+
+/** Подписи вкладки «Календарь» администрирования (T-70). */
+export const CALENDAR_LABELS = {
+  lead:
+    'Демалыс пен мерекеде қолжетімділік есептелмейді және инциденттер ашылмайды, агенттің үнсіздігі ' +
+    '«Дерек жоқ» болып көрсетіледі. Жоспарлы жұмыстар терезесі жеткізуші бағасына кірмейді.',
+  add: 'Оқиға қосу',
+  import: 'Кестеден импорттау',
+  importHint: 'kind, title, start, end бағандары бар CSV файлы; school_code және region_code — қалауыңызша.',
+  imported: (created: string) => `Жүктелген оқиға: ${created}`,
+  importFailed: 'Файл жүктелмеді',
+  importErrors: (count: string) => `Қателі жолдар: ${count}`,
+  columnKind: 'Түрі',
+  columnTitle: 'Оқиға',
+  columnPeriod: 'Кезең',
+  columnTarget: 'Кім үшін',
+  wholeOblast: 'Облыстың барлық мектебі',
+  emptyTitle: 'Әзірге оқиға жоқ',
+  emptyDescription: 'Демалысты, мерекені немесе жұмыс терезесін қосыңыз не кестені жүктеңіз.',
+  newTitle: 'Жаңа оқиға',
+  editTitle: 'Оқиғаны өзгерту',
+  kindField: 'Оқиға түрі',
+  scopeField: 'Оқиға кім үшін',
+  regionField: 'Аудан немесе қала',
+  schoolField: 'Мектеп',
+  providerField: 'Жеткізуші',
+  providerHint: 'Тек жоспарлы жұмыстар үшін: терезе осы жеткізушінің желілеріне қатысты.',
+  titleField: 'Атауы',
+  periodField: 'Кезең',
+  periodHint: 'Демалыс пен мереке Asia/Almaty жергілікті тәулігімен беріледі.',
+  commentField: 'Түсініктеме',
+  requiredTitle: 'Атауын көрсетіңіз',
+  requiredPeriod: 'Кезеңді көрсетіңіз',
+  requiredRegion: 'Ауданды немесе қаланы таңдаңыз',
+  requiredSchool: 'Мектепті таңдаңыз',
+  created: 'Оқиға қосылды',
+  changed: 'Оқиға өзгертілді',
+  deleted: 'Оқиға жойылды',
+  edit: 'Өзгерту',
+  delete: 'Жою',
+  deleteTitle: 'Күнтізбе оқиғасын жою керек пе?',
+  deleteText: 'Есептеулер бұл күндерді қайта ескереді. Өлшемдер мен тарих өзгермейді.',
+  deleteOk: 'Жою',
+  deleteCancel: 'Болдырмау',
 } as const

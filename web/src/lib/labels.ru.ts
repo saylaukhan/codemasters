@@ -7,6 +7,8 @@ import type {
   AttentionReason,
   AuditAction,
   AuditEntityType,
+  CalendarKind,
+  CalendarScope,
   DeviceStatus,
   DigestScope,
   ExportAggregateColumn,
@@ -459,6 +461,7 @@ export const ADMIN_TAB_LABELS = {
   settings: 'Настройки',
   audit: 'Аудит',
   events: 'События',
+  calendar: 'Календарь',
 } as const
 
 export type AdminTabKey = keyof typeof ADMIN_TAB_LABELS
@@ -1160,4 +1163,70 @@ export const ROLLOUT_LABELS = {
   assigned: (count: string, noun: string) => `Обновление назначено: ${count} ${noun}`,
   assignFailed: 'Обновление не назначено',
   assignNoRelease: 'Нет действующего релиза агента: опубликуйте его в администрировании',
+} as const
+
+/** Тип события календаря (T-70, docs/design/README.md §6.5). */
+export const CALENDAR_KIND_LABELS: Record<CalendarKind, string> = {
+  vacation: 'Каникулы',
+  holiday: 'Праздник',
+  planned_works: 'Плановые работы',
+}
+
+/** Чьи данные закрывает событие календаря. */
+export const CALENDAR_SCOPE_LABELS: Record<CalendarScope, string> = {
+  oblast: 'Вся область',
+  district: 'Район или город',
+  school: 'Школа',
+}
+
+/** Почему нет данных: школа не работает по календарю (DESIGN.md §4.1, T-70). */
+export const CALENDAR_NO_DATA_HINTS: Record<CalendarKind, string> = {
+  vacation: 'Каникулы по календарю',
+  holiday: 'Праздничный день',
+  planned_works: 'Плановые работы поставщика',
+}
+
+/** Подписи вкладки «Календарь» администрирования (T-70). */
+export const CALENDAR_LABELS = {
+  lead:
+    'В каникулы и праздники доступность не считается и инциденты не создаются, а тишина агента ' +
+    'показывается как «Нет данных». Окно плановых работ не входит в оценку поставщика.',
+  add: 'Добавить событие',
+  import: 'Импорт из таблицы',
+  importHint: 'Файл CSV с колонками kind, title, start, end; school_code и region_code — по желанию.',
+  imported: (created: string) => `Загружено событий: ${created}`,
+  importFailed: 'Файл не загружен',
+  importErrors: (count: string) => `Строк с ошибками: ${count}`,
+  columnKind: 'Тип',
+  columnTitle: 'Событие',
+  columnPeriod: 'Период',
+  columnTarget: 'Для кого',
+  wholeOblast: 'Все школы области',
+  emptyTitle: 'Событий пока нет',
+  emptyDescription: 'Добавьте каникулы, праздник или окно работ либо загрузите таблицу.',
+  newTitle: 'Новое событие',
+  editTitle: 'Изменить событие',
+  kindField: 'Тип события',
+  scopeField: 'Для кого событие',
+  regionField: 'Район или город',
+  schoolField: 'Школа',
+  providerField: 'Поставщик',
+  providerHint: 'Только для плановых работ: окно касается линий этого поставщика.',
+  titleField: 'Название',
+  periodField: 'Период',
+  periodHint: 'Каникулы и праздник задаются целыми местными сутками Asia/Almaty.',
+  commentField: 'Комментарий',
+  requiredTitle: 'Укажите название',
+  requiredPeriod: 'Укажите период',
+  requiredRegion: 'Выберите район или город',
+  requiredSchool: 'Выберите школу',
+  created: 'Событие добавлено',
+  changed: 'Событие изменено',
+  deleted: 'Событие удалено',
+  edit: 'Изменить',
+  delete: 'Удалить',
+  deleteTitle: 'Удалить событие календаря?',
+  deleteText: 'Расчёты снова будут учитывать эти дни. Замеры и история не меняются.',
+  deleteOk: 'Удалить',
+  deleteCancel: 'Отмена',
 } as const

@@ -3,7 +3,13 @@ import { Link } from 'react-router'
 import type { DeviceListItem } from '../../api/types'
 import { deviceCardPath } from '../../app/sections'
 import { NO_VALUE, formatDateTime, formatMs, formatRelative, formatSpeed } from '../../lib/format'
-import { IFACE_LABELS, LINE_STATUS_LABELS, NO_DATA_BLOCKED_HINT, NO_DATA_HINT } from '../../lib/labels'
+import {
+  CALENDAR_NO_DATA_HINTS,
+  IFACE_LABELS,
+  LINE_STATUS_LABELS,
+  NO_DATA_BLOCKED_HINT,
+  NO_DATA_HINT,
+} from '../../lib/labels'
 import { ResponsiveTable, type ResponsiveColumn } from '../ui/ResponsiveTable'
 import { ConnectionStatusBadge } from '../ui/StatusBadge'
 import styles from './SchoolCard.module.css'
@@ -23,7 +29,9 @@ const above = (value: Metric, max: Metric): boolean => value != null && max != n
  */
 const noDataHint = (item: DeviceListItem): string | null => {
   if (item.currentStatus !== 'no_data') return null
-  return item.status === 'blocked' ? NO_DATA_BLOCKED_HINT : NO_DATA_HINT
+  if (item.status === 'blocked') return NO_DATA_BLOCKED_HINT
+  // A day of the calendar is the reason before the switched-off computer is (T-70).
+  return item.quietReason ? CALENDAR_NO_DATA_HINTS[item.quietReason] : NO_DATA_HINT
 }
 
 const quality = (item: DeviceListItem) => {

@@ -9,6 +9,7 @@ from app.models.appeal import Appeal
 from app.models.appeal_event import AppealEvent
 from app.models.audit_log import AuditLog
 from app.models.base import Base
+from app.models.calendar_event import CalendarEvent
 from app.models.connection_type import ConnectionType
 from app.models.device import Device
 from app.models.digest_settings import DigestSettings
@@ -44,6 +45,7 @@ __all__ = [
     "AppealEvent",
     "AuditLog",
     "Base",
+    "CalendarEvent",
     "ConnectionType",
     "Device",
     "DigestSettings",

@@ -11,9 +11,14 @@ Only the reaction time is counted here: how long an incident waited for its firs
 status. The score is 100 minus the penalty of every part, each part weighted by a setting and
 each penalty inside 0–1, so the weights of the admin panel are the whole formula (ADR-004).
 
-Known gap, T-70: the calendar of holidays and planned works does not exist yet, so a window of
-planned works cannot be taken out of the period. Every caller reads the period through
-``score_window``, which is the one place that has to subtract those windows once T-70 lands.
+The planned-works windows of the calendar (T-70) are taken out of the two parts that count the
+incidents of the provider itself: an incident that started inside a window the provider
+announced, and where it announced it, is neither its reaction time nor its frequency, and the
+detection of T-40 opens no new incident there at all. The availability of a school is shared by
+every line of it, so an announced window is not subtracted from the availability part of the
+score, nor from the act of T-69; widening the exclusion there is a decision of the lead, not of
+this module. Every caller reads the period through ``score_window``, the one place the bounds of
+the period come from.
 """
 
 from dataclasses import dataclass
@@ -36,6 +41,7 @@ from app.schemas.providers import (
     ProviderScoreWeights,
 )
 from app.services.analytics import AnalyticsFilters, analytics_report, period_bounds, selected_lines
+from app.services.calendar import inside_planned_works, outside_planned_works
 from app.services.incident_analytics import incident_analytics_report
 from app.services.settings import system_settings
 from app.services.status import school_statuses
@@ -50,7 +56,7 @@ FIRST_MOVE_KIND = "status_change"
 
 @dataclass(frozen=True)
 class ScoreWindow:
-    """Period the score is counted over; the only place T-70 will subtract its windows from."""
+    """Period the score is counted over; the incidents of announced works drop out (T-70)."""
 
     start: datetime
     end: datetime
@@ -74,8 +80,9 @@ def score_window(
 ) -> ScoreWindow:
     """Bounds of the period, exactly as the analytics of T-27 reads the same query parameters.
 
-    T-70 will take the windows of planned works out of the score here, and only here: the rows,
-    the card and the act all ask for their period through this function.
+    The rows, the card and the act all ask for their period through this function; the
+    incidents inside a window of planned works are taken out of the score of that provider
+    (``outside_planned_works``), the rest of the period is counted as it happened.
     """
     start, end = period_bounds(period, period_from, period_to, now=now, timezone=settings.timezone)
     return ScoreWindow(start=start, end=end)
@@ -155,13 +162,43 @@ async def reaction_timings(
         .select_from(Incident)
         .join(selected, selected.c.line_id == Incident.line_id)
         .join(first_move, first_move.c.incident_id == Incident.id)
-        .where(Incident.started_at >= window.start, Incident.started_at < window.end)
+        .where(
+            Incident.started_at >= window.start,
+            Incident.started_at < window.end,
+            # A window the provider announced is not its fault: it drops out of the score (T-70).
+            outside_planned_works(Incident.provider_id, Incident.school_id, Incident.started_at),
+        )
         .group_by(Incident.provider_id)
     )
     return {
         row.provider_id: Timings(median_s=seconds(row.median_s), worst_s=seconds(row.worst_s))
         for row in rows
     }
+
+
+async def announced_incidents(
+    session: AsyncSession, selected: Any, *, window: ScoreWindow
+) -> dict[int, int]:
+    """Incidents of the period that started inside a window their own provider had announced.
+
+    They are counted by the analytics of T-45 as everything else is, but they do not weigh on
+    the frequency part of the score: the provider warned about that time (ТЗ п. 14).
+    """
+    rows = await session.execute(
+        select(
+            Incident.provider_id.label("provider_id"),
+            func.count(Incident.id).label("announced_count"),
+        )
+        .select_from(Incident)
+        .join(selected, selected.c.line_id == Incident.line_id)
+        .where(
+            Incident.started_at >= window.start,
+            Incident.started_at < window.end,
+            inside_planned_works(Incident.provider_id, Incident.school_id, Incident.started_at),
+        )
+        .group_by(Incident.provider_id)
+    )
+    return {row.provider_id: int(row.announced_count) for row in rows}
 
 
 def line_rows(filters: AnalyticsFilters) -> Select[Any]:
@@ -267,6 +304,9 @@ async def score_rows(
     )
     by_provider = {row.id: row for row in incidents.rows}
     timings = await reaction_timings(session, selected_lines(filters).subquery(), window=window)
+    announced = await announced_incidents(
+        session, selected_lines(filters).subquery(), window=window
+    )
     schools = await counted_schools(session, filters)
     below_norm = await lines_below_norm(session, filters)
 
@@ -278,10 +318,12 @@ async def score_rows(
         opened = counted.incidents_count if counted else 0
         reaction = timings.get(row.id, Timings())
         schools_count = schools.get(row.id, 0)
+        # The row reports every incident of the period, as the analytics screen does; the
+        # penalty counts only those outside the windows the provider announced (T-70).
         parts = penalties(
             row,
             reaction,
-            incidents_opened=opened,
+            incidents_opened=max(0, opened - announced.get(row.id, 0)),
             schools_count=schools_count,
             weights=weights,
             availability_min_pct=measured.availability_min_pct,

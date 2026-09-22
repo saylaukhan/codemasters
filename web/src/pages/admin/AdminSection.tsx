@@ -9,6 +9,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { SECTION_LABELS, type AdminTabKey } from '../../lib/labels'
 import { NotFoundPage } from '../section/NotFoundPage'
 import { AuditLogPage, EventLogPage } from './AuditLogPage'
+import { CalendarPage } from './CalendarPage'
 import { ConnectionTypesPage } from './ConnectionTypesPage'
 import { DevicesAdminPage } from './DevicesAdminPage'
 import { IncidentRulesPage } from './IncidentRulesPage'
@@ -29,6 +30,7 @@ const PAGES: Record<AdminTabKey, ComponentType> = {
   'connection-types': ConnectionTypesPage,
   thresholds: ThresholdsPage,
   schedules: SchedulesPage,
+  calendar: CalendarPage,
   'incident-rules': IncidentRulesPage,
   settings: SettingsPage,
   audit: AuditLogPage,

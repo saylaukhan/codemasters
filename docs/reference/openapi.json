@@ -9403,6 +9403,385 @@
           }
         }
       }
+    },
+    "/api/admin/calendar": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "События календаря: каникулы, праздники, плановые работы",
+        "description": "Ближайшие сверху. В каникулы и праздники доступность не считается и инциденты не создаются, окно плановых работ не входит в оценку поставщика (ТЗ п. 14).",
+        "operationId": "list_calendar_events",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CalendarKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец события позже этого",
+              "title": "Period From"
+            },
+            "description": "Конец события позже этого"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало события не позже этого",
+              "title": "Period To"
+            },
+            "description": "Начало события не позже этого"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarEventDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Добавить событие календаря",
+        "description": "scope=oblast — вся область, scope=district — район (обязателен region_id), scope=school — школа (обязателен school_id). provider_id указывается только при kind=planned_works. Границы каникул и праздника — целые местные сутки.",
+        "operationId": "create_calendar_event",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarEventCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarEventDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/calendar/{event_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить событие календаря",
+        "description": "Тип и цель события не меняются: для другой цели заведите новое событие.",
+        "operationId": "update_calendar_event",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarEventUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarEventDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Событие календаря не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Удалить событие календаря",
+        "description": "Событие — настройка, а не история: удаление ничего не теряет.",
+        "operationId": "delete_calendar_event",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Событие календаря не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/calendar/import": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Импорт календаря из таблицы",
+        "description": "Содержимое файла CSV с заголовком kind,title,start,end и необязательными school_code, region_code и comment. Дата YYYY-MM-DD — целые местные сутки, последний день входит целиком. Строка с ошибкой не останавливает импорт: она возвращается в errors.",
+        "operationId": "import_calendar",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarImportResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -11260,6 +11639,351 @@
         "title": "AuditLogListItemPage",
         "description": "Page of the audit log, newest first."
       },
+      "CalendarComment": {
+        "anyOf": [
+          {
+            "type": "string",
+            "maxLength": 1000
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Комментарий, например приказ"
+      },
+      "CalendarEventCreate": {
+        "properties": {
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starts At",
+            "description": "Начало периода, со смещением часового пояса"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ends At",
+            "description": "Конец периода, не включается"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CalendarKind"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/CalendarScope"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Только и обязательно при scope=district"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Только и обязательно при scope=school"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id",
+            "description": "Только при kind=planned_works: окно линий этого поставщика"
+          },
+          "title": {
+            "$ref": "#/components/schemas/CalendarTitle"
+          },
+          "comment": {
+            "$ref": "#/components/schemas/CalendarComment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "starts_at",
+          "ends_at",
+          "kind",
+          "scope",
+          "title"
+        ],
+        "title": "CalendarEventCreate",
+        "description": "Новое событие календаря; поставщик указывается только у плановых работ."
+      },
+      "CalendarEventDetail": {
+        "properties": {
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starts At",
+            "description": "Начало периода, со смещением часового пояса"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ends At",
+            "description": "Конец периода, не включается"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CalendarKind"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/CalendarScope"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Только при scope=district"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Только при scope=school"
+          },
+          "school_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Name"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id",
+            "description": "Только при kind=planned_works"
+          },
+          "provider_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "starts_at",
+          "ends_at",
+          "id",
+          "kind",
+          "scope",
+          "region_id",
+          "region_name",
+          "school_id",
+          "school_name",
+          "provider_id",
+          "provider_name",
+          "title",
+          "comment"
+        ],
+        "title": "CalendarEventDetail",
+        "description": "Событие календаря с наименованиями его цели."
+      },
+      "CalendarEventDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarEventDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "CalendarEventDetailPage",
+        "description": "Страница событий календаря."
+      },
+      "CalendarEventUpdate": {
+        "properties": {
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ends At"
+          },
+          "title": {
+            "$ref": "#/components/schemas/CalendarTitle",
+            "title": "Title"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "title": "CalendarEventUpdate",
+        "description": "Изменения события: период, название и комментарий; тип и цель не меняются."
+      },
+      "CalendarImportRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1000000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Содержимое файла CSV с заголовком kind,title,start,end"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "CalendarImportRequest",
+        "description": "Импорт календаря из таблицы: содержимое файла CSV одной строкой (T-70).\n\nКолонки: ``kind``, ``title``, ``start``, ``end`` обязательны, ``school_code``,\n``region_code`` и ``comment`` — нет. Дата ``YYYY-MM-DD`` — целые местные сутки\n``settings.timezone``, ``YYYY-MM-DDTHH:MM`` — момент этих суток."
+      },
+      "CalendarImportResult": {
+        "properties": {
+          "created": {
+            "type": "integer",
+            "title": "Created",
+            "description": "Сколько событий добавлено"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "description": "Строки файла, которые не удалось прочитать"
+          }
+        },
+        "type": "object",
+        "required": [
+          "created",
+          "errors"
+        ],
+        "title": "CalendarImportResult",
+        "description": "Итог импорта: сколько событий заведено и что не удалось прочитать."
+      },
+      "CalendarKind": {
+        "type": "string",
+        "enum": [
+          "vacation",
+          "holiday",
+          "planned_works"
+        ]
+      },
+      "CalendarScope": {
+        "type": "string",
+        "enum": [
+          "oblast",
+          "district",
+          "school"
+        ]
+      },
+      "CalendarTitle": {
+        "type": "string",
+        "maxLength": 200,
+        "minLength": 1,
+        "description": "Название события в календаре"
+      },
       "ConnectionStatus": {
         "type": "string",
         "enum": [
@@ -11741,6 +12465,17 @@
             "$ref": "#/components/schemas/SchoolStatus",
             "description": "По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data"
           },
+          "quiet_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalendarKind"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему нет данных: событие календаря школы на этот момент; null — обычный"
+          },
           "latest_measurement": {
             "anyOf": [
               {
@@ -11939,6 +12674,17 @@
           "current_status": {
             "$ref": "#/components/schemas/SchoolStatus",
             "description": "По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data"
+          },
+          "quiet_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalendarKind"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему нет данных: событие календаря школы на этот момент; null — обычный"
           },
           "latest_measurement": {
             "anyOf": [

@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, IPvAnyAddress, field_validator
 from pydantic.json_schema import SkipJsonSchema
 
 from app.schemas.agent_releases import AgentChannel
+from app.schemas.calendar import CalendarKind
 from app.schemas.pagination import Page
 from app.schemas.statuses import (
     ConnectionStatus,
@@ -61,6 +62,10 @@ class DeviceListItem(BaseModel):
     current_status: SchoolStatus = Field(
         description="По правилу T-16: heartbeat в рабочие часы и последний замер; "
         "вне рабочих часов — no_data"
+    )
+    quiet_reason: CalendarKind | None = Field(
+        default=None,
+        description="Почему нет данных: событие календаря школы на этот момент; null — обычный",
     )
     latest_measurement: LatestMeasurement | None
 

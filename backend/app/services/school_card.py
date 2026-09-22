@@ -36,6 +36,7 @@ from app.schemas.schools import (
     SchoolDetail,
 )
 from app.schemas.statuses import SchoolStatus
+from app.services.calendar import quiet_schools
 from app.services.settings import system_settings
 from app.services.status import WIFI, school_statuses, worst_of_the_majority
 from app.services.working_hours import is_working_time, school_hours
@@ -139,7 +140,10 @@ async def device_items(
     """Rows of ``Device, MonitoringPoint, line_status`` with the last measurement and the
     current status of each computer; shared by the school card and the device card (T-26)."""
     settings = await system_settings(session)
-    hours = await school_hours(session, {row.MonitoringPoint.school_id for row in rows}, settings)
+    school_ids = {row.MonitoringPoint.school_id for row in rows}
+    hours = await school_hours(session, school_ids, settings)
+    # Vacations and holidays of the calendar: the hint of «Нет данных» names them (T-70).
+    quiet = await quiet_schools(session, school_ids, now=now)
     latest: dict[int, Measurement] = {
         measurement.device_id: measurement
         for measurement in await session.scalars(
@@ -159,7 +163,7 @@ async def device_items(
         seen = device.last_seen_at
         if seen is None or now - seen > timedelta(seconds=settings.offline_after_s):
             working = is_working_time(hours[point.school_id], settings.timezone, now)
-            return "offline" if working else "no_data"
+            return "offline" if working and point.school_id not in quiet else "no_data"
         measurement = latest.get(device.id)
         if measurement is None or measurement.quality_status is None:
             return "no_data"
@@ -181,6 +185,7 @@ async def device_items(
                 "status": row.Device.status,
                 "update_channel": row.Device.update_channel,
                 "current_status": current_status(row.Device, row.MonitoringPoint),
+                "quiet_reason": quiet.get(row.MonitoringPoint.school_id),
                 "latest_measurement": latest_measurement(latest.get(row.Device.id)),
             }
         )

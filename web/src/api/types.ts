@@ -179,3 +179,11 @@ export type DigestSettingsDetail = Schema<'DigestSettingsDetail'>
 export type DigestSettingsCreate = Schema<'DigestSettingsCreate'>
 export type DigestSettingsUpdate = Schema<'DigestSettingsUpdate'>
 export type DigestSendResult = Schema<'DigestSendResult'>
+
+// Календарь каникул, праздников и плановых работ (T-70): тип события, его цель и импорт.
+export type CalendarKind = Schemas['CalendarKind']
+export type CalendarScope = Schemas['CalendarScope']
+export type CalendarEventDetail = Schema<'CalendarEventDetail'>
+export type CalendarEventCreate = Schema<'CalendarEventCreate'>
+export type CalendarEventUpdate = Schema<'CalendarEventUpdate'>
+export type CalendarImportResult = Schema<'CalendarImportResult'>
