@@ -1301,6 +1301,39 @@ RHEL / Rocky / AlmaLinux / Fedora упрётся в это на первом ж�
 телефоне причина уходит в подпись карточки строки; тест на оба пояснения и на их отсутствие
 у замеренного ПК.
 
+### T-80 · Миграция T-67 не применяется: снятие ограничения по полному имени · XS · v1
+**Статус:** done (2026-09-22)
+**Зачем:** найдено проверкой готовности стенда (2026-09-22). `alembic upgrade head` на любой
+базе падает на ревизии `c3d9f1a7b6e4`: `op.drop_constraint("ck_notifications_kind", …)` отдаёт
+имя в `NAMING_CONVENTION` (`app/models/base.py`), и оно превращается во второй раз —
+`ck_notifications_ck_notifications_kind`, которого в базе нет. Развернуть систему с нуля было
+нельзя, а `make check-backend` падал на фикстуре целиком.
+**Где:** `backend/alembic/versions/20260922_1500_digest_settings.py`
+**Зависит от:** T-67
+**Сделано, когда:** снятие идёт по короткому имени `"kind"` — как `create_check_constraint`
+двумя строками ниже; `alembic upgrade head` на чистой базе доходит до `b8e3d7a12f64`, `make
+seed` отрабатывает, у `notifications` остаются `ck_notifications_kind` и
+`ck_notifications_digest_target`.
+
+### T-81 · Кнопка «Отправить сейчас» для сводки падает на политике RLS · S · v1
+**Статус:** todo
+**Зачем:** найдено прогоном `make check-backend` после T-80 (2026-09-22). Миграция T-67 сделала
+`notifications.user_id` и `incident_id` необязательными для `kind = 'digest_sent'`, но политика
+`scope ON notifications` из T-42 осталась прежней: `USING (user_id = rls_user_id())`. Под ролью
+`vko_panel` вставка строки сводки с `user_id IS NULL` отбивается — `new row violates row-level
+security policy`. Задача по расписанию не страдает: воркер открывает свою сессию без
+`as_panel` и идёт владельцем таблицы. Красные тесты — `tests/test_digest.py::
+test_send_now_journals_every_channel_and_stamps_the_mailing` и
+`test_without_smtp_the_letter_is_recorded_as_not_sent`.
+**Где:** новая ревизия в `backend/alembic/versions/`, `backend/app/services/digest_admin.py`,
+`backend/tests/test_digest.py`
+**Зависит от:** T-42, T-67
+**Сделано, когда:** решение принято лидом и записано: либо политика разрешает строку сводки
+(`kind = 'digest_sent' AND user_id IS NULL`) — читающие запросы `app/services/notifications.py`
+и так фильтруют по `user_id`, а колокольчик соединяется с `users` внутренним join, поэтому
+сводка в него не попадает; либо отправка из панели идёт отдельной сессией владельца, как в
+`app/workers/tasks/digest.py`. Оба теста зелёные, `make check-backend` зелёный целиком.
+
 ## M. Доработки после демо (v1)
 
 Задачи не из ТЗ и не из плана: их приносит эксплуатация. Записываются так же, как остальные, и

@@ -94,7 +94,10 @@ def upgrade() -> None:
     )
     op.execute(f"GRANT DELETE ON digest_settings TO {PANEL_ROLE}")
 
-    op.drop_constraint("ck_notifications_kind", "notifications", type_="check")
+    # The name goes through NAMING_CONVENTION of app/models/base.py, exactly like the
+    # ``create_check_constraint`` below: "kind" becomes ``ck_notifications_kind`` in the
+    # database. Passing the full name here would ask for ``ck_notifications_ck_…_kind``.
+    op.drop_constraint("kind", "notifications", type_="check")
     op.alter_column("notifications", "user_id", existing_type=sa.BigInteger(), nullable=True)
     op.alter_column("notifications", "incident_id", existing_type=sa.BigInteger(), nullable=True)
     op.create_check_constraint("kind", "notifications", f"kind IN ({KINDS})")
