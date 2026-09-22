@@ -1220,6 +1220,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rollout/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ход внедрения: подключённые школы, компьютеры на связи, районы
+         * @description «Подключена» — у школы есть хотя бы один активный компьютер, как считает GET /api/dashboard/summary: schools_count и devices_count совпадают с его числами по тем же фильтрам. «На связи» — сигнал не старше offline_after_s, «молчит» — тишина дольше rollout_silent_days, «старая версия» — версия, которой нет среди действующих релизов канала stable и новее (T-50). Все окна берутся из настроек (ТЗ п. 20). schools_total_count включает отключённые школы, lists — размеры четырёх списков.
+         */
+        get: operations["get_rollout_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rollout/schools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Школы одного из четырёх списков внедрения
+         * @description filter выбирает критерий (docs/design/README.md §6.4): not_connected — нет ни одного активного компьютера; silent — компьютер есть, но последний heartbeat старше rollout_silent_days; code_unused — код установки выдан и не использован, с его возрастом; old_version — есть компьютер не на действующем релизе агента. Порядок — худшие сверху: самая долгая тишина, самый старый код, больше всего устаревших компьютеров. total считается до ограничения limit, для подписи «Ещё N школ».
+         */
+        get: operations["get_rollout_schools"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rollout/devices/agent-update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Назначить обновление: перевести компьютеры в канал целевой версии
+         * @description Целевая версия у устройства не хранится: агент ставит последний релиз своего канала (T-50), поэтому назначение переводит выбранные компьютеры — или все компьютеры района — в канал, который выдаёт эту версию. Версия, не являющаяся последней в своём канале, — 409 release_not_latest: доставить её нечем. Новую версию агенты возьмут при следующем GET /api/agent/config.
+         */
+        post: operations["assign_update"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users": {
         parameters: {
             query?: never;
@@ -1866,6 +1926,51 @@ export interface components {
             channel?: components["schemas"]["AgentChannel"];
             /** Is Active */
             is_active?: boolean;
+        };
+        /**
+         * AgentUpdateAssign
+         * @description «Назначить обновление»: which computers take ``version`` on their next configuration.
+         *
+         *     Either ``device_ids`` or ``region_id`` — the chosen computers or every computer of a district;
+         *     without both the whole scope of the user is meant.
+         */
+        AgentUpdateAssign: {
+            /**
+             * Version
+             * @description Версия релиза T-50, которую должны поставить агенты
+             * @example 0.2.0
+             */
+            version: string;
+            /**
+             * Device Ids
+             * @description Выбранные компьютеры; null — по району
+             */
+            device_ids?: number[] | null;
+            /**
+             * Region Id
+             * @description Все компьютеры района или города; null — вся область видимости
+             */
+            region_id?: number | null;
+        };
+        /**
+         * AgentUpdateAssigned
+         * @description What the assignment changed: the channel that delivers ``version`` and how many moved.
+         */
+        AgentUpdateAssigned: {
+            /** Version */
+            version: string;
+            /** @description Канал обновления, который выдаёт эту версию (T-50) */
+            channel: components["schemas"]["AgentChannel"];
+            /**
+             * Devices Count
+             * @description Компьютеры выборки
+             */
+            devices_count: number;
+            /**
+             * Devices Changed Count
+             * @description Из них переведены в канал; остальные уже получают эту версию
+             */
+            devices_changed_count: number;
         };
         /** @enum {string} */
         AnalyticsGranularity: "hour" | "day";
@@ -4827,6 +4932,237 @@ export interface components {
             /** Page Size */
             page_size: number;
         };
+        /** @enum {string} */
+        RolloutFilter: "not_connected" | "silent" | "code_unused" | "old_version";
+        /**
+         * RolloutListCounts
+         * @description How many schools each of the four lists holds, for the tabs of the screen (§6.4).
+         */
+        RolloutListCounts: {
+            /**
+             * Not Connected
+             * @description Нет ни одного активного компьютера
+             */
+            not_connected: number;
+            /**
+             * Silent
+             * @description Агент установлен, но молчит дольше rollout_silent_days
+             */
+            silent: number;
+            /**
+             * Code Unused
+             * @description Код установки выдан и не использован
+             */
+            code_unused: number;
+            /**
+             * Old Version
+             * @description Есть компьютер с версией ниже текущего релиза
+             */
+            old_version: number;
+        };
+        /**
+         * RolloutRegionRow
+         * @description Row of «По районам и городам»: the same numbers for one district or city.
+         */
+        RolloutRegionRow: {
+            /**
+             * Schools Count
+             * @description Активные школы выборки, как schools_count у GET /api/dashboard/summary
+             */
+            schools_count: number;
+            /**
+             * Schools Connected Count
+             * @description Школы, у которых есть хотя бы один активный компьютер
+             */
+            schools_connected_count: number;
+            /**
+             * Connected Pct
+             * @description Доля подключённых школ; 0 при пустой выборке
+             */
+            connected_pct: number;
+            /**
+             * Devices Count
+             * @description Зарегистрированные компьютеры, кроме заблокированных, как devices_count у GET /api/dashboard/summary
+             */
+            devices_count: number;
+            /**
+             * Devices Alive Count
+             * @description Компьютеры на связи: сигнал не старше offline_after_s
+             */
+            devices_alive_count: number;
+            /**
+             * Devices Silent Count
+             * @description Компьютеры, молчащие дольше rollout_silent_days
+             */
+            devices_silent_count: number;
+            /**
+             * Devices Old Version Count
+             * @description Компьютеры не на текущем релизе агента (T-50)
+             */
+            devices_old_version_count: number;
+            /** Region Id */
+            region_id: number;
+            /** Region Name */
+            region_name: string;
+        };
+        /**
+         * RolloutSchoolItem
+         * @description School of one of the four lists, with the fact that put it there (§6.4).
+         */
+        RolloutSchoolItem: {
+            /** School Id */
+            school_id: number;
+            /** School Code */
+            school_code: string;
+            /** School Name */
+            school_name: string;
+            /** Region Id */
+            region_id: number;
+            /** Region Name */
+            region_name: string;
+            /**
+             * Devices Count
+             * @description Активные компьютеры школы
+             */
+            devices_count: number;
+            /**
+             * Devices Alive Count
+             * @description Из них на связи
+             */
+            devices_alive_count: number;
+            /**
+             * Last Seen At
+             * @description Последний сигнал любого компьютера школы; null — школу ни разу не слышали
+             */
+            last_seen_at: string | null;
+            /**
+             * Silent Days
+             * @description Сколько полных суток школа молчит; null — школа на связи или не подключена
+             */
+            silent_days: number | null;
+            /**
+             * Code Issued At
+             * @description Когда выдан последний неиспользованный код установки (T-36)
+             */
+            code_issued_at: string | null;
+            /**
+             * Code Age Days
+             * @description Сколько полных суток коду: «не использован N дней»
+             */
+            code_age_days: number | null;
+            /**
+             * Agent Versions
+             * @description Версии агента компьютеров школы; версия ниже текущего релиза попадает в список «старая версия»
+             */
+            agent_versions: string[];
+            /**
+             * Has Contact
+             * @description Есть ответственный за интернет (ТЗ п. 15)
+             */
+            has_contact: boolean;
+        };
+        /**
+         * RolloutSchoolPage
+         * @description Schools of one list, the worst first; ``total`` counts them before ``limit`` (§6.4).
+         */
+        RolloutSchoolPage: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            filter: components["schemas"]["RolloutFilter"];
+            /**
+             * Target Version
+             * @description Текущий stable-релиз агента (T-50)
+             */
+            target_version: string | null;
+            /**
+             * Silent Days
+             * @description Окно «молчит» из настроек
+             */
+            silent_days: number;
+            /**
+             * Total
+             * @description Сколько школ подходит критерию: подпись «Ещё N школ»
+             */
+            total: number;
+            /** Items */
+            items: components["schemas"]["RolloutSchoolItem"][];
+        };
+        /**
+         * RolloutSummary
+         * @description Numbers of the rollout screen: the oblast, its districts and the four lists (§6.4).
+         */
+        RolloutSummary: {
+            /**
+             * Schools Count
+             * @description Активные школы выборки, как schools_count у GET /api/dashboard/summary
+             */
+            schools_count: number;
+            /**
+             * Schools Connected Count
+             * @description Школы, у которых есть хотя бы один активный компьютер
+             */
+            schools_connected_count: number;
+            /**
+             * Connected Pct
+             * @description Доля подключённых школ; 0 при пустой выборке
+             */
+            connected_pct: number;
+            /**
+             * Devices Count
+             * @description Зарегистрированные компьютеры, кроме заблокированных, как devices_count у GET /api/dashboard/summary
+             */
+            devices_count: number;
+            /**
+             * Devices Alive Count
+             * @description Компьютеры на связи: сигнал не старше offline_after_s
+             */
+            devices_alive_count: number;
+            /**
+             * Devices Silent Count
+             * @description Компьютеры, молчащие дольше rollout_silent_days
+             */
+            devices_silent_count: number;
+            /**
+             * Devices Old Version Count
+             * @description Компьютеры не на текущем релизе агента (T-50)
+             */
+            devices_old_version_count: number;
+            /**
+             * As Of
+             * Format: date-time
+             * @description Момент, на который собраны числа
+             */
+            as_of: string;
+            /**
+             * Schools Total Count
+             * @description Школы тех же фильтров вместе с отключёнными: «350 из 366 в реестре»
+             */
+            schools_total_count: number;
+            /**
+             * Target Version
+             * @description Версия текущего активного stable-релиза агента; null — релизов нет (T-50)
+             */
+            target_version: string | null;
+            /**
+             * Silent Days
+             * @description Окно «молчит» из настроек: rollout_silent_days (ТЗ п. 20)
+             */
+            silent_days: number;
+            /**
+             * Alive After S
+             * @description Окно «на связи» из настроек: offline_after_s (ADR-014)
+             */
+            alive_after_s: number;
+            lists: components["schemas"]["RolloutListCounts"];
+            /**
+             * Regions
+             * @description Районы и города выборки, по названию
+             */
+            regions: components["schemas"]["RolloutRegionRow"][];
+        };
         /**
          * ScheduleCreate
          * @description New schedule of a district or a school; agents get it with the next configuration.
@@ -5459,6 +5795,12 @@ export interface components {
              */
             attention_appeal_no_answer_hours: number;
             /**
+             * Rollout Silent Days
+             * @description Установленный агент без heartbeat дольше стольких суток — школа «молчит» в разделе «Внедрение» (T-69)
+             * @example 7
+             */
+            rollout_silent_days: number;
+            /**
              * Password Reset Ttl Minutes
              * @description Срок действия ссылки «Забыли пароль?» в минутах (T-65)
              * @example 30
@@ -5544,6 +5886,8 @@ export interface components {
             attention_incident_unassigned_hours?: number;
             /** Attention Appeal No Answer Hours */
             attention_appeal_no_answer_hours?: number;
+            /** Rollout Silent Days */
+            rollout_silent_days?: number;
             /** Password Reset Ttl Minutes */
             password_reset_ttl_minutes?: number;
             /** Support Contact */
@@ -9631,6 +9975,154 @@ export interface operations {
                 };
             };
             /** @description Файл не сформирован (type export_failed), причина — в detail */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_rollout_summary: {
+        parameters: {
+            query?: {
+                region_id?: number | null;
+                /** @description Момент, на который собираются числа; по умолчанию — текущий */
+                as_of?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RolloutSummary"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_rollout_schools: {
+        parameters: {
+            query?: {
+                /** @description Критерий списка */
+                filter?: components["schemas"]["RolloutFilter"];
+                region_id?: number | null;
+                /** @description Момент, на который собирается список; по умолчанию — текущий */
+                as_of?: string | null;
+                /** @description Сколько строк вернуть */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RolloutSchoolPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    assign_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentUpdateAssign"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentUpdateAssigned"];
+                };
+            };
+            /** @description Релиз или устройство не найдены */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Версия не последняя в своём канале (type release_not_latest) */
             409: {
                 headers: {
                     [name: string]: unknown;

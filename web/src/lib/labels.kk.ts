@@ -425,6 +425,7 @@ export const SECTION_LABELS = {
   incidents: 'Инциденттер',
   appeals: 'Өтініштер',
   providers: 'Жеткізушілер',
+  rollout: 'Енгізу',
   exports: 'Есептер және экспорт',
   admin: 'Әкімшілендіру',
 } as const
@@ -1089,4 +1090,68 @@ export const PROVIDER_LABELS = {
   open: 'Карточканы ашу',
   noScore: 'кезеңде замер жоқ',
   plannedWorks: 'Жоспарлы жұмыс терезелері бағадан әзірге шығарылмайды: күнтізбе кейін шығады.',
+} as const
+
+/** Lists of «Внедрение» (T-69, docs/design/README.md §6.4); the key is the `filter` of the endpoint. */
+export const ROLLOUT_FILTER_LABELS = {
+  not_connected: 'Қосылмаған',
+  silent: 'Үнсіз',
+  code_unused: 'Код қолданылмаған',
+  old_version: 'Агенттің ескі нұсқасы',
+} as const
+
+/** Columns of the two tables of the rollout: the districts and the schools of a list (DESIGN.md §3.30). */
+export const ROLLOUT_COLUMN_LABELS = {
+  region: 'Аудан немесе қала',
+  schools: 'Мектеп',
+  connected: 'Қосылған',
+  alive: 'Байланыста',
+  share: 'Қосылғандар үлесі',
+  school: 'Мектеп',
+  reason: 'Не дұрыс емес',
+  devices: 'Компьютер',
+  version: 'Агент нұсқасы',
+} as const
+
+/** Cells of the «Ход внедрения» strip of Rollout.html: the three colours and the agent versions. */
+export const ROLLOUT_KPI_LABELS = {
+  connected: 'Қосылған',
+  alive: 'Байланыста',
+  silent: 'Орнатылған, бірақ үнсіз',
+  notConnected: 'Қосылмаған',
+  oldVersion: 'Ескі нұсқаларда',
+} as const
+
+/** Captions of the rollout screen (T-69, DESIGN.md §3.30). */
+export const ROLLOUT_LABELS = {
+  progress: 'Енгізу барысы',
+  regions: 'Аудандар мен қалалар бойынша',
+  lists: 'Кім әрекет күтеді',
+  registry: (total: string) => `тізілімдегі ${total} ішінен`,
+  context: (scope: string) => `Енгізу · ${scope}`,
+  verdict: (connected: string, total: string, noun: string) =>
+    `${total} ${noun} ішінен ${connected} қосылған`,
+  subtitle: (alive: string, time: string) => `Байланыста ${alive} · деректер ${time}`,
+  release: (version: string) => `Агенттің қазіргі релизі ${version}`,
+  noRelease: 'Агент релизі жарияланбаған',
+  silentWindow: (days: string, noun: string) => `${days} ${noun} артық үнсіз`,
+  dayForms: ['күн', 'күн', 'күн'] as [string, string, string],
+  deviceForms: ['компьютер', 'компьютер', 'компьютер'] as [string, string, string],
+  silentSince: (days: string, noun: string) => `соңғы сигнал ${days} ${noun} бұрын`,
+  neverSeen: 'бірде-бір рет байланысқа шықпаған',
+  codeAge: (days: string, noun: string) => `код ${days} ${noun} қолданылмаған`,
+  noDevices: 'бірде-бір компьютер жоқ',
+  noContact: 'жауапты адам жоқ',
+  emptyTitle: 'Бұл тізімде ешкім жоқ',
+  emptyDescription: 'Мектептер тізім критерийіне сәйкес келген бойда осында шығады.',
+  assign: 'Жаңарту тағайындау',
+  assignConfirmTitle: (version: string) => `${version} жаңартуын тағайындау керек пе?`,
+  assignConfirmText:
+    'Таңдалған компьютерлер осы нұсқаның арнасына өтеді және агент конфигурациясы келесі ' +
+    'жаңартылғанда оны орнатады. Тарих пен өлшемдер өзгермейді.',
+  assignConfirmOk: 'Тағайындау',
+  assignConfirmCancel: 'Болдырмау',
+  assigned: (count: string, noun: string) => `Жаңарту тағайындалды: ${count} ${noun}`,
+  assignFailed: 'Жаңарту тағайындалмады',
+  assignNoRelease: 'Агенттің қолданыстағы релизі жоқ: оны әкімшілендіруде жариялаңыз',
 } as const

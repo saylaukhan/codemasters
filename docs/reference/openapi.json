@@ -6381,6 +6381,276 @@
         }
       }
     },
+    "/api/rollout/summary": {
+      "get": {
+        "tags": [
+          "rollout"
+        ],
+        "summary": "Ход внедрения: подключённые школы, компьютеры на связи, районы",
+        "description": "«Подключена» — у школы есть хотя бы один активный компьютер, как считает GET /api/dashboard/summary: schools_count и devices_count совпадают с его числами по тем же фильтрам. «На связи» — сигнал не старше offline_after_s, «молчит» — тишина дольше rollout_silent_days, «старая версия» — версия, которой нет среди действующих релизов канала stable и новее (T-50). Все окна берутся из настроек (ТЗ п. 20). schools_total_count включает отключённые школы, lists — размеры четырёх списков.",
+        "operationId": "get_rollout_summary",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region Id"
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Момент, на который собираются числа; по умолчанию — текущий",
+              "title": "As Of"
+            },
+            "description": "Момент, на который собираются числа; по умолчанию — текущий"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RolloutSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rollout/schools": {
+      "get": {
+        "tags": [
+          "rollout"
+        ],
+        "summary": "Школы одного из четырёх списков внедрения",
+        "description": "filter выбирает критерий (docs/design/README.md §6.4): not_connected — нет ни одного активного компьютера; silent — компьютер есть, но последний heartbeat старше rollout_silent_days; code_unused — код установки выдан и не использован, с его возрастом; old_version — есть компьютер не на действующем релизе агента. Порядок — худшие сверху: самая долгая тишина, самый старый код, больше всего устаревших компьютеров. total считается до ограничения limit, для подписи «Ещё N школ».",
+        "operationId": "get_rollout_schools",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RolloutFilter",
+              "description": "Критерий списка",
+              "default": "not_connected"
+            },
+            "description": "Критерий списка"
+          },
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region Id"
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Момент, на который собирается список; по умолчанию — текущий",
+              "title": "As Of"
+            },
+            "description": "Момент, на который собирается список; по умолчанию — текущий"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "Сколько строк вернуть",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Сколько строк вернуть"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RolloutSchoolPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rollout/devices/agent-update": {
+      "post": {
+        "tags": [
+          "rollout"
+        ],
+        "summary": "Назначить обновление: перевести компьютеры в канал целевой версии",
+        "description": "Целевая версия у устройства не хранится: агент ставит последний релиз своего канала (T-50), поэтому назначение переводит выбранные компьютеры — или все компьютеры района — в канал, который выдаёт эту версию. Версия, не являющаяся последней в своём канале, — 409 release_not_latest: доставить её нечем. Новую версию агенты возьмут при следующем GET /api/agent/config.",
+        "operationId": "assign_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentUpdateAssign"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentUpdateAssigned"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Релиз или устройство не найдены",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Версия не последняя в своём канале (type release_not_latest)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/admin/users": {
       "get": {
         "tags": [
@@ -9461,6 +9731,87 @@
         "type": "object",
         "title": "AgentReleaseUpdate",
         "description": "Promotion to another channel or withdrawal of a release."
+      },
+      "AgentUpdateAssign": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+            "title": "Version",
+            "description": "Версия релиза T-50, которую должны поставить агенты",
+            "examples": [
+              "0.2.0"
+            ]
+          },
+          "device_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array",
+                "maxItems": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Ids",
+            "description": "Выбранные компьютеры; null — по району"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Все компьютеры района или города; null — вся область видимости"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "AgentUpdateAssign",
+        "description": "«Назначить обновление»: which computers take ``version`` on their next configuration.\n\nEither ``device_ids`` or ``region_id`` — the chosen computers or every computer of a district;\nwithout both the whole scope of the user is meant."
+      },
+      "AgentUpdateAssigned": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/AgentChannel",
+            "description": "Канал обновления, который выдаёт эту версию (T-50)"
+          },
+          "devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Count",
+            "description": "Компьютеры выборки"
+          },
+          "devices_changed_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Changed Count",
+            "description": "Из них переведены в канал; остальные уже получают эту версию"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "channel",
+          "devices_count",
+          "devices_changed_count"
+        ],
+        "title": "AgentUpdateAssigned",
+        "description": "What the assignment changed: the channel that delivers ``version`` and how many moved."
       },
       "AnalyticsGranularity": {
         "type": "string",
@@ -16294,6 +16645,405 @@
         "title": "RoleListItemPage",
         "description": "Page of the roles."
       },
+      "RolloutFilter": {
+        "type": "string",
+        "enum": [
+          "not_connected",
+          "silent",
+          "code_unused",
+          "old_version"
+        ]
+      },
+      "RolloutListCounts": {
+        "properties": {
+          "not_connected": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Not Connected",
+            "description": "Нет ни одного активного компьютера"
+          },
+          "silent": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Silent",
+            "description": "Агент установлен, но молчит дольше rollout_silent_days"
+          },
+          "code_unused": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Code Unused",
+            "description": "Код установки выдан и не использован"
+          },
+          "old_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Old Version",
+            "description": "Есть компьютер с версией ниже текущего релиза"
+          }
+        },
+        "type": "object",
+        "required": [
+          "not_connected",
+          "silent",
+          "code_unused",
+          "old_version"
+        ],
+        "title": "RolloutListCounts",
+        "description": "How many schools each of the four lists holds, for the tabs of the screen (§6.4)."
+      },
+      "RolloutRegionRow": {
+        "properties": {
+          "schools_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Count",
+            "description": "Активные школы выборки, как schools_count у GET /api/dashboard/summary"
+          },
+          "schools_connected_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Connected Count",
+            "description": "Школы, у которых есть хотя бы один активный компьютер"
+          },
+          "connected_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Connected Pct",
+            "description": "Доля подключённых школ; 0 при пустой выборке"
+          },
+          "devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Count",
+            "description": "Зарегистрированные компьютеры, кроме заблокированных, как devices_count у GET /api/dashboard/summary"
+          },
+          "devices_alive_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Alive Count",
+            "description": "Компьютеры на связи: сигнал не старше offline_after_s"
+          },
+          "devices_silent_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Silent Count",
+            "description": "Компьютеры, молчащие дольше rollout_silent_days"
+          },
+          "devices_old_version_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Old Version Count",
+            "description": "Компьютеры не на текущем релизе агента (T-50)"
+          },
+          "region_id": {
+            "type": "integer",
+            "title": "Region Id"
+          },
+          "region_name": {
+            "type": "string",
+            "title": "Region Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schools_count",
+          "schools_connected_count",
+          "connected_pct",
+          "devices_count",
+          "devices_alive_count",
+          "devices_silent_count",
+          "devices_old_version_count",
+          "region_id",
+          "region_name"
+        ],
+        "title": "RolloutRegionRow",
+        "description": "Row of «По районам и городам»: the same numbers for one district or city."
+      },
+      "RolloutSchoolItem": {
+        "properties": {
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "school_code": {
+            "type": "string",
+            "title": "School Code"
+          },
+          "school_name": {
+            "type": "string",
+            "title": "School Name"
+          },
+          "region_id": {
+            "type": "integer",
+            "title": "Region Id"
+          },
+          "region_name": {
+            "type": "string",
+            "title": "Region Name"
+          },
+          "devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Count",
+            "description": "Активные компьютеры школы"
+          },
+          "devices_alive_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Alive Count",
+            "description": "Из них на связи"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At",
+            "description": "Последний сигнал любого компьютера школы; null — школу ни разу не слышали"
+          },
+          "silent_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Silent Days",
+            "description": "Сколько полных суток школа молчит; null — школа на связи или не подключена"
+          },
+          "code_issued_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code Issued At",
+            "description": "Когда выдан последний неиспользованный код установки (T-36)"
+          },
+          "code_age_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code Age Days",
+            "description": "Сколько полных суток коду: «не использован N дней»"
+          },
+          "agent_versions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Agent Versions",
+            "description": "Версии агента компьютеров школы; версия ниже текущего релиза попадает в список «старая версия»"
+          },
+          "has_contact": {
+            "type": "boolean",
+            "title": "Has Contact",
+            "description": "Есть ответственный за интернет (ТЗ п. 15)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "school_id",
+          "school_code",
+          "school_name",
+          "region_id",
+          "region_name",
+          "devices_count",
+          "devices_alive_count",
+          "last_seen_at",
+          "silent_days",
+          "code_issued_at",
+          "code_age_days",
+          "agent_versions",
+          "has_contact"
+        ],
+        "title": "RolloutSchoolItem",
+        "description": "School of one of the four lists, with the fact that put it there (§6.4)."
+      },
+      "RolloutSchoolPage": {
+        "properties": {
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/RolloutFilter"
+          },
+          "target_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Version",
+            "description": "Текущий stable-релиз агента (T-50)"
+          },
+          "silent_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Silent Days",
+            "description": "Окно «молчит» из настроек"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total",
+            "description": "Сколько школ подходит критерию: подпись «Ещё N школ»"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RolloutSchoolItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "as_of",
+          "filter",
+          "target_version",
+          "silent_days",
+          "total",
+          "items"
+        ],
+        "title": "RolloutSchoolPage",
+        "description": "Schools of one list, the worst first; ``total`` counts them before ``limit`` (§6.4)."
+      },
+      "RolloutSummary": {
+        "properties": {
+          "schools_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Count",
+            "description": "Активные школы выборки, как schools_count у GET /api/dashboard/summary"
+          },
+          "schools_connected_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Connected Count",
+            "description": "Школы, у которых есть хотя бы один активный компьютер"
+          },
+          "connected_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Connected Pct",
+            "description": "Доля подключённых школ; 0 при пустой выборке"
+          },
+          "devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Count",
+            "description": "Зарегистрированные компьютеры, кроме заблокированных, как devices_count у GET /api/dashboard/summary"
+          },
+          "devices_alive_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Alive Count",
+            "description": "Компьютеры на связи: сигнал не старше offline_after_s"
+          },
+          "devices_silent_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Silent Count",
+            "description": "Компьютеры, молчащие дольше rollout_silent_days"
+          },
+          "devices_old_version_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Old Version Count",
+            "description": "Компьютеры не на текущем релизе агента (T-50)"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of",
+            "description": "Момент, на который собраны числа"
+          },
+          "schools_total_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Total Count",
+            "description": "Школы тех же фильтров вместе с отключёнными: «350 из 366 в реестре»"
+          },
+          "target_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Version",
+            "description": "Версия текущего активного stable-релиза агента; null — релизов нет (T-50)"
+          },
+          "silent_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Silent Days",
+            "description": "Окно «молчит» из настроек: rollout_silent_days (ТЗ п. 20)"
+          },
+          "alive_after_s": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Alive After S",
+            "description": "Окно «на связи» из настроек: offline_after_s (ADR-014)"
+          },
+          "lists": {
+            "$ref": "#/components/schemas/RolloutListCounts"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/RolloutRegionRow"
+            },
+            "type": "array",
+            "title": "Regions",
+            "description": "Районы и города выборки, по названию"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schools_count",
+          "schools_connected_count",
+          "connected_pct",
+          "devices_count",
+          "devices_alive_count",
+          "devices_silent_count",
+          "devices_old_version_count",
+          "as_of",
+          "schools_total_count",
+          "target_version",
+          "silent_days",
+          "alive_after_s",
+          "lists",
+          "regions"
+        ],
+        "title": "RolloutSummary",
+        "description": "Numbers of the rollout screen: the oblast, its districts and the four lists (§6.4)."
+      },
       "ScheduleCreate": {
         "properties": {
           "scope": {
@@ -17687,6 +18437,15 @@
               48
             ]
           },
+          "rollout_silent_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Rollout Silent Days",
+            "description": "Установленный агент без heartbeat дольше стольких суток — школа «молчит» в разделе «Внедрение» (T-69)",
+            "examples": [
+              7
+            ]
+          },
           "password_reset_ttl_minutes": {
             "type": "integer",
             "minimum": 1.0,
@@ -17783,6 +18542,7 @@
           "agent_queue_retention_days",
           "attention_incident_unassigned_hours",
           "attention_appeal_no_answer_hours",
+          "rollout_silent_days",
           "password_reset_ttl_minutes",
           "support_contact",
           "provider_score_weight_below_contract",
@@ -17877,6 +18637,11 @@
             "type": "integer",
             "minimum": 1.0,
             "title": "Attention Appeal No Answer Hours"
+          },
+          "rollout_silent_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Rollout Silent Days"
           },
           "password_reset_ttl_minutes": {
             "type": "integer",

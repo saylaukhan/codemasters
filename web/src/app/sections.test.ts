@@ -78,6 +78,7 @@ describe('navigation of a role', () => {
       'incidents',
       'appeals',
       'providers',
+      'rollout',
       'analytics',
       'exports',
       'admin',
@@ -92,6 +93,7 @@ describe('navigation of a role', () => {
       'incidents',
       'appeals',
       'providers',
+      'rollout',
       'analytics',
       'exports',
     ])
@@ -139,6 +141,7 @@ describe('sections themselves', () => {
       'incidents',
       'appeals',
       'providers',
+      'rollout',
       'analytics',
       'exports',
       'admin',
