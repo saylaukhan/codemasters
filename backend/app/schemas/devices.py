@@ -80,6 +80,10 @@ class DeviceDetail(DeviceListItem):
     token_rotation_requested_at: datetime | None = Field(
         description="Запрошена замена токена; пусто — агент уже получил новый или замены не было"
     )
+    measure_requested_at: datetime | None = Field(
+        description="Запрошен внеплановый замер и запрос ещё ждёт агента; пусто — замер уже "
+        "пришёл, запроса не было или он старше часа"
+    )
 
 
 class DeviceDetailPage(Page[DeviceDetail]):

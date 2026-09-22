@@ -98,8 +98,8 @@ async def test_token_of_the_device_opens_the_agent_api(
         HEARTBEAT, json=heartbeat(), headers={"Authorization": f"Bearer {token}"}
     )
 
-    # Authentication passed: the heartbeat of T-16 answers without a body.
-    assert accepted.status_code == 204, accepted.text
+    # Authentication passed: the heartbeat of T-16 answers what the server asks of the agent.
+    assert accepted.status_code == 200, accepted.text
     for refused in (without, wrong_secret, unknown_device, beyond_bigint, wrong_scheme):
         assert problem(refused, 401, "unauthorized")["detail"]
         assert refused.headers["www-authenticate"] == "Device"
@@ -128,8 +128,8 @@ async def test_token_hashed_by_argon2_is_accepted_and_upgraded(
     )
     again = await api_client.post(HEARTBEAT, json=heartbeat(), headers=as_device(token))
 
-    assert accepted.status_code == 204, accepted.text
-    assert again.status_code == 204, again.text
+    assert accepted.status_code == 200, accepted.text
+    assert again.status_code == 200, again.text
     problem(wrong_secret, 401, "unauthorized")
     # The row now holds the new format, and it is the hash of the same token as before.
     assert upgraded.startswith(TOKEN_HASH_PREFIX)

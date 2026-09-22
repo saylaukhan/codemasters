@@ -58,12 +58,7 @@ export interface paths {
         put?: never;
         /**
          * Сигнал «агент жив»
-         * @description Record that the agent is alive and remember the version it runs (ТЗ п. 3, ADR-014).
-         *
-         *     The moment is the clock of the database, not ``sent_at`` of the computer: the status of a
-         *     school and its availability are counted against one clock, and a machine whose time is off
-         *     must not look silent or alive by mistake. ``sent_at`` stays in the contract as what the
-         *     agent believes the time is.
+         * @description Ответ несёт `measure_requested_at`, если администратор запросил замер (T-79): агент делает один внеплановый замер, запоминает момент запроса и по нему же отличает повтор того же запроса от нового. Запрос старше часа не выдаётся.
          */
         post: operations["send_heartbeat"];
         delete?: never;
@@ -803,6 +798,26 @@ export interface paths {
          * @description Токен здесь не выдаётся: агент видит token_rotation_required в GET /api/agent/config, вызывает POST /api/agent/token текущим токеном и получает новый; старый сразу перестаёт работать. Пока агент не забрал токен, token_rotation_requested_at заполнен. Агент, потерявший ответ, регистрируется заново новым кодом установки своей школы.
          */
         post: operations["request_token_rotation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/devices/{device_id}/measure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Запросить внеплановый замер
+         * @description Замер здесь не выполняется: агент видит measure_requested_at в ответе на POST /api/devices/heartbeat, делает один замер и присылает его как обычно, не дожидаясь слота. Расписание устройства не меняется (ТЗ п. 2). Пока замер не пришёл, measure_requested_at заполнен; запрос старше часа агенту не выдаётся, и повторное нажатие тогда создаёт новый.
+         */
+        post: operations["request_measurement"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2683,6 +2698,11 @@ export interface components {
              * @description Запрошена замена токена; пусто — агент уже получил новый или замены не было
              */
             token_rotation_requested_at: string | null;
+            /**
+             * Measure Requested At
+             * @description Запрошен внеплановый замер и запрос ещё ждёт агента; пусто — замер уже пришёл, запроса не было или он старше часа
+             */
+            measure_requested_at: string | null;
         };
         /**
          * DeviceDetailPage
@@ -3230,6 +3250,17 @@ export interface components {
             sent_at: string;
             /** Agent Version */
             agent_version: string;
+        };
+        /**
+         * HeartbeatResponse
+         * @description Answer of a heartbeat: what the server asks of the agent besides its schedule (T-79).
+         */
+        HeartbeatResponse: {
+            /**
+             * Measure Requested At
+             * @description Администратор запросил замер: агент делает один внеплановый замер и запоминает этот момент, чтобы не повторить запрос после перезапуска службы. Пусто — запроса нет или он старше часа
+             */
+            measure_requested_at?: string | null;
         };
         /** @enum {string} */
         IfaceType: "ethernet" | "wifi" | "other";
@@ -5747,11 +5778,13 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            204: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HeartbeatResponse"];
+                };
             };
             /** @description Токен устройства отсутствует или недействителен */
             401: {
@@ -8064,6 +8097,55 @@ export interface operations {
         };
     };
     request_token_rotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceDetail"];
+                };
+            };
+            /** @description Устройство не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    request_measurement: {
         parameters: {
             query?: never;
             header?: never;
