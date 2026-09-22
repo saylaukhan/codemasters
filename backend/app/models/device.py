@@ -38,3 +38,6 @@ class Device(TimestampMixin, Base):
     # Channel of the self-update: a device on ``pilot`` takes a release before the rest, which
     # wait for its promotion to ``stable`` (T-50).
     update_channel: Mapped[str] = mapped_column(server_default=text("'stable'"))
+    # Set by the admin panel: the agent sees the moment in the answer of its heartbeat, measures
+    # once outside its schedule and sends the result; the measurement clears it (T-79).
+    measure_requested_at: Mapped[datetime | None]
