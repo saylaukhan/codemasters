@@ -120,3 +120,8 @@
   justify-content: flex-end;
   min-width: 0;
 }
+
+/* The card list only exists at ≤ 768, so the row action is a touch target (DESIGN.md §9.3). */
+.action :global(.ant-btn) {
+  min-height: var(--touch-target);
+}

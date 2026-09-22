@@ -7,6 +7,7 @@ import { NARROW_SCREEN, PHONE_SCREEN } from '../../styles/theme'
 import styles from './ResponsiveTable.module.css'
 import {
   cardColumns,
+  columnContent,
   cardPage,
   pageRows,
   sortableColumns,
@@ -40,14 +41,11 @@ export interface ResponsiveTableProps<T> extends Omit<TableProps<T>, 'columns'> 
   cardPairLimit?: number
 }
 
-// An AntD column is a union of shapes; reading it back needs only these five fields, so the
-// wrapper looks at them structurally instead of narrowing the union at every call.
+// An AntD column is a union of shapes; the key of one needs only these two fields, so the wrapper
+// looks at them structurally instead of narrowing the union at every call.
 interface Renderable {
   key?: unknown
-  title?: unknown
   dataIndex?: unknown
-  render?: unknown
-  sorter?: unknown
 }
 
 const columnKey = (column: Renderable, index: number): string => {
@@ -56,22 +54,6 @@ const columnKey = (column: Renderable, index: number): string => {
   if (Array.isArray(dataIndex)) return dataIndex.join('.')
   if (typeof dataIndex === 'string' || typeof dataIndex === 'number') return String(dataIndex)
   return String(index)
-}
-
-const cellValue = (column: Renderable, row: object): unknown => {
-  const { dataIndex } = column
-  if (dataIndex === undefined || dataIndex === null) return undefined
-  const path: unknown[] = Array.isArray(dataIndex) ? dataIndex : [dataIndex]
-  return path.reduce<unknown>((value, step) => (value as Record<string, unknown> | undefined)?.[String(step)], row)
-}
-
-/** The value of one card pair: the column's own `render` when it has one, the raw field otherwise. */
-const cellContent = <T extends object>(column: Renderable, row: T, index: number): ReactNode => {
-  const value = cellValue(column, row)
-  if (typeof column.render === 'function') {
-    return (column.render as (value: unknown, row: T, index: number) => ReactNode)(value, row, index)
-  }
-  return value as ReactNode
 }
 
 /**
@@ -184,7 +166,7 @@ export function ResponsiveTable<T extends object>({
                     {pairs.map(({ column, key }) => (
                       <div key={key} className={styles.pair}>
                         <span className={styles.pairLabel}>{column.title as ReactNode}</span>
-                        <span className={styles.pairValue}>{cellContent(column, row, index)}</span>
+                        <span className={styles.pairValue}>{columnContent(column, row, index)}</span>
                       </div>
                     ))}
                   </div>

@@ -9,6 +9,20 @@
   padding-bottom: var(--space-2);
 }
 
+/* DESIGN.md §9.3 «Доска инцидентов»: from 1024 the board scrolls sideways with snapping, a column
+ * is 280px, and the swipe stays inside the board instead of paging the browser. */
+@media (max-width: 1024px) {
+  .board {
+    grid-auto-columns: var(--board-column-width);
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+  }
+
+  .column {
+    scroll-snap-align: start;
+  }
+}
+
 .column {
   display: flex;
   flex-direction: column;

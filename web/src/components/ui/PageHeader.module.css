@@ -41,6 +41,19 @@
   font-size: var(--font-size-sm);
 }
 
+/* DESIGN.md §9.3 «Заголовок страницы»: from 1024 the actions go under the title and wrap there
+ * instead of squeezing it. The pinned Action of ≤768 below is unaffected. */
+@media (max-width: 1024px) {
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
+}
+
 /* Caption of the context above the title, DESIGN.md §3.7: where we are and how much is in view. */
 .context {
   margin: 0 0 var(--space-1);

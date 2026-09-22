@@ -31,6 +31,13 @@ aside.card {
   top: var(--space-4);
 }
 
+/* Once the layout is one column the summary sits under the steps, where sticky only shifts it. */
+@media (max-width: 1024px) {
+  aside.card {
+    position: static;
+  }
+}
+
 .title {
   display: flex;
   align-items: center;

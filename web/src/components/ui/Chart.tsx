@@ -17,6 +17,8 @@ import { Download } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 
 import { useThemeMode } from '../../app/themeMode'
+import { useMediaQuery } from '../../app/useMediaQuery'
+import { PHONE_SCREEN } from '../../styles/theme'
 import { Button } from './Button'
 import styles from './Chart.module.css'
 import { buildOption, chartCsv, token, type TimeChartData } from './chartOption'
@@ -36,8 +38,12 @@ echarts.use([
 
 export type ChartData = TimeChartData | HeatmapChartData
 
+// Height of a chart on a phone (DESIGN.md §9.3, row «Графики»); the wide screen keeps its own.
+const COMPACT_HEIGHT = 160
+
 const isHeatmap = (data: ChartData): data is HeatmapChartData => 'kind' in data && data.kind === 'heatmap'
-const optionOf = (data: ChartData) => (isHeatmap(data) ? buildHeatmapOption(data) : buildOption(data))
+const optionOf = (data: ChartData, compact: boolean) =>
+  isHeatmap(data) ? buildHeatmapOption(data, compact) : buildOption(data, compact)
 const csvOf = (data: ChartData) => (isHeatmap(data) ? heatmapCsv(data) : chartCsv(data))
 
 function save(href: string, fileName: string): void {
@@ -64,6 +70,8 @@ export function ChartCard({ title, controls, fileName, data, placeholder, height
   const element = useRef<HTMLDivElement>(null)
   const chart = useRef<echarts.ECharts | null>(null)
   const { mode } = useThemeMode()
+  // One decision for all five call sites: a phone gets the low chart with the sparse axis (§9.3).
+  const compact = useMediaQuery(PHONE_SCREEN)
   const showChart = data !== undefined && !placeholder
 
   useEffect(() => {
@@ -80,8 +88,8 @@ export function ChartCard({ title, controls, fileName, data, placeholder, height
   }, [showChart])
 
   useEffect(() => {
-    if (showChart && chart.current) chart.current.setOption(optionOf(data), true)
-  }, [showChart, data, mode])
+    if (showChart && chart.current) chart.current.setOption(optionOf(data, compact), true)
+  }, [showChart, data, mode, compact])
 
   const exportAs = (kind: string) => {
     if (!data) return
@@ -117,7 +125,7 @@ export function ChartCard({ title, controls, fileName, data, placeholder, height
           </Dropdown>
         </div>
       </header>
-      {showChart ? <div ref={element} style={{ height }} /> : placeholder}
+      {showChart ? <div ref={element} style={{ height: compact ? COMPACT_HEIGHT : height }} /> : placeholder}
     </section>
   )
 }

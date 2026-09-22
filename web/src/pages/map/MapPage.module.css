@@ -1,3 +1,10 @@
+/* Map screen, docs/design/README.md §2: from 1024 the map takes the window minus the header. */
 .map {
   height: 75vh;
+}
+
+@media (max-width: 1024px) {
+  .map {
+    height: var(--map-fill-height);
+  }
 }

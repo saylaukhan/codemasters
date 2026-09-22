@@ -1,4 +1,3 @@
-import { Table, type TableProps } from 'antd'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
@@ -7,15 +6,19 @@ import { incidentCardPath, schoolCardPath } from '../../app/sections'
 import { formatDateTime, NO_VALUE } from '../../lib/format'
 import { INCIDENT_COLUMN_LABELS, LINE_STATUS_LABELS, TABLE_PAGINATION_LABELS } from '../../lib/labels'
 import { PAGE_SIZES } from '../schools/useSchoolListView'
+import { ResponsiveTable, type ResponsiveColumn } from '../ui/ResponsiveTable'
 import { IncidentStatusBadge } from '../ui/StatusBadge'
 import styles from './Incident.module.css'
 import { basisCaption, durationCaption } from './incidents'
 
-type Column = NonNullable<TableProps<IncidentListItem>['columns']>[number]
+type Column = ResponsiveColumn<IncidentListItem>
 
+// Priorities of DESIGN.md §3.12: the number, the school and the status head the phone card, the
+// rest become its pairs — the responsible is the first column to go when the width runs out.
 const NUMBER: Column = {
   key: 'number',
   title: INCIDENT_COLUMN_LABELS.number,
+  priority: 'primary',
   fixed: 'left',
   render: (_, item) => (
     <Link className={styles.code} to={incidentCardPath(item.id)}>
@@ -27,6 +30,7 @@ const NUMBER: Column = {
 const SCHOOL: Column = {
   key: 'school',
   title: INCIDENT_COLUMN_LABELS.school,
+  priority: 'primary',
   render: (_, item) => (
     <span className={styles.stack}>
       <Link to={schoolCardPath(item.schoolId)}>{item.schoolName}</Link>
@@ -36,7 +40,12 @@ const SCHOOL: Column = {
 }
 
 const REST: Column[] = [
-  { key: 'status', title: INCIDENT_COLUMN_LABELS.status, render: (_, item) => <IncidentStatusBadge status={item.status} /> },
+  {
+    key: 'status',
+    title: INCIDENT_COLUMN_LABELS.status,
+    priority: 'primary',
+    render: (_, item) => <IncidentStatusBadge status={item.status} />,
+  },
   {
     key: 'line',
     title: INCIDENT_COLUMN_LABELS.line,
@@ -47,7 +56,7 @@ const REST: Column[] = [
       </span>
     ),
   },
-  { key: 'basis', title: INCIDENT_COLUMN_LABELS.basis, render: (_, item) => basisCaption(item.basisMetrics) },
+  { key: 'basis', title: INCIDENT_COLUMN_LABELS.basis, priority: 'minor', render: (_, item) => basisCaption(item.basisMetrics) },
   {
     key: 'started',
     title: INCIDENT_COLUMN_LABELS.startedAt,
@@ -63,7 +72,12 @@ const REST: Column[] = [
       </span>
     ),
   },
-  { key: 'responsible', title: INCIDENT_COLUMN_LABELS.responsible, render: (_, item) => item.responsibleUserName ?? NO_VALUE },
+  {
+    key: 'responsible',
+    title: INCIDENT_COLUMN_LABELS.responsible,
+    priority: 'minor',
+    render: (_, item) => item.responsibleUserName ?? NO_VALUE,
+  },
 ]
 
 interface IncidentTableProps {
@@ -94,7 +108,7 @@ export function IncidentTable({
   pagination = true,
 }: IncidentTableProps) {
   return (
-    <Table<IncidentListItem>
+    <ResponsiveTable<IncidentListItem>
       rowKey="id"
       size="middle"
       columns={showSchool ? [NUMBER, SCHOOL, ...REST] : [NUMBER, ...REST]}
@@ -102,6 +116,16 @@ export function IncidentTable({
       loading={loading}
       scroll={{ x: 'max-content' }}
       locale={{ emptyText: empty }}
+      card={{
+        title: (item) => (
+          <Link className={styles.code} to={incidentCardPath(item.id)}>
+            {item.number}
+          </Link>
+        ),
+        status: (item) => <IncidentStatusBadge status={item.status} />,
+        description: (item) =>
+          showSchool ? `${item.schoolName} · ${item.schoolCode}` : `${LINE_STATUS_LABELS[item.lineStatus]} · ${item.providerName}`,
+      }}
       pagination={
         pagination && {
           current: page,
