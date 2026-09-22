@@ -36,6 +36,15 @@ export const SCHOOL_STATUS_LABELS: Record<SchoolStatus, string> = {
   no_data: 'Нет данных',
 }
 
+/**
+ * «Нет данных» is display-only and never stands without a reason (DESIGN.md §4.1): the agent is
+ * silent, so there is nothing to judge the connection by.
+ */
+export const NO_DATA_HINT = 'Компьютер выключен или нерабочее время'
+
+/** The same for a blocked computer: the server declines its measurements, the history stays (ADR-005). */
+export const NO_DATA_BLOCKED_HINT = 'Компьютер заблокирован, история сохранена'
+
 /** Quality of a measurement or a line, evaluated on the server (ADR-004). */
 export const QUALITY_STATUS_LABELS: Record<QualityStatus, string> = {
   normal: SCHOOL_STATUS_LABELS.normal,
