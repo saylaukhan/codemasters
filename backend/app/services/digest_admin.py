@@ -38,19 +38,16 @@ from app.schemas.digests import (
     DigestSettingsUpdate,
 )
 from app.services.digest import Digest, build_digest, digest_file_name, digest_message, digest_pdf
-from app.services.notifications import (
-    CHANNEL_OFF,
-    NO_ADDRESS,
-    Delivery,
-    send_email,
-    send_telegram,
-)
+from app.services.notifications import CHANNEL_OFF, Delivery, send_email, send_telegram
 from app.services.references import Changes, apply_changes, ensure_region, page_of
 from app.services.settings import system_settings
 
 logger = logging.getLogger(__name__)
 
 NOT_FOUND = "Рассылка сводки не найдена"
+
+# Причина в журнале, когда у рассылки нет ни одного адреса: канал есть, адресата нет (ТЗ п. 18).
+NO_RECIPIENTS = "В рассылке не указан ни один адрес"
 
 # Заголовок строки ``notifications`` отправки: текст хранится вместе с ней и не меняется.
 DIGEST_KIND = "digest_sent"
@@ -191,7 +188,7 @@ async def send_digest(
         for address in digest.recipients:
             deliveries.append(await deliver_email(settings, address, subject, body, attachment))
     else:
-        deliveries.append(Delivery("email", "skipped", None, NO_ADDRESS))
+        deliveries.append(Delivery("email", "skipped", None, NO_RECIPIENTS))
     if digest.telegram_chat_id:
         deliveries.append(
             await deliver_telegram(settings, digest.telegram_chat_id, f"{subject}\n{body}")
