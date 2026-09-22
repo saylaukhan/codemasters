@@ -72,6 +72,15 @@
   font-size: var(--font-size-sm);
 }
 
+/* Why «Нет данных» (DESIGN.md §4.1): two narrow lines under the pill instead of one long line
+ * that widens the widest table of the panel. */
+.hint {
+  max-width: 20ch;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  white-space: normal;
+}
+
 .contacts {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
