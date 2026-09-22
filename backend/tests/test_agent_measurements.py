@@ -15,7 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Device, Line, Measurement, MonitoringPoint, School
 from app.schemas.agent import MAX_BATCH_SIZE
-from tests.factories import create_school, primary_point, register_device
+from tests.factories import (
+    bearer,
+    create_school,
+    create_settings,
+    create_user,
+    primary_point,
+    register_device,
+)
 from tests.test_agent_register import as_device, heartbeat, problem
 
 MEASUREMENTS = "/api/measurements"
@@ -182,3 +189,40 @@ async def test_intake_needs_an_active_device(
         403,
         "device_blocked",
     )
+
+
+async def test_the_source_of_a_measurement_is_stored_and_read_back(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """T-79: замер по расписанию и замер по кнопке различимы в истории; чужое значение — 422."""
+    await create_settings(session)
+    device, token, _ = await agent(session)
+    admin = bearer(await create_user(session, "admin"))
+
+    planned = measurement()
+    asked = measurement(measured_at=datetime.now(UTC).isoformat(), source="manual")
+    for body in (planned, asked):
+        assert (
+            await api_client.post(MEASUREMENTS, json=body, headers=as_device(token))
+        ).status_code == 201
+
+    # An agent older than T-79 sends no source at all, and its measurement is a planned one.
+    assert "source" not in planned
+    assert (await stored(session, planned["measurement_uuid"])).source == "schedule"
+    assert (await stored(session, asked["measurement_uuid"])).source == "manual"
+
+    history = await api_client.get(f"/api/devices/{device.id}/measurements", headers=admin)
+    assert history.status_code == 200, history.text
+    assert [(item["measurement_uuid"], item["source"]) for item in history.json()["items"]] == [
+        (asked["measurement_uuid"], "manual"),
+        (planned["measurement_uuid"], "schedule"),
+    ]
+
+    refused = problem(
+        await api_client.post(
+            MEASUREMENTS, json=measurement(source="by-hand"), headers=as_device(token)
+        ),
+        422,
+        "validation_error",
+    )
+    assert [error["field"] for error in refused["errors"]] == ["source"]

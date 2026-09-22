@@ -2984,7 +2984,7 @@ export interface components {
             expires_at: string;
         };
         /** @enum {string} */
-        ExportColumn: "school_name" | "hostname" | "room" | "date" | "time" | "download_mbps" | "upload_mbps" | "ping_ms" | "jitter_ms" | "packet_loss_pct" | "quality_status" | "school_code" | "device_id" | "line_status" | "connection_status" | "iface_type" | "duration_s" | "external_ip" | "server" | "agent_version";
+        ExportColumn: "school_name" | "hostname" | "room" | "date" | "time" | "download_mbps" | "upload_mbps" | "ping_ms" | "jitter_ms" | "packet_loss_pct" | "quality_status" | "school_code" | "device_id" | "line_status" | "connection_status" | "iface_type" | "duration_s" | "external_ip" | "server" | "agent_version" | "source";
         /**
          * ExportCreate
          * @description Export request: mode, format, period, filters and columns (ТЗ п. 9, DESIGN.md §3.24).
@@ -4028,6 +4028,11 @@ export interface components {
             iface_type?: components["schemas"]["IfaceType"] | null;
             /** Agent Version */
             agent_version: string;
+            /**
+             * @description Что запустило замер: расписание агента или запрос из панели (T-79). Агент старой версии поля не шлёт, и замер считается плановым
+             * @default schedule
+             */
+            source: components["schemas"]["MeasurementSource"];
         };
         /**
          * MeasurementListItem
@@ -4082,6 +4087,8 @@ export interface components {
             server: string | null;
             /** Agent Version */
             agent_version: string | null;
+            /** @description Замер по расписанию агента или по запросу «Замерить сейчас» из панели */
+            source: components["schemas"]["MeasurementSource"];
             /**
              * Contract Ok
              * @description Факт не ниже договорной скорости линии; пусто — договорных значений нет
@@ -4102,6 +4109,8 @@ export interface components {
             /** Page Size */
             page_size: number;
         };
+        /** @enum {string} */
+        MeasurementSource: "schedule" | "manual";
         /**
          * MetricStats
          * @description Average, minimum and maximum of one metric over the period (ТЗ п. 5).

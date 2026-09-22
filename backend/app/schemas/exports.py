@@ -48,6 +48,7 @@ type ExportColumn = Literal[
     "external_ip",
     "server",
     "agent_version",
+    "source",
 ]
 
 # Minimum columns of ТЗ п. 9 in their order: every raw export contains them (invariant 16).

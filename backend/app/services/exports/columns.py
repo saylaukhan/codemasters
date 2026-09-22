@@ -28,6 +28,7 @@ COLUMN_TITLES: dict[str, str] = {
     "external_ip": "Внешний IP",
     "server": "Сервер замера",
     "agent_version": "Версия агента",
+    "source": "Источник замера",
 }
 
 # Columns of the aggregates (T-31) in the order of the file: one row per school.
@@ -56,4 +57,5 @@ VALUE_LABELS: dict[str, dict[str, str]] = {
     "line_status": {"main": "Основная", "reserve": "Резервная", "disabled": "Отключена"},
     "connection_status": {"online": "Есть", "offline": "Нет"},
     "iface_type": {"ethernet": "Ethernet", "wifi": "Wi‑Fi", "other": "Другое"},
+    "source": {"schedule": "По расписанию", "manual": "По запросу"},
 }

@@ -11887,7 +11887,8 @@
           "duration_s",
           "external_ip",
           "server",
-          "agent_version"
+          "agent_version",
+          "source"
         ]
       },
       "ExportCreate": {
@@ -14329,6 +14330,11 @@
             "type": "string",
             "maxLength": 32,
             "title": "Agent Version"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MeasurementSource",
+            "description": "Что запустило замер: расписание агента или запрос из панели (T-79). Агент старой версии поля не шлёт, и замер считается плановым",
+            "default": "schedule"
           }
         },
         "type": "object",
@@ -14500,6 +14506,10 @@
             ],
             "title": "Agent Version"
           },
+          "source": {
+            "$ref": "#/components/schemas/MeasurementSource",
+            "description": "Замер по расписанию агента или по запросу «Замерить сейчас» из панели"
+          },
           "contract_ok": {
             "anyOf": [
               {
@@ -14532,6 +14542,7 @@
           "external_ip",
           "server",
           "agent_version",
+          "source",
           "contract_ok"
         ],
         "title": "MeasurementListItem",
@@ -14571,6 +14582,13 @@
         ],
         "title": "MeasurementListItemPage",
         "description": "Page of the measurement history of a device, newest first."
+      },
+      "MeasurementSource": {
+        "type": "string",
+        "enum": [
+          "schedule",
+          "manual"
+        ]
       },
       "MetricStats": {
         "properties": {
