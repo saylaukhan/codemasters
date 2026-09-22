@@ -1,6 +1,6 @@
 // Panel-side names for the generated OpenAPI types (ADR-009): payloads in camelCase, enum codes as is.
 import type { Camelize } from './case'
-import type { components } from './generated/schema'
+import type { components, operations } from './generated/schema'
 
 type Schemas = components['schemas']
 
@@ -57,6 +57,9 @@ export type SchoolListItem = Schema<'SchoolListItem'>
 export type SchoolSort = Schemas['SchoolSort']
 
 export type SchoolDetail = Schema<'SchoolDetail'>
+/** Day strip of the school cabinet (T-61): one entry per local day, oldest first. */
+export type SchoolDays = Schema<'SchoolDays'>
+export type SchoolDay = Schema<'SchoolDay'>
 export type SchoolCreate = Schema<'SchoolCreate'>
 export type SchoolUpdate = Schema<'SchoolUpdate'>
 export type WorkingHours = Schema<'WorkingHours'>
@@ -77,6 +80,9 @@ export type IncidentAnalyticsRow = Schema<'IncidentAnalyticsRow'>
 export type ExportCreate = Omit<Schema<'ExportCreate'>, 'columns'> & Partial<Pick<Schema<'ExportCreate'>, 'columns'>>
 export type ExportJob = Schema<'ExportJob'>
 export type ExportJobPage = Schema<'ExportJobPage'>
+/** Filters of GET /api/exports/estimate: the selection of an export without its format and columns (T-64). */
+export type ExportEstimateQuery = Camelize<operations['estimate_export']['parameters']['query']>
+export type ExportEstimate = Schema<'ExportEstimate'>
 
 // References of the administration (T-34): districts and cities, providers, connection types.
 export type RegionListItem = Schema<'RegionListItem'>

@@ -9,7 +9,7 @@ import { Button } from '../ui/Button'
 import styles from './Incident.module.css'
 import { COMMENT_MAX_LENGTH } from './incidents'
 import { useChangeIncidentStatus } from './queries'
-import { commentRequired } from './transitions'
+import { commentRequired, targetsHint } from './transitions'
 
 // Fields of the form the errors of the API may point at; 409 and 403 have none and go to a notification.
 const FIELDS = ['status', 'comment']
@@ -72,7 +72,13 @@ export function IncidentStatusForm({ incidentId, targets }: IncidentStatusFormPr
       requiredMark={false}
     >
       <div className={styles.fields}>
-        <Form.Item label="Новый статус" name="status" rules={[{ required: true, message: 'Выберите статус' }]}>
+        {/* The whole row of the table under the select (T-63): what will be accepted is visible without opening it. */}
+        <Form.Item
+          label="Новый статус"
+          name="status"
+          extra={targetsHint(targets)}
+          rules={[{ required: true, message: 'Выберите статус' }]}
+        >
           <Select<IncidentStatus>
             placeholder="Выберите из списка"
             options={targets.map((value) => ({ value, label: INCIDENT_STATUS_LABELS[value] }))}

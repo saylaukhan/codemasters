@@ -64,6 +64,15 @@ export const INCIDENT_STATUS_ORDER: readonly IncidentStatus[] = [
   'closed',
 ]
 
+/**
+ * Hint under «Новый статус» of the card (DESIGN.md §3.17, T-63): the whole row of the table of transitions,
+ * «Доступно: В работе, Ожидает информации, Устранён». A status with nothing left says so instead.
+ */
+export const INCIDENT_TARGETS_LABELS = {
+  available: 'Доступно',
+  none: 'Из этого статуса переходов нет',
+} as const
+
 /** Switch of the incidents section (DESIGN.md §3.18): the table of T-41 or the kanban of T-43. */
 export const INCIDENT_VIEW_LABELS = {
   list: 'Список',
@@ -114,6 +123,8 @@ export const APPEAL_LABELS = {
   filteredEmptyHint: 'Измените или сбросьте фильтры.',
   notFound: 'Обращение не найдено',
   notFoundHint: 'Его нет или оно вне вашей области видимости.',
+  /** Under «Отправить» of a draft about an incident: the sending hands the incident over itself (T-63, ADR-007). */
+  incidentHandover: 'После отправки инцидент в статусе «Новый» перейдёт в «Передан поставщику»',
   noTarget: 'Обращение не о чем',
   noTargetHint: 'Откройте черновик кнопкой «Создать обращение» в карточке инцидента или школы.',
 } as const
@@ -377,6 +388,16 @@ export const EXPORT_AGGREGATE_COLUMN_LABELS: Record<ExportAggregateColumn, strin
   problem_count: 'Проблемных замеров',
   problem_pct: 'Доля проблемных, %',
 }
+
+/** Summary of the export constructor (DESIGN.md §3.24, T-64): «Будет выгружено ≈ 12 480 строк». */
+export const EXPORT_ESTIMATE_LABELS = {
+  title: 'Будет выгружено',
+  /** Sign of an estimate: m_daily counts a touched day whole and holds no Wi-Fi. */
+  approximate: '≈',
+  rows: 'строк',
+  loading: 'считаем…',
+  error: 'не удалось оценить',
+} as const
 
 /** Sections of the side navigation (DESIGN.md §3.6). */
 export const SECTION_LABELS = {
@@ -661,3 +682,152 @@ export const ATTENTION_LABELS = {
   empty: 'Ничего не требует внимания',
   emptyHint: 'Школы без связи, инциденты без ответственного и обращения без ответа появятся здесь.',
 } as const
+/**
+ * Words of the school cabinet (T-61, DESIGN.md §3.27, docs/design/README.md §4.2): the director
+ * reads the same data in plainer words than the panel. Taken from `docs/design/mockups/School.html`
+ * and `SchoolPhone.html` verbatim.
+ */
+export const CABINET_LABELS = {
+  report: 'Отчёт за месяц',
+  reportProblem: 'Сообщить о проблеме',
+  checked: 'Проверено',
+  checkedToday: 'Проверено сегодня в',
+  neverChecked: 'Замеров ещё не было',
+  tiles: 'Текущие показатели',
+  download: 'Скорость загрузки',
+  upload: 'Скорость отдачи',
+  ping: 'Отклик',
+  jitter: 'Дрожание',
+  jitterLow: 'дрожание',
+  packetLoss: 'потери пакетов',
+  packetLossShort: 'потери',
+  availability: 'доступность за 7 дней',
+  availabilityCap: 'Доступность за 7 дней',
+  allMeasurements: 'Все замеры',
+  days: 'Последние 30 дней',
+  week: 'Скорость загрузки за 7 дней',
+  norm: 'норма',
+  contractMark: 'договор',
+  contract: 'Провайдер и договор',
+  support: 'Поддержка поставщика',
+  callSupport: 'Позвонить в поддержку',
+  roundClock: 'круглосуточно',
+  from: 'от',
+  agent: 'Компьютер с агентом',
+  agentSignal: 'Сигнал',
+  agentVersion: 'агент',
+  agentNote: 'Выключен = «Нет данных», не проблема интернета',
+  problems: 'Проблемы и обращения',
+  problem: 'Проблема со связью',
+  history: 'Вся история',
+  all: 'Все',
+  since: 'с',
+  goesOn: 'продолжается',
+  contacts: 'Кому звонить',
+  today: 'сегодня',
+} as const
+
+/** English term next to the caption of a tile: «Скорость загрузки · Download» (DESIGN.md §3.27). */
+export const CABINET_TERM_LABELS = {
+  download: 'Download',
+  upload: 'Upload',
+  ping: 'Ping',
+} as const
+
+/** How the last measurement reached the network, in the words of the cabinet, not of the panel. */
+export const CABINET_IFACE_LABELS: Record<IfaceType, string> = {
+  ethernet: 'по кабелю',
+  wifi: 'по Wi‑Fi',
+  other: 'по другой сети',
+}
+
+/**
+ * Verdict of the cabinet, chosen by `components/schools/cabinet.ts` from the status of the school
+ * and from what exactly is broken (docs/design/README.md §4.2). «Интернета нет с» takes the time
+ * of the last measurement next to it; without that moment the shorter «Интернета нет» is printed.
+ */
+export const CABINET_VERDICT_LABELS = {
+  normal: 'Интернет в норме',
+  slowContract: 'Интернет медленнее, чем по договору',
+  slowNorm: 'Интернет медленнее, чем положено',
+  unstable: 'Интернет работает с перебоями',
+  offline: 'Интернета нет',
+  offlineSince: 'Интернета нет с',
+  noData: 'Компьютер с агентом выключен',
+} as const
+
+export type CabinetVerdictKey = keyof typeof CABINET_VERDICT_LABELS
+
+/** Summary over the day strip: «28 в норме · 1 перебои · 1 без связи» (DESIGN.md §3.27). */
+export const CABINET_DAY_LABELS = {
+  normal: 'в норме',
+  problem: 'перебои',
+  offline: 'без связи',
+  noData: 'без данных',
+} as const
+
+/** Captions of «Провайдер и договор», left of the values. */
+export const CABINET_FIELD_LABELS = {
+  provider: 'Поставщик',
+  connection: 'Подключение',
+  contract: 'По договору',
+  contractNumber: 'Договор',
+} as const
+
+/** Role of a line in the words of the cabinet: the panel writes the same three with a capital. */
+export const CABINET_LINE_LABELS: Record<LineStatus, string> = {
+  main: 'основная линия',
+  reserve: 'резервная линия',
+  disabled: 'линия отключена',
+}
+
+/** Cards of «Кому звонить»: the school's own responsible and the support of its provider (ТЗ п. 15). */
+export const CABINET_CONTACT_LABELS = {
+  school: 'Ответственный в школе',
+  support: 'Поддержка',
+  supportName: 'Техническая поддержка',
+  call: 'Позвонить',
+} as const
+
+/**
+ * The same six statuses of ТЗ п. 19 in the words of the cabinet (docs/design/README.md §4.2):
+ * «У поставщика» instead of «Передан поставщику». `IncidentStatusBadge` takes this dictionary
+ * instead of the default one, so no Russian string enters a component (ADR-013).
+ */
+export const CABINET_APPEAL_STATUS_LABELS: Record<IncidentStatus, string> = {
+  new: 'Зарегистрировано',
+  sent_to_provider: 'У поставщика',
+  in_progress: 'В работе',
+  awaiting_info: 'Ждём ответа',
+  resolved: 'Решено',
+  closed: 'Закрыто',
+}
+
+/** Empty states and notices of the cabinet: what the director sees instead of a block that has no data. */
+export const CABINET_NOTICE_LABELS = {
+  notFound: 'Школа не найдена',
+  notFoundHint: 'Её нет или она вне вашей области видимости.',
+  noDays: 'Дней с замерами ещё нет',
+  noWeek: 'Замеров за неделю нет',
+  noWeekHint: 'Проверьте, включён ли компьютер с агентом.',
+  noLine: 'Линия не заведена',
+  noDevice: 'Компьютера с агентом нет',
+  noDeviceHint: 'Агент ещё не установлен ни на один ПК школы.',
+  noProblems: 'Проблем не было',
+  noProblemsHint: 'Здесь появятся перебои со связью и письма поставщику.',
+  noContacts: 'Контактов нет',
+  noAppealLine: 'У школы нет действующей линии',
+  reportPending: 'Отчёт ещё готовится',
+  reportPendingHint: 'Скачайте его в разделе «Отчёты и экспорт», когда он будет готов.',
+  reportFailed: 'Отчёт не сформирован',
+} as const
+
+/** What broke, in the words of the cabinet: the panel calls the same metrics by their English terms. */
+export const CABINET_METRIC_LABELS: Record<IncidentMetric, string> = {
+  download_mbps: 'Скорость загрузки ниже нормы',
+  upload_mbps: 'Скорость отдачи ниже нормы',
+  ping_ms: 'Долгий отклик',
+  jitter_ms: 'Неровный сигнал',
+  packet_loss_pct: 'Теряются пакеты',
+  no_connection: 'Не было связи',
+}

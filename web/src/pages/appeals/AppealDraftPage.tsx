@@ -112,9 +112,13 @@ function AppealEditor({ target, draft, asking, onRetry }: AppealEditorProps) {
                 {APPEAL_LABELS.regenerate}
               </Button>
             )}
-            <Button kind="action" disabled={!ready} loading={send.isPending} onClick={submit}>
-              {APPEAL_LABELS.send}
-            </Button>
+            <div className={styles.sendAction}>
+              <Button kind="action" disabled={!ready} loading={send.isPending} onClick={submit}>
+                {APPEAL_LABELS.send}
+              </Button>
+              {/* The sending is the handing over of the incident itself (T-63, ADR-007). */}
+              {target.incidentId != null && <span className={styles.sendHint}>{APPEAL_LABELS.incidentHandover}</span>}
+            </div>
           </>
         }
       />

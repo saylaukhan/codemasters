@@ -65,23 +65,50 @@ export const canOpenSection = (section: Section, granted: readonly string[] | un
  */
 export const PROVIDER_SECTIONS: readonly SectionKey[] = ['schools', 'incidents', 'appeals']
 
+/**
+ * Cabinet of the school (T-61, DESIGN.md §3.27): its own card and its letters to the provider — the
+ * director is not a viewer of the oblast. As with the provider, only the navigation is cut: the rights
+ * of the role stay as they are, so the card of his computer and his incidents still open by address.
+ */
+export const SCHOOL_SECTIONS: readonly SectionKey[] = ['schools', 'appeals']
+
+/** A role that works in a cabinet sees only these sections; every other role sees the whole panel. */
+const CABINET_SECTIONS: Partial<Record<UserRole, readonly SectionKey[]>> = {
+  provider: PROVIDER_SECTIONS,
+  school: SCHOOL_SECTIONS,
+}
+
 export const isProviderCabinet = (role: UserRole | undefined): boolean => role === 'provider'
 
-const inCabinet = (section: Section, role: UserRole | undefined): boolean =>
-  !isProviderCabinet(role) || PROVIDER_SECTIONS.includes(section.key)
+const inCabinet = (section: Section, role: UserRole | undefined): boolean => {
+  const cabinet = role === undefined ? undefined : CABINET_SECTIONS[role]
+  return cabinet === undefined || cabinet.includes(section.key)
+}
 
-/** Sections of the side navigation for the user: his permissions and, for the provider, his cabinet. */
+/** Sections of the side navigation for the user: his permissions and, in a cabinet, its own sections. */
 export const navigationSections = (
   user: Pick<CurrentUser, 'role' | 'permissions'> | undefined,
   granted: readonly string[] | undefined = user?.permissions,
 ): Section[] => SECTIONS.filter((section) => canOpenSection(section, granted) && inCabinet(section, user?.role))
 
-/** Where «/» leads: the first section of the navigation — «Обзор» for most roles, «Школы» in the provider cabinet. */
-export const landingPath = (user: Pick<CurrentUser, 'role' | 'permissions'> | undefined): string =>
-  navigationSections(user)[0]?.path ?? SECTIONS[0].path
+/** Address of a section of the navigation: a link across sections never writes the path itself. */
+export const sectionPath = (key: SectionKey): string =>
+  SECTIONS.find((section) => section.key === key)?.path ?? SECTIONS[0].path
 
 /** Card of one school (T-25): the popover of the map and the lists lead here. */
 export const schoolCardPath = (schoolId: number): string => `/schools/${schoolId}`
+
+/**
+ * Where «/» leads: the first section of the navigation — «Обзор» for most roles, «Школы» in the
+ * cabinet of a provider. The school role lands on the card of its own school, which renders the
+ * cabinet (T-61); a school user without a school in his scope falls back to the navigation instead
+ * of a broken address.
+ */
+export const landingPath = (user: Pick<CurrentUser, 'role' | 'permissions' | 'scope'> | undefined): string => {
+  const schoolId = user?.role === 'school' ? user.scope.schoolId : null
+  if (schoolId != null) return schoolCardPath(schoolId)
+  return navigationSections(user)[0]?.path ?? SECTIONS[0].path
+}
 
 /** Card of one computer (T-26): the computers of the school card lead here. */
 export const deviceCardPath = (deviceId: number): string => `/devices/${deviceId}`

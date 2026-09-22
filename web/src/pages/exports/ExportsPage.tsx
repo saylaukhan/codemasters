@@ -6,7 +6,12 @@ import { useMemo, useState, type ReactNode } from 'react'
 import type { ExportColumn, ExportFormat, ExportMode, QualityStatus } from '../../api/types'
 import { ExportList } from '../../components/exports/ExportList'
 import styles from '../../components/exports/Exports.module.css'
-import { useBuildExport, useDeviceOptions, useSchoolOptions } from '../../components/exports/queries'
+import {
+  useBuildExport,
+  useDeviceOptions,
+  useExportEstimate,
+  useSchoolOptions,
+} from '../../components/exports/queries'
 import {
   AGGREGATE_COLUMNS,
   ALL_COLUMNS,
@@ -23,6 +28,7 @@ import { formatDate, formatNumber } from '../../lib/format'
 import {
   EXPORT_AGGREGATE_COLUMN_LABELS,
   EXPORT_COLUMN_LABELS,
+  EXPORT_ESTIMATE_LABELS,
   EXPORT_FORMAT_LABELS,
   EXPORT_MODE_LABELS,
   QUALITY_STATUS_LABELS,
@@ -56,6 +62,13 @@ interface Option {
   label: string
 }
 
+/** «≈ 12 480 строк» of the summary; while it is counted and after a failure — its own wording (T-64). */
+function estimatedRows(rowsCount: number | undefined, failed: boolean): string {
+  if (failed) return EXPORT_ESTIMATE_LABELS.error
+  if (rowsCount === undefined) return EXPORT_ESTIMATE_LABELS.loading
+  return `${EXPORT_ESTIMATE_LABELS.approximate} ${formatNumber(rowsCount, 0)} ${EXPORT_ESTIMATE_LABELS.rows}`
+}
+
 function Step({ number, title, children }: { number: number; title: string; children: ReactNode }) {
   return (
     <section className={styles.card}>
@@ -79,6 +92,7 @@ export function ExportsPage() {
   const schools = useSchoolOptions(search)
   const devices = useDeviceOptions(draft.schoolId)
   const build = useBuildExport()
+  const estimate = useExportEstimate(draft)
   const { open } = useNotification()
 
   const set = (patch: Partial<ExportDraft>) => setDraft((current) => ({ ...current, ...patch }))
@@ -275,6 +289,10 @@ export function ExportsPage() {
             <dt>Формат</dt>
             <dd>{EXPORT_FORMAT_LABELS[draft.format]}</dd>
           </dl>
+          <p className={styles.estimate}>
+            {EXPORT_ESTIMATE_LABELS.title}
+            <strong>{estimatedRows(estimate.data?.rowsCount, estimate.isError)}</strong>
+          </p>
           {build.isError && (
             <div className={styles.error}>
               <ErrorState error={build.error} />

@@ -167,3 +167,11 @@
     padding-inline: var(--content-padding);
   }
 }
+
+/* A screen whose Action is pinned to the bottom (DESIGN.md §9.3) reserves the height of that bar,
+ * so the last block of the page stays readable above it. */
+@media (max-width: 768px) {
+  .content:has([data-sticky-action]) {
+    padding-bottom: calc(var(--sticky-action-height) + var(--space-5));
+  }
+}

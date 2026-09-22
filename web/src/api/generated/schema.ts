@@ -436,6 +436,26 @@ export interface paths {
         patch: operations["update_school"];
         trace?: never;
     };
+    "/api/schools/{school_id}/days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Статус каждого из последних дней школы
+         * @description Полоса дней кабинета школы: по элементу на каждый локальный день Asia/Almaty, старые сверху, включая дни без замеров. День — «Нет соединения», если простой попал в рабочие часы школы (ADR-014); иначе худший замер дня по основным линиям без Wi‑Fi (ADR-012); иначе «Нет данных».
+         */
+        get: operations["list_school_days"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/schools/{school_id}/devices": {
         parameters: {
             query?: never;
@@ -965,7 +985,7 @@ export interface paths {
         put?: never;
         /**
          * Отправить обращение: номер, письмо поставщику, PDF
-         * @description Номер присваивается здесь. Контекст сервер пересобирает за тот же период; статус после отправки — sent_to_provider. SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.
+         * @description Номер присваивается здесь. Контекст сервер пересобирает за тот же период; статус после отправки — sent_to_provider. Обращение из инцидента в статусе new переводит его в sent_to_provider с записью в incident_events; инцидент в другом статусе не меняется (T-63). SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.
          */
         post: operations["create_appeal"];
         delete?: never;
@@ -1030,6 +1050,26 @@ export interface paths {
          * @description Сочетания режима и формата: `raw` — замеры в xlsx, csv или json, фильтры device_ids и statuses, выбор колонок (T-30); `aggregates` — строка на школу в xlsx, csv или json: school_code, school_name, measurements_count, avg_download_mbps, min_download_mbps, avg_upload_mbps, avg_ping_ms, problem_count, problem_pct — по основной линии без Wi‑Fi, как GET /api/analytics (T-31); `school_report` — PDF по одной школе: шапка с School ID и периодом, KPI основной линии без Wi‑Fi, графики по дням, число и суммарная длительность простоев из outages, таблица всех замеров школы со статусами по-русски (T-32). Другие сочетания — 422. Неизвестные или вне области видимости school_ids и device_ids — 422 (ADR-008). Выгрузка до settings.export_sync_max_rows строк (по умолчанию 10 000) формируется в запросе и приходит ready; PDF и выгрузки больше порога приходят pending и формируются в фоне (T-33), состояние — GET /api/exports/{id} и список GET /api/exports; очередь недоступна — выгрузка приходит failed. Файлы raw: в xlsx и csv — русские заголовки, статусы словами, дата ДД.ММ.ГГГГ и время по settings.timezone (Asia/Almaty); csv — UTF-8 с BOM, разделитель «;», десятичная запятая; в json — коды колонок и значений, дата и время ISO. Строки — по названию школы, затем по времени замера.
          */
         post: operations["create_export"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Сколько строк будет в файле: оценка до формирования
+         * @description Сводка конструктора «Будет выгружено ≈ N строк» (DESIGN.md §3.24) с теми же фильтрами, что POST /api/exports: режим, период, school_ids и — только для raw — device_ids и statuses; для aggregates они, как и в POST, 422. Режим school_report не оценивается: PDF-отчёт строится по одной школе из её карточки (T-32). Неизвестные или вне области видимости school_ids и device_ids — 422 (ADR-008). Считается по дневным агрегатам m_daily, а не по measurements: для aggregates это число школ в файле и оно точное (exact=true), для raw — оценка (exact=false), потому что Wi‑Fi в агрегаты не входит (ADR-012), а задетые периодом сутки считаются целиком.
+         */
+        get: operations["estimate_export"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2704,6 +2744,37 @@ export interface components {
              */
             columns: components["schemas"]["ExportColumn"][];
         };
+        /**
+         * ExportEstimate
+         * @description How many rows the file of the selection would have, before it is built (T-64).
+         */
+        ExportEstimate: {
+            mode: components["schemas"]["ExportEstimateMode"];
+            /**
+             * Period From
+             * Format: date-time
+             * @description Начало периода запроса, включительно
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец периода запроса, не включается
+             */
+            period_to: string;
+            /**
+             * Rows Count
+             * @description Строк в файле: замеров (raw) или школ (aggregates)
+             */
+            rows_count: number;
+            /**
+             * Exact
+             * @description true — число точное (aggregates); false — оценка по дневным агрегатам: Wi-Fi в них не учитывается, а задетые периодом сутки считаются целиком (raw)
+             */
+            exact: boolean;
+        };
+        /** @enum {string} */
+        ExportEstimateMode: "raw" | "aggregates";
         /** @enum {string} */
         ExportFormat: "xlsx" | "csv" | "json" | "pdf";
         /**
@@ -4400,6 +4471,60 @@ export interface components {
             /** Address */
             address?: string | null;
             location?: components["schemas"]["GeoPoint"] | null;
+        };
+        /**
+         * SchoolDay
+         * @description One local day of the school in the day strip of the cabinet (DESIGN.md §3.27, T-61).
+         */
+        SchoolDay: {
+            /**
+             * Date
+             * Format: date
+             * @description Локальный день Asia/Almaty
+             */
+            date: string;
+            /** @description «Нет соединения» — простой в рабочие часы дня; иначе худший замер дня, иначе «Нет данных» */
+            status: components["schemas"]["SchoolStatus"];
+            /**
+             * Measurements Count
+             * @description Замеры основных линий без Wi‑Fi за день
+             */
+            measurements_count: number;
+            /**
+             * Problem Count
+             * @description Из них со статусом unstable, critical или offline
+             */
+            problem_count: number;
+            /**
+             * Downtime S
+             * @description Простой в рабочие часы этого дня, секунды
+             */
+            downtime_s: number;
+        };
+        /**
+         * SchoolDays
+         * @description Day strip of the school cabinet: every local day of the window, oldest first (T-61).
+         */
+        SchoolDays: {
+            /** School Id */
+            school_id: number;
+            /**
+             * Period From
+             * Format: date-time
+             * @description Начало первого дня окна, включительно
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец окна, не включая
+             */
+            period_to: string;
+            /**
+             * Days
+             * @description По одному элементу на каждый день окна, включая дни без замеров
+             */
+            days: components["schemas"]["SchoolDay"][];
         };
         /**
          * SchoolDetail
@@ -6418,6 +6543,60 @@ export interface operations {
             };
         };
     };
+    list_school_days: {
+        parameters: {
+            query?: {
+                /** @description Сколько последних локальных дней вернуть */
+                days?: number;
+                /** @description Конец окна, не включая; по умолчанию — текущий момент */
+                period_to?: string | null;
+            };
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolDays"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_school_devices: {
         parameters: {
             query?: {
@@ -8336,6 +8515,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    estimate_export: {
+        parameters: {
+            query: {
+                mode: components["schemas"]["ExportEstimateMode"];
+                /** @description Начало периода по measured_at, включительно */
+                period_from: string;
+                /** @description Конец периода, не включается */
+                period_to: string;
+                /** @description Пусто — все школы в области видимости */
+                school_ids?: number[];
+                /** @description Только raw: ПК выбранных школ; пусто — все */
+                device_ids?: number[];
+                /** @description Только raw: статусы замера; пусто — все */
+                statuses?: components["schemas"]["QualityStatus"][];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportEstimate"];
                 };
             };
             /** @description Ошибка валидации запроса */
