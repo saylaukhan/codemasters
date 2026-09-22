@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	kservice "github.com/kardianos/service"
@@ -135,6 +136,9 @@ func runAgent(ctx context.Context, cfg Config, configPath string, logger *slog.L
 		settings := &Settings{}
 		// beats tell the self-update that the server heard this version (T-50).
 		beats := &beatClock{}
+		// requests carry a measurement asked for in the panel from the
+		// heartbeat to the scheduler (T-79).
+		requests := &measureRequests{state: state, last: lastMeasureRequestAt(st), logger: logger}
 
 		go q.Run(ctx, client, wake, func(pending int) {
 			state.update(func(s *State) { s.QueueSize = pending })
@@ -149,9 +153,10 @@ func runAgent(ctx context.Context, cfg Config, configPath string, logger *slog.L
 			Interval: func() time.Duration {
 				return time.Duration(settings.Current().HeartbeatIntervalS) * time.Second
 			},
-			Wake:      wake,
-			Logger:    logger,
-			OnSuccess: beats.mark,
+			Wake:             wake,
+			Logger:           logger,
+			OnSuccess:        beats.mark,
+			OnMeasureRequest: requests.handle,
 		})
 
 		measure := measureFunc(cfg, client, q, settings, state, wake, logger)
@@ -172,6 +177,7 @@ func runAgent(ctx context.Context, cfg Config, configPath string, logger *slog.L
 				Measure:  measure,
 				Logger:   logger,
 			})
+			requests.setScheduler(sched)
 			go sched.Run(ctx)
 		}
 		go runConfig(ctx, client, cfg.DataDir, settings, apply, logger)
@@ -191,13 +197,64 @@ func lastMeasurementAt(st State) time.Time {
 	return *st.LastMeasurementAt
 }
 
+// lastMeasureRequestAt is the measurement request of the panel the agent
+// performed before this start; the zero time when there was none.
+func lastMeasureRequestAt(st State) time.Time {
+	if st.LastMeasureRequestAt == nil {
+		return time.Time{}
+	}
+	return *st.LastMeasureRequestAt
+}
+
+// measureRequests performs a measurement asked for in the admin panel (T-79).
+// The server names the moment of the request in the answer of every heartbeat
+// until the measurement reaches it, so the same request comes many times: the
+// moment already performed is kept in the state file, and a repeat of it is
+// ignored — one press of the button is one measurement, even across a restart
+// of the service or a long outage.
+type measureRequests struct {
+	mu     sync.Mutex
+	sched  *scheduler.Scheduler
+	state  *stateFile
+	last   time.Time
+	logger *slog.Logger
+}
+
+// setScheduler hands over the scheduler once the configuration of the server
+// has arrived and it exists.
+func (r *measureRequests) setScheduler(s *scheduler.Scheduler) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.sched = s
+}
+
+// handle starts the measurement of a request that is new. A request that
+// arrives before the first configuration has no scheduler to run in yet; it is
+// not remembered either, so the next heartbeat brings it again.
+func (r *measureRequests) handle(requestedAt time.Time) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !requestedAt.After(r.last) {
+		return
+	}
+	if r.sched == nil {
+		r.logger.Warn("замер по запросу из панели отложен: расписание ещё не получено",
+			"requested_at", requestedAt)
+		return
+	}
+	r.last = requestedAt
+	r.state.update(func(s *State) { s.LastMeasureRequestAt = &requestedAt })
+	r.logger.Info("панель запросила замер", "requested_at", requestedAt)
+	r.sched.Trigger()
+}
+
 // measureFunc is the callback of the scheduler: one measurement by the
 // addresses of the current server configuration (ADR-012), into the queue,
 // then a wake-up of the resend and the state file (plan.md §4.3, §4.4).
 func measureFunc(cfg Config, client *api.Client, q *queue.Queue, settings *Settings, state *stateFile,
 	wake chan<- struct{}, logger *slog.Logger,
 ) func(context.Context, scheduler.Run) {
-	return func(ctx context.Context, _ scheduler.Run) {
+	return func(ctx context.Context, run scheduler.Run) {
 		ac := settings.Current()
 		m, err := Measure(ctx, MeasureOptions{
 			ServerURL:     cfg.ServerURL,
@@ -217,7 +274,8 @@ func measureFunc(cfg Config, client *api.Client, q *queue.Queue, settings *Setti
 			logger.Error("замер не сохранён в очередь", "err", err)
 			return
 		}
-		logger.Info("замер выполнен", "measurement_uuid", m.MeasurementUUID, "connection", m.ConnectionStatus)
+		logger.Info("замер выполнен", "measurement_uuid", m.MeasurementUUID,
+			"connection", m.ConnectionStatus, "manual", run.Manual)
 		at := m.MeasuredAt
 		state.update(func(s *State) { s.LastMeasurementAt = &at })
 		select {

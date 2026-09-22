@@ -142,7 +142,9 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) error
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return problemFrom(resp)
 	}
-	if out == nil {
+	// 204 carries no body: an endpoint that has nothing to answer, or a server
+	// older than the answer the agent is ready to read.
+	if out == nil || resp.StatusCode == http.StatusNoContent {
 		return nil
 	}
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
