@@ -70,10 +70,31 @@ describe('navigation of a role', () => {
   })
 
   it('keeps the whole panel for the roles of the oblast', () => {
-    expect(keys('oblast')).toEqual(['overview', 'map', 'schools', 'devices', 'incidents', 'appeals', 'analytics', 'exports', 'admin'])
+    expect(keys('oblast')).toEqual([
+      'overview',
+      'map',
+      'schools',
+      'devices',
+      'incidents',
+      'appeals',
+      'providers',
+      'analytics',
+      'exports',
+      'admin',
+    ])
     expect(keys('admin')).toContain('admin')
     // Район/город sees everything but «Администрирование»: it has none of its rights.
-    expect(keys('district')).toEqual(['overview', 'map', 'schools', 'devices', 'incidents', 'appeals', 'analytics', 'exports'])
+    expect(keys('district')).toEqual([
+      'overview',
+      'map',
+      'schools',
+      'devices',
+      'incidents',
+      'appeals',
+      'providers',
+      'analytics',
+      'exports',
+    ])
   })
 
   it('opens nothing without permissions', () => {
@@ -117,6 +138,7 @@ describe('sections themselves', () => {
       'devices',
       'incidents',
       'appeals',
+      'providers',
       'analytics',
       'exports',
       'admin',

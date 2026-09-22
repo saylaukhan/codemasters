@@ -1,0 +1,106 @@
+/* Section «Поставщики» (T-68), DESIGN.md §3.29 and the mockup Providers.html. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-block);
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* The card of the provider: its lists on the left, the act and the contracts on the right. */
+.card {
+  display: flex;
+  gap: var(--space-block);
+  min-width: 0;
+}
+
+.main {
+  flex: 1.55 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-block);
+  min-width: 0;
+}
+
+.aside {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-block);
+  min-width: 0;
+}
+
+.number {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A value worse than the norm it is compared with (DESIGN.md §3.12). */
+.below {
+  color: var(--status-critical-text);
+}
+
+.hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.note {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.line:last-child {
+  border-bottom: none;
+}
+
+.lineSchool {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.lineContract {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+/* DESIGN.md §9.3: at 1024px and narrower the two columns of the card stack. */
+@media (max-width: 1024px) {
+  .card {
+    flex-direction: column;
+  }
+}

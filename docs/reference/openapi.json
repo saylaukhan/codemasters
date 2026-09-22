@@ -5664,6 +5664,354 @@
         }
       }
     },
+    "/api/providers/score": {
+      "get": {
+        "tags": [
+          "providers"
+        ],
+        "summary": "Оценка поставщиков за период",
+        "description": "Строка на каждого поставщика, доступного пользователю (ADR-008), по имени. Замеры, доступность и доля ниже договора — из агрегатов через аналитику T-27; инциденты — T-45; реакция — время до первой смены статуса инцидента. Оценка — 100 минус штрафы частей; веса, порог «ниже нормы» и норма реакции — настройки (ТЗ п. 11, п. 20). Окна плановых работ пока не исключаются: календарь появится в T-70.",
+        "operationId": "get_provider_score",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsPeriod",
+              "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+            },
+            "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало, включительно; только и обязательно при period=custom",
+              "title": "Period From"
+            },
+            "description": "Начало, включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец, не включительно; только и обязательно при period=custom",
+              "title": "Period To"
+            },
+            "description": "Конец, не включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Район или город (regions)",
+              "title": "Region Id"
+            },
+            "description": "Район или город (regions)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderScoreReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/providers/{provider_id}/score": {
+      "get": {
+        "tags": [
+          "providers"
+        ],
+        "summary": "Карточка поставщика: оценка, школы, договор ниже норматива",
+        "description": "Те же числа по одному поставщику плюс его школы со статусом и линии, у которых договорная скорость ниже порога применимого профиля («не претензия»: нужен новый договор, а не обращение). Поставщик, ни одной линии которого пользователь не видит, — 404.",
+        "operationId": "get_provider_card",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsPeriod",
+              "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+            },
+            "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало, включительно; только и обязательно при period=custom",
+              "title": "Period From"
+            },
+            "description": "Начало, включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец, не включительно; только и обязательно при period=custom",
+              "title": "Period To"
+            },
+            "description": "Конец, не включительно; только и обязательно при period=custom"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderScoreDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Поставщик не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/providers/{provider_id}/act": {
+      "get": {
+        "tags": [
+          "providers"
+        ],
+        "summary": "Акт о несоответствии: PDF по поставщику за период",
+        "description": "Замеры ниже договорной скорости с порогами и договорными значениями из thresholds_snapshot каждого замера, а не из профиля и договора на сегодня (ТЗ п. 11). Генератор — тот же, что у обращения (T-48).",
+        "operationId": "get_provider_act",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsPeriod",
+              "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+            },
+            "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало, включительно; только и обязательно при period=custom",
+              "title": "Period From"
+            },
+            "description": "Начало, включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец, не включительно; только и обязательно при period=custom",
+              "title": "Period To"
+            },
+            "description": "Конец, не включительно; только и обязательно при period=custom"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF-файл акта",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Поставщик не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/exports": {
       "post": {
         "tags": [
@@ -15078,6 +15426,524 @@
         "title": "ProviderDetailPage",
         "description": "Page of the providers, by name."
       },
+      "ProviderLineBelowNorm": {
+        "properties": {
+          "line_id": {
+            "type": "integer",
+            "title": "Line Id"
+          },
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "school_name": {
+            "type": "string",
+            "title": "School Name"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
+          },
+          "contract_down_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Down Mbps"
+          },
+          "contract_up_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Up Mbps"
+          },
+          "download_min_mbps": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Download Min Mbps",
+            "description": "Порог профиля, применимого к линии"
+          },
+          "upload_min_mbps": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Upload Min Mbps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_id",
+          "school_id",
+          "school_name",
+          "region_name",
+          "contract_down_mbps",
+          "contract_up_mbps",
+          "download_min_mbps",
+          "upload_min_mbps"
+        ],
+        "title": "ProviderLineBelowNorm",
+        "description": "Line whose contract itself is below the thresholds it is judged by — «не претензия».\n\nNothing here is the fault of the provider: the contract promises less than ТЗ п. 11 asks,\nso the school needs a new contract, not an appeal (docs/design/README.md §6.3)."
+      },
+      "ProviderSchoolRow": {
+        "properties": {
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SchoolStatus",
+            "description": "Статус школы сейчас (ADR-004)"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Measurements Count"
+          },
+          "below_contract_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Below Contract Pct"
+          },
+          "availability_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Availability Pct"
+          },
+          "sustained_mismatch": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sustained Mismatch",
+            "description": "Устойчиво ниже договора по пересчёту T-29; null — ещё не рассчитано"
+          }
+        },
+        "type": "object",
+        "required": [
+          "school_id",
+          "name",
+          "region_name",
+          "status",
+          "measurements_count",
+          "below_contract_pct",
+          "availability_pct",
+          "sustained_mismatch"
+        ],
+        "title": "ProviderSchoolRow",
+        "description": "School on a main line of the provider: its status now and its numbers of the period."
+      },
+      "ProviderScoreDetail": {
+        "properties": {
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/ProviderScoreWeights"
+          },
+          "availability_min_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Availability Min Pct"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderScoreRow"
+          },
+          "appeals_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appeals Email",
+            "description": "Адрес поставщика для обращений и акта (T-48)"
+          },
+          "schools": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderSchoolRow"
+            },
+            "type": "array",
+            "title": "Schools"
+          },
+          "lines_below_norm": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderLineBelowNorm"
+            },
+            "type": "array",
+            "title": "Lines Below Norm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_from",
+          "period_to",
+          "weights",
+          "availability_min_pct",
+          "provider",
+          "appeals_email",
+          "schools",
+          "lines_below_norm"
+        ],
+        "title": "ProviderScoreDetail",
+        "description": "Card of one provider: its row, its schools and the lines whose contract is below the norm."
+      },
+      "ProviderScoreReport": {
+        "properties": {
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/ProviderScoreWeights"
+          },
+          "availability_min_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Availability Min Pct",
+            "description": "Порог доступности (п. 11)"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderScoreRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_from",
+          "period_to",
+          "weights",
+          "availability_min_pct",
+          "rows"
+        ],
+        "title": "ProviderScoreReport",
+        "description": "Rows of every provider the user may see, ordered by name (ADR-008)."
+      },
+      "ProviderScoreRow": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "schools_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Count",
+            "description": "Школ на основных линиях поставщика"
+          },
+          "lines_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Lines Count"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Measurements Count"
+          },
+          "problem_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Count"
+          },
+          "problem_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem Pct",
+            "description": "Доля проблемных замеров, %"
+          },
+          "availability_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Availability Pct",
+            "description": "Доступность школ поставщика в рабочие часы (T-16, ADR-014)"
+          },
+          "below_contract_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Below Contract Pct",
+            "description": "Доля замеров ниже договорной скорости, %; null без договорных значений"
+          },
+          "incidents_opened": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Incidents Opened",
+            "description": "Инцидентов начато за период (по started_at)"
+          },
+          "incidents_closed": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Incidents Closed",
+            "description": "Из них с восстановлением линии (restored_at)"
+          },
+          "reaction_median_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reaction Median S",
+            "description": "Медиана времени до первой смены статуса инцидента, с; null без таких"
+          },
+          "reaction_worst_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reaction Worst S",
+            "description": "Худшее время до смены статуса, с"
+          },
+          "restore_avg_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restore Avg S",
+            "description": "Среднее устранение: restored_at − started_at, с (T-45)"
+          },
+          "restore_worst_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restore Worst S",
+            "description": "Худшее устранение, с"
+          },
+          "lines_below_norm_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Lines Below Norm Count",
+            "description": "Линий, у которых договорная скорость ниже порога профиля — «не претензия»"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score",
+            "description": "Оценка 0–100; null — за период нет ни одного замера"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderScoreVerdict"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "below_norm — оценка ниже порога настроек; null вместе с пустой оценкой"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "schools_count",
+          "lines_count",
+          "measurements_count",
+          "problem_count",
+          "problem_pct",
+          "availability_pct",
+          "below_contract_pct",
+          "incidents_opened",
+          "incidents_closed",
+          "reaction_median_s",
+          "reaction_worst_s",
+          "restore_avg_s",
+          "restore_worst_s",
+          "lines_below_norm_count",
+          "score",
+          "verdict"
+        ],
+        "title": "ProviderScoreRow",
+        "description": "One provider over the period: what is counted and the score it adds up to."
+      },
+      "ProviderScoreVerdict": {
+        "type": "string",
+        "enum": [
+          "pass",
+          "below_norm"
+        ]
+      },
+      "ProviderScoreWeights": {
+        "properties": {
+          "below_contract": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Below Contract",
+            "description": "Вес доли замеров ниже договора"
+          },
+          "availability": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Availability",
+            "description": "Вес нехватки доступности"
+          },
+          "reaction": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Reaction",
+            "description": "Вес просрочки реакции на инцидент"
+          },
+          "incidents": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Incidents",
+            "description": "Вес числа инцидентов на школу"
+          },
+          "pass_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Pass Pct",
+            "description": "Оценка ниже этой — «ниже нормы»"
+          },
+          "reaction_norm_hours": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Reaction Norm Hours",
+            "description": "Норма реакции на инцидент, ч"
+          }
+        },
+        "type": "object",
+        "required": [
+          "below_contract",
+          "availability",
+          "reaction",
+          "incidents",
+          "pass_pct",
+          "reaction_norm_hours"
+        ],
+        "title": "ProviderScoreWeights",
+        "description": "Weights of the parts and the passing threshold, as the admin panel holds them (T-37)."
+      },
       "ProviderUpdate": {
         "properties": {
           "name": {
@@ -16838,6 +17704,65 @@
             "examples": [
               "admin@edu.vko.kz, +7 7232 00-00-00"
             ]
+          },
+          "provider_score_weight_below_contract": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Below Contract",
+            "description": "Вес доли замеров ниже договора в оценке поставщика (T-68, §6.3)",
+            "examples": [
+              40
+            ]
+          },
+          "provider_score_weight_availability": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Availability",
+            "description": "Вес нехватки доступности в оценке поставщика",
+            "examples": [
+              20
+            ]
+          },
+          "provider_score_weight_reaction": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Reaction",
+            "description": "Вес просрочки реакции на инцидент в оценке",
+            "examples": [
+              25
+            ]
+          },
+          "provider_score_weight_incidents": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Incidents",
+            "description": "Вес числа инцидентов на школу в оценке",
+            "examples": [
+              15
+            ]
+          },
+          "provider_score_pass_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Pass Pct",
+            "description": "Оценка ниже этой — «ниже нормы» (§6.3)",
+            "examples": [
+              70
+            ]
+          },
+          "provider_score_reaction_norm_hours": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Provider Score Reaction Norm Hours",
+            "description": "Норма реакции на инцидент, ч: медиана вдвое больше нормы — полный штраф",
+            "examples": [
+              4
+            ]
           }
         },
         "type": "object",
@@ -16859,7 +17784,13 @@
           "attention_incident_unassigned_hours",
           "attention_appeal_no_answer_hours",
           "password_reset_ttl_minutes",
-          "support_contact"
+          "support_contact",
+          "provider_score_weight_below_contract",
+          "provider_score_weight_availability",
+          "provider_score_weight_reaction",
+          "provider_score_weight_incidents",
+          "provider_score_pass_pct",
+          "provider_score_reaction_norm_hours"
         ],
         "title": "SettingsDetail",
         "description": "System-wide values used by the agent configuration, statuses, reports and exports."
@@ -16956,6 +17887,41 @@
             "type": "string",
             "maxLength": 255,
             "title": "Support Contact"
+          },
+          "provider_score_weight_below_contract": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Below Contract"
+          },
+          "provider_score_weight_availability": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Availability"
+          },
+          "provider_score_weight_reaction": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Reaction"
+          },
+          "provider_score_weight_incidents": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Incidents"
+          },
+          "provider_score_pass_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Pass Pct"
+          },
+          "provider_score_reaction_norm_hours": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Provider Score Reaction Norm Hours"
           }
         },
         "type": "object",

@@ -1096,6 +1096,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/providers/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Оценка поставщиков за период
+         * @description Строка на каждого поставщика, доступного пользователю (ADR-008), по имени. Замеры, доступность и доля ниже договора — из агрегатов через аналитику T-27; инциденты — T-45; реакция — время до первой смены статуса инцидента. Оценка — 100 минус штрафы частей; веса, порог «ниже нормы» и норма реакции — настройки (ТЗ п. 11, п. 20). Окна плановых работ пока не исключаются: календарь появится в T-70.
+         */
+        get: operations["get_provider_score"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/providers/{provider_id}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Карточка поставщика: оценка, школы, договор ниже норматива
+         * @description Те же числа по одному поставщику плюс его школы со статусом и линии, у которых договорная скорость ниже порога применимого профиля («не претензия»: нужен новый договор, а не обращение). Поставщик, ни одной линии которого пользователь не видит, — 404.
+         */
+        get: operations["get_provider_card"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/providers/{provider_id}/act": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Акт о несоответствии: PDF по поставщику за период
+         * @description Замеры ниже договорной скорости с порогами и договорными значениями из thresholds_snapshot каждого замера, а не из профиля и договора на сегодня (ТЗ п. 11). Генератор — тот же, что у обращения (T-48).
+         */
+        get: operations["get_provider_act"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/exports": {
         parameters: {
             query?: never;
@@ -4384,6 +4444,228 @@ export interface components {
             page_size: number;
         };
         /**
+         * ProviderLineBelowNorm
+         * @description Line whose contract itself is below the thresholds it is judged by — «не претензия».
+         *
+         *     Nothing here is the fault of the provider: the contract promises less than ТЗ п. 11 asks,
+         *     so the school needs a new contract, not an appeal (docs/design/README.md §6.3).
+         */
+        ProviderLineBelowNorm: {
+            /** Line Id */
+            line_id: number;
+            /** School Id */
+            school_id: number;
+            /** School Name */
+            school_name: string;
+            /** Region Name */
+            region_name: string | null;
+            /** Contract Down Mbps */
+            contract_down_mbps: number | null;
+            /** Contract Up Mbps */
+            contract_up_mbps: number | null;
+            /**
+             * Download Min Mbps
+             * @description Порог профиля, применимого к линии
+             */
+            download_min_mbps: number;
+            /** Upload Min Mbps */
+            upload_min_mbps: number;
+        };
+        /**
+         * ProviderSchoolRow
+         * @description School on a main line of the provider: its status now and its numbers of the period.
+         */
+        ProviderSchoolRow: {
+            /** School Id */
+            school_id: number;
+            /** Name */
+            name: string;
+            /** Region Name */
+            region_name: string | null;
+            /** @description Статус школы сейчас (ADR-004) */
+            status: components["schemas"]["SchoolStatus"];
+            /** Measurements Count */
+            measurements_count: number;
+            /** Below Contract Pct */
+            below_contract_pct: number | null;
+            /** Availability Pct */
+            availability_pct: number | null;
+            /**
+             * Sustained Mismatch
+             * @description Устойчиво ниже договора по пересчёту T-29; null — ещё не рассчитано
+             */
+            sustained_mismatch: boolean | null;
+        };
+        /**
+         * ProviderScoreDetail
+         * @description Card of one provider: its row, its schools and the lines whose contract is below the norm.
+         */
+        ProviderScoreDetail: {
+            /**
+             * Period From
+             * Format: date-time
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             */
+            period_to: string;
+            weights: components["schemas"]["ProviderScoreWeights"];
+            /** Availability Min Pct */
+            availability_min_pct: number;
+            provider: components["schemas"]["ProviderScoreRow"];
+            /**
+             * Appeals Email
+             * @description Адрес поставщика для обращений и акта (T-48)
+             */
+            appeals_email: string | null;
+            /** Schools */
+            schools: components["schemas"]["ProviderSchoolRow"][];
+            /** Lines Below Norm */
+            lines_below_norm: components["schemas"]["ProviderLineBelowNorm"][];
+        };
+        /**
+         * ProviderScoreReport
+         * @description Rows of every provider the user may see, ordered by name (ADR-008).
+         */
+        ProviderScoreReport: {
+            /**
+             * Period From
+             * Format: date-time
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             */
+            period_to: string;
+            weights: components["schemas"]["ProviderScoreWeights"];
+            /**
+             * Availability Min Pct
+             * @description Порог доступности (п. 11)
+             */
+            availability_min_pct: number;
+            /** Rows */
+            rows: components["schemas"]["ProviderScoreRow"][];
+        };
+        /**
+         * ProviderScoreRow
+         * @description One provider over the period: what is counted and the score it adds up to.
+         */
+        ProviderScoreRow: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Schools Count
+             * @description Школ на основных линиях поставщика
+             */
+            schools_count: number;
+            /** Lines Count */
+            lines_count: number;
+            /** Measurements Count */
+            measurements_count: number;
+            /** Problem Count */
+            problem_count: number;
+            /**
+             * Problem Pct
+             * @description Доля проблемных замеров, %
+             */
+            problem_pct: number | null;
+            /**
+             * Availability Pct
+             * @description Доступность школ поставщика в рабочие часы (T-16, ADR-014)
+             */
+            availability_pct: number | null;
+            /**
+             * Below Contract Pct
+             * @description Доля замеров ниже договорной скорости, %; null без договорных значений
+             */
+            below_contract_pct: number | null;
+            /**
+             * Incidents Opened
+             * @description Инцидентов начато за период (по started_at)
+             */
+            incidents_opened: number;
+            /**
+             * Incidents Closed
+             * @description Из них с восстановлением линии (restored_at)
+             */
+            incidents_closed: number;
+            /**
+             * Reaction Median S
+             * @description Медиана времени до первой смены статуса инцидента, с; null без таких
+             */
+            reaction_median_s: number | null;
+            /**
+             * Reaction Worst S
+             * @description Худшее время до смены статуса, с
+             */
+            reaction_worst_s: number | null;
+            /**
+             * Restore Avg S
+             * @description Среднее устранение: restored_at − started_at, с (T-45)
+             */
+            restore_avg_s: number | null;
+            /**
+             * Restore Worst S
+             * @description Худшее устранение, с
+             */
+            restore_worst_s: number | null;
+            /**
+             * Lines Below Norm Count
+             * @description Линий, у которых договорная скорость ниже порога профиля — «не претензия»
+             */
+            lines_below_norm_count: number;
+            /**
+             * Score
+             * @description Оценка 0–100; null — за период нет ни одного замера
+             */
+            score: number | null;
+            /** @description below_norm — оценка ниже порога настроек; null вместе с пустой оценкой */
+            verdict: components["schemas"]["ProviderScoreVerdict"] | null;
+        };
+        /** @enum {string} */
+        ProviderScoreVerdict: "pass" | "below_norm";
+        /**
+         * ProviderScoreWeights
+         * @description Weights of the parts and the passing threshold, as the admin panel holds them (T-37).
+         */
+        ProviderScoreWeights: {
+            /**
+             * Below Contract
+             * @description Вес доли замеров ниже договора
+             */
+            below_contract: number;
+            /**
+             * Availability
+             * @description Вес нехватки доступности
+             */
+            availability: number;
+            /**
+             * Reaction
+             * @description Вес просрочки реакции на инцидент
+             */
+            reaction: number;
+            /**
+             * Incidents
+             * @description Вес числа инцидентов на школу
+             */
+            incidents: number;
+            /**
+             * Pass Pct
+             * @description Оценка ниже этой — «ниже нормы»
+             */
+            pass_pct: number;
+            /**
+             * Reaction Norm Hours
+             * @description Норма реакции на инцидент, ч
+             */
+            reaction_norm_hours: number;
+        };
+        /**
          * ProviderUpdate
          * @description Changes of a provider.
          */
@@ -5188,6 +5470,42 @@ export interface components {
              * @example admin@edu.vko.kz, +7 7232 00-00-00
              */
             support_contact: string;
+            /**
+             * Provider Score Weight Below Contract
+             * @description Вес доли замеров ниже договора в оценке поставщика (T-68, §6.3)
+             * @example 40
+             */
+            provider_score_weight_below_contract: number;
+            /**
+             * Provider Score Weight Availability
+             * @description Вес нехватки доступности в оценке поставщика
+             * @example 20
+             */
+            provider_score_weight_availability: number;
+            /**
+             * Provider Score Weight Reaction
+             * @description Вес просрочки реакции на инцидент в оценке
+             * @example 25
+             */
+            provider_score_weight_reaction: number;
+            /**
+             * Provider Score Weight Incidents
+             * @description Вес числа инцидентов на школу в оценке
+             * @example 15
+             */
+            provider_score_weight_incidents: number;
+            /**
+             * Provider Score Pass Pct
+             * @description Оценка ниже этой — «ниже нормы» (§6.3)
+             * @example 70
+             */
+            provider_score_pass_pct: number;
+            /**
+             * Provider Score Reaction Norm Hours
+             * @description Норма реакции на инцидент, ч: медиана вдвое больше нормы — полный штраф
+             * @example 4
+             */
+            provider_score_reaction_norm_hours: number;
         };
         /**
          * SettingsUpdate
@@ -5230,6 +5548,18 @@ export interface components {
             password_reset_ttl_minutes?: number;
             /** Support Contact */
             support_contact?: string;
+            /** Provider Score Weight Below Contract */
+            provider_score_weight_below_contract?: number;
+            /** Provider Score Weight Availability */
+            provider_score_weight_availability?: number;
+            /** Provider Score Weight Reaction */
+            provider_score_weight_reaction?: number;
+            /** Provider Score Weight Incidents */
+            provider_score_weight_incidents?: number;
+            /** Provider Score Pass Pct */
+            provider_score_pass_pct?: number;
+            /** Provider Score Reaction Norm Hours */
+            provider_score_reaction_norm_hours?: number;
         };
         /**
          * SpeedtestServers
@@ -8935,6 +9265,165 @@ export interface operations {
                 };
             };
             /** @description Обращение не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_provider_score: {
+        parameters: {
+            query: {
+                /** @description today, 7 или 30 суток с текущими, custom — period_from и period_to */
+                period: components["schemas"]["AnalyticsPeriod"];
+                /** @description Начало, включительно; только и обязательно при period=custom */
+                period_from?: string | null;
+                /** @description Конец, не включительно; только и обязательно при period=custom */
+                period_to?: string | null;
+                /** @description Район или город (regions) */
+                region_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderScoreReport"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_provider_card: {
+        parameters: {
+            query: {
+                /** @description today, 7 или 30 суток с текущими, custom — period_from и period_to */
+                period: components["schemas"]["AnalyticsPeriod"];
+                /** @description Начало, включительно; только и обязательно при period=custom */
+                period_from?: string | null;
+                /** @description Конец, не включительно; только и обязательно при period=custom */
+                period_to?: string | null;
+            };
+            header?: never;
+            path: {
+                provider_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderScoreDetail"];
+                };
+            };
+            /** @description Поставщик не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_provider_act: {
+        parameters: {
+            query: {
+                /** @description today, 7 или 30 суток с текущими, custom — period_from и period_to */
+                period: components["schemas"]["AnalyticsPeriod"];
+                /** @description Начало, включительно; только и обязательно при period=custom */
+                period_from?: string | null;
+                /** @description Конец, не включительно; только и обязательно при period=custom */
+                period_to?: string | null;
+            };
+            header?: never;
+            path: {
+                provider_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PDF-файл акта */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Поставщик не найден */
             404: {
                 headers: {
                     [name: string]: unknown;
