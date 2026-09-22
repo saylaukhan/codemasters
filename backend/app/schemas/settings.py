@@ -85,6 +85,12 @@ class SettingsDetail(BaseModel):
         description="Обращение «Передан поставщику» без движения дольше стольких часов "
         "считается оставшимся без ответа (T-60)",
     )
+    rollout_silent_days: int = Field(
+        ge=1,
+        examples=[7],
+        description="Установленный агент без heartbeat дольше стольких суток — школа «молчит» "
+        "в разделе «Внедрение» (T-69)",
+    )
     password_reset_ttl_minutes: int = Field(
         ge=1,
         examples=[30],
@@ -119,6 +125,7 @@ class SettingsUpdate(BaseModel):
     agent_queue_retention_days: Annotated[int, Field(ge=1, le=365)] | SkipJsonSchema[None] = None
     attention_incident_unassigned_hours: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
     attention_appeal_no_answer_hours: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    rollout_silent_days: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
     password_reset_ttl_minutes: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
     support_contact: (
         Annotated[str, Field(max_length=SUPPORT_CONTACT_MAX_LENGTH)] | SkipJsonSchema[None]
@@ -141,6 +148,7 @@ class SettingsUpdate(BaseModel):
         "agent_queue_retention_days",
         "attention_incident_unassigned_hours",
         "attention_appeal_no_answer_hours",
+        "rollout_silent_days",
         "password_reset_ttl_minutes",
         "support_contact",
         mode="before",

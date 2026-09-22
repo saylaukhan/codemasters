@@ -290,6 +290,7 @@ async def settings_detail(session: AsyncSession) -> SettingsDetail:
             "agent_queue_retention_days": settings.agent_queue_retention_days,
             "attention_incident_unassigned_hours": settings.attention_incident_unassigned_hours,
             "attention_appeal_no_answer_hours": settings.attention_appeal_no_answer_hours,
+            "rollout_silent_days": settings.rollout_silent_days,
             "password_reset_ttl_minutes": settings.password_reset_ttl_minutes,
             "support_contact": settings.support_contact,
         }

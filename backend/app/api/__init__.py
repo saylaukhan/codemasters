@@ -13,6 +13,7 @@ from app.api import (
     exports,
     incidents,
     notifications,
+    rollout,
     schools,
 )
 from app.api import map as school_map
@@ -32,6 +33,7 @@ for domain in (
     notifications,
     appeals,
     exports,
+    rollout,
     admin,
 ):
     api_router.include_router(domain.router)
