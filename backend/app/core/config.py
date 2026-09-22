@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_model: str = ""
     llm_url: str = ""
+    # Помощник по интерфейсу (T-84, ADR-017): the panel asks the same model how to use the
+    # panel. ``false`` takes the button out of the header; so does a model without a key.
+    assistant_enabled: bool = True
     telegram_bot_token: str = ""
 
     # Rate limit of the agent API (T-51): requests one device, and one address without a token

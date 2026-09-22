@@ -3,6 +3,7 @@ import { Dropdown, type MenuProps } from 'antd'
 import { Activity, LogOut, Menu as MenuIcon, Moon, Sun } from 'lucide-react'
 
 import type { CurrentUser } from '../api/types'
+import { AssistantButton } from '../components/assistant/AssistantButton'
 import { NotificationBell } from '../components/notifications/NotificationBell'
 import { Button } from '../components/ui/Button'
 import { LocaleSwitch } from '../components/ui/LocaleSwitch'
@@ -31,8 +32,9 @@ interface AppHeaderProps {
 /**
  * Header, DESIGN.md §3.5: 64px on `--bg-page` without a line under it. On the left the 28px mark
  * and «Jyldam» 16/600, preceded by the menu button once the side navigation has moved into a
- * drawer; on the right the language pill «Қаз · Рус», the bell with its counter, the theme
- * switch and the 40px profile chip, which is the avatar alone at 1024px and narrower (§9.3).
+ * drawer; on the right the language pill «Қаз · Рус», the assistant of T-84, the bell with its
+ * counter, the theme switch and the 40px profile chip, which is the avatar alone at 1024px and
+ * narrower (§9.3).
  * The panel has no header search — search belongs to each screen through
  * `components/ui/SearchInput`.
  */
@@ -74,6 +76,7 @@ export function AppHeader({ onOpenNavigation }: AppHeaderProps) {
       </div>
       <div className={styles.tools}>
         <LocaleSwitch />
+        <AssistantButton />
         {user?.permissions.includes(NOTIFICATIONS_PERMISSION) && <NotificationBell />}
         <Button
           kind="flat"

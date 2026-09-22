@@ -23,6 +23,7 @@ const VIEW = [
   'appeals:read',
   'exports:create',
   'notifications:read',
+  'assistant:ask',
 ]
 const MONITORING_SETUP = [
   'schools:write',

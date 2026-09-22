@@ -25,6 +25,9 @@ VIEW = frozenset(
         "exports:create",
         # His own bell (T-42): every role has one, and it shows only what his scope let him see.
         "notifications:read",
+        # Questions about the panel itself (T-84, ADR-017): the assistant knows the screens of
+        # every role and no data of anyone, so every role may ask it.
+        "assistant:ask",
     }
 )
 

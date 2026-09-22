@@ -188,3 +188,11 @@ export type CalendarEventDetail = Schema<'CalendarEventDetail'>
 export type CalendarEventCreate = Schema<'CalendarEventCreate'>
 export type CalendarEventUpdate = Schema<'CalendarEventUpdate'>
 export type CalendarImportResult = Schema<'CalendarImportResult'>
+
+// Interface assistant (T-84, ADR-017): the screen it is asked about and the dialog it answers.
+export type AssistantScreen = Schemas['AssistantScreen']
+export type AssistantAuthor = Schemas['AssistantAuthor']
+export type AssistantStatus = Schema<'AssistantStatus'>
+export type AssistantMessage = Schema<'AssistantMessage'>
+export type AssistantQuestion = Schema<'AssistantQuestion'>
+export type AssistantAnswer = Schema<'AssistantAnswer'>
