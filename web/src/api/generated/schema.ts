@@ -274,6 +274,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/password-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Запросить ссылку на смену пароля
+         * @description Ответ одинаков для любого адреса: есть такая учётная запись или нет, заблокирована она или нет, настроен SMTP или нет — 204 и пустое тело, чтобы эндпоинт не выдавал чужие e-mail (T-65). Письмо со ссылкой уходит, только когда настроен SMTP и учётная запись активна; срок ссылки — password_reset_ttl_minutes из настроек.
+         */
+        post: operations["request_password_reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/password-reset/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Задать новый пароль по ссылке из письма
+         * @description Ссылка действует один раз и до истечения срока; после смены пароля остальные ссылки пользователя погашены, а его открытые сессии завершены. Недействительная, погашенная и истёкшая ссылка отвечают одинаково.
+         */
+        post: operations["confirm_password_reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Что показать на экране входа: ссылку сброса или контакт
+         * @description Без авторизации: настроен ли SMTP (иначе ссылка «Забыли пароль?» не показывается) и контакт администратора из настроек — пустая строка, если контакт не заполнен (T-65).
+         */
+        get: operations["get_login_info"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me": {
         parameters: {
             query?: never;
@@ -3568,6 +3628,23 @@ export interface components {
             ip_ranges?: string[];
         };
         /**
+         * LoginInfo
+         * @description What the sign-in screen needs before a sign-in: the reset link or the contact (T-65).
+         */
+        LoginInfo: {
+            /**
+             * Password Reset Available
+             * @description SMTP настроен — на входе показывается ссылка «Забыли пароль?»
+             */
+            password_reset_available: boolean;
+            /**
+             * Support Contact
+             * @description Контакт администратора, когда сброс недоступен; пусто — не показывать
+             * @example admin@edu.vko.kz, +7 7232 00-00-00
+             */
+            support_contact: string;
+        };
+        /**
          * LoginRequest
          * @description Panel sign-in; the password never shows up in logs or reprs (``SecretStr``).
          */
@@ -3968,6 +4045,35 @@ export interface components {
              * Format: date-time
              */
             ended_at: string;
+        };
+        /**
+         * PasswordResetConfirm
+         * @description New password by the link from the letter; the password never shows up in logs.
+         */
+        PasswordResetConfirm: {
+            /**
+             * Token
+             * @description Токен из ссылки письма (параметр token)
+             */
+            token: string;
+            /**
+             * Password
+             * Format: password
+             * @description Новый пароль; хранится только хэшем
+             */
+            password: string;
+        };
+        /**
+         * PasswordResetRequest
+         * @description Request of a reset link; the answer is the same for every address (T-65).
+         */
+        PasswordResetRequest: {
+            /**
+             * Email
+             * @description E-mail учётной записи; ответ не зависит от того, есть ли такая
+             * @example admin@example.kz
+             */
+            email: string;
         };
         /**
          * Problem
@@ -4841,6 +4947,18 @@ export interface components {
              * @example 48
              */
             attention_appeal_no_answer_hours: number;
+            /**
+             * Password Reset Ttl Minutes
+             * @description Срок действия ссылки «Забыли пароль?» в минутах (T-65)
+             * @example 30
+             */
+            password_reset_ttl_minutes: number;
+            /**
+             * Support Contact
+             * @description Контакт администратора на экране входа, когда SMTP не настроен; пусто — контакт не показывается (T-65)
+             * @example admin@edu.vko.kz, +7 7232 00-00-00
+             */
+            support_contact: string;
         };
         /**
          * SettingsUpdate
@@ -4879,6 +4997,10 @@ export interface components {
             attention_incident_unassigned_hours?: number;
             /** Attention Appeal No Answer Hours */
             attention_appeal_no_answer_hours?: number;
+            /** Password Reset Ttl Minutes */
+            password_reset_ttl_minutes?: number;
+            /** Support Contact */
+            support_contact?: string;
         };
         /**
          * SpeedtestServers
@@ -6083,6 +6205,124 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    request_password_reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    confirm_password_reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ссылка недействительна или устарела (type invalid_reset_token) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_login_info: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginInfo"];
+                };
             };
             /** @description Ошибка (RFC 9457) */
             default: {

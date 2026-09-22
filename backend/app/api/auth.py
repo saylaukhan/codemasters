@@ -5,6 +5,11 @@ in the httpOnly cookie ``refresh_token``, sent back only to ``/api/auth``. Refre
 cookie; logout raises ``users.token_version``, and every token of the user issued before dies —
 access tokens too, since ``current_user`` compares the version on each request. Every sign-in,
 successful or not, is written to ``audit_log`` (ТЗ п. 12).
+
+«Забыли пароль?» of T-65 lives here too: ``/password-reset`` answers the same 204 for every
+address, ``/password-reset/confirm`` spends the link and sets the new password, and
+``/login-info`` tells the sign-in screen whether to show the link or the contact of the
+administrator (``app/services/password_reset.py``).
 """
 
 from datetime import UTC, datetime, timedelta
@@ -29,8 +34,17 @@ from app.core.security import (
     verify_password_async,
 )
 from app.models import Region, User
-from app.schemas.auth import AccessTokenResponse, CurrentUser, LoginRequest, UserScope
+from app.schemas.auth import (
+    AccessTokenResponse,
+    CurrentUser,
+    LoginInfo,
+    LoginRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    UserScope,
+)
 from app.schemas.errors import Problem
+from app.services import password_reset
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -39,6 +53,11 @@ REFRESH_TOKEN_TTL = timedelta(days=14)
 REFRESH_COOKIE = "refresh_token"
 # The cookie goes only to the endpoints that read it.
 REFRESH_COOKIE_PATH = "/api/auth"
+
+INVALID_RESET_TOKEN: dict[str, Any] = {
+    "model": Problem,
+    "description": "Ссылка недействительна или устарела (type invalid_reset_token)",
+}
 
 ACCOUNT_BLOCKED: dict[str, Any] = {
     "model": Problem,
@@ -197,6 +216,56 @@ async def logout(
         httponly=True,
         samesite="strict",
     )
+
+
+@router.post(
+    "/password-reset",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Запросить ссылку на смену пароля",
+    description=(
+        "Ответ одинаков для любого адреса: есть такая учётная запись или нет, заблокирована "
+        "она или нет, настроен SMTP или нет — 204 и пустое тело, чтобы эндпоинт не выдавал "
+        "чужие e-mail (T-65). Письмо со ссылкой уходит, только когда настроен SMTP и учётная "
+        "запись активна; срок ссылки — password_reset_ttl_minutes из настроек."
+    ),
+)
+async def request_password_reset(
+    body: PasswordResetRequest,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> None:
+    await password_reset.request_reset(session, request, body, now=datetime.now(UTC))
+
+
+@router.post(
+    "/password-reset/confirm",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Задать новый пароль по ссылке из письма",
+    description=(
+        "Ссылка действует один раз и до истечения срока; после смены пароля остальные ссылки "
+        "пользователя погашены, а его открытые сессии завершены. Недействительная, погашенная "
+        "и истёкшая ссылка отвечают одинаково."
+    ),
+    responses={400: INVALID_RESET_TOKEN},
+)
+async def confirm_password_reset(
+    body: PasswordResetConfirm,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> None:
+    await password_reset.confirm_reset(session, request, body, now=datetime.now(UTC))
+
+
+@router.get(
+    "/login-info",
+    summary="Что показать на экране входа: ссылку сброса или контакт",
+    description=(
+        "Без авторизации: настроен ли SMTP (иначе ссылка «Забыли пароль?» не показывается) и "
+        "контакт администратора из настроек — пустая строка, если контакт не заполнен (T-65)."
+    ),
+)
+async def get_login_info(session: Annotated[AsyncSession, Depends(get_session)]) -> LoginInfo:
+    return await password_reset.login_info(session)
 
 
 @router.get("/me", summary="Текущий пользователь: роль, область видимости, права")

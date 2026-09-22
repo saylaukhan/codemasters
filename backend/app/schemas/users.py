@@ -12,12 +12,9 @@ from typing import Annotated, Self
 from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
 
-from app.schemas.auth import PASSWORD_MAX_LENGTH, UserScope
+from app.schemas.auth import PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, UserScope
 from app.schemas.pagination import Page
 from app.schemas.statuses import UserRole
-
-# Shortest password an administrator may set; login still accepts any stored password.
-PASSWORD_MIN_LENGTH = 8
 
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+$"
 
