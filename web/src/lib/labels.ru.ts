@@ -421,6 +421,7 @@ export const SECTION_LABELS = {
   analytics: 'Аналитика',
   incidents: 'Инциденты',
   appeals: 'Обращения',
+  providers: 'Поставщики',
   exports: 'Отчёты и экспорт',
   admin: 'Администрирование',
 } as const
@@ -1019,4 +1020,70 @@ export const DIGEST_LABELS = {
   removed: 'Рассылка удалена',
   created: 'Рассылка добавлена',
   changed: 'Рассылка изменена',
+} as const
+
+/** Column of the provider score table (T-68, DESIGN.md §3.29, docs/design/README.md §6.3). */
+export const PROVIDER_COLUMN_LABELS = {
+  name: 'Поставщик',
+  schools: 'Школ',
+  belowContract: 'Ниже договора',
+  incidents: 'Инцидентов',
+  reaction: 'Реакция',
+  restore: 'Устранение',
+  school: 'Школа',
+  region: 'Район',
+  status: 'Статус',
+  belowNorm: 'Договор ниже нормы',
+  score: 'Оценка',
+} as const
+
+/** Verdict on the score: at the passing threshold of the settings or below it. */
+export const PROVIDER_VERDICT_LABELS = {
+  pass: 'Норма',
+  below_norm: 'Ниже порога',
+} as const
+
+/** Strip of the provider card, in the order of `Providers.html`. */
+export const PROVIDER_KPI_LABELS = {
+  belowContract: 'Время ниже договора',
+  incidents: 'Инцидентов',
+  reaction: 'Средняя реакция',
+  restore: 'Среднее устранение',
+  availability: 'Доступность',
+} as const
+
+/** Section «Поставщики» (T-68): claim work — score, escalation, act, contract below the norm. */
+export const PROVIDER_LABELS = {
+  context: 'Претензионная работа',
+  subtitle: 'Основные линии · оценка за период',
+  scoreTable: 'Оценка поставщиков за период',
+  scoreOf: (score: string, threshold: string) => `оценка ${score} · порог ${threshold}`,
+  reactionNorm: (norm: string) => `норма ${norm}`,
+  availabilityNorm: (norm: string) => `норма ${norm}`,
+  incidentsClosed: (closed: string) => `восстановлено ${closed}`,
+  worst: (value: string) => `худшее ${value}`,
+  belowNormFilter: 'Договор ниже норматива',
+  belowNorm: 'Договор ниже норматива',
+  notAClaim: 'не претензия',
+  belowNormHint: 'Договорная скорость ниже порога профиля: нужен новый договор, а не обращение.',
+  belowNormEmpty: 'Все договоры поставщика не ниже порогов профиля.',
+  contractOf: (down: string, up: string) => `договор ${down} / ${up}`,
+  schools: 'Школы поставщика',
+  schoolsBelowContract: 'Ниже договора',
+  sustained: 'устойчиво ниже договора',
+  escalation: 'Эскалация',
+  escalationHint:
+    'Оценка ниже порога — основание для претензионной работы: акт о несоответствии и обращение поставщику.',
+  act: 'Скачать акт',
+  actTitle: 'Акт о несоответствии',
+  actHint: 'Замеры ниже договора с порогами и договорными значениями каждого замера.',
+  actFailed: 'Акт не сформирован',
+  selectHint: 'Выберите поставщика в таблице, чтобы открыть карточку.',
+  empty: 'Поставщиков пока нет',
+  emptyHint: 'Оценка появится, когда по линиям поставщиков пройдут замеры за период.',
+  filteredEmpty: 'Нет поставщиков с договором ниже норматива',
+  reset: 'Сбросить фильтр',
+  open: 'Открыть карточку',
+  noScore: 'нет замеров за период',
+  plannedWorks: 'Окна плановых работ из оценки пока не исключаются: календарь появится позже.',
 } as const

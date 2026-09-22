@@ -424,6 +424,7 @@ export const SECTION_LABELS = {
   analytics: 'Аналитика',
   incidents: 'Инциденттер',
   appeals: 'Өтініштер',
+  providers: 'Жеткізушілер',
   exports: 'Есептер және экспорт',
   admin: 'Әкімшілендіру',
 } as const
@@ -1022,4 +1023,70 @@ export const DIGEST_LABELS = {
   removed: 'Жіберілім жойылды',
   created: 'Жіберілім қосылды',
   changed: 'Жіберілім өзгертілді',
+} as const
+
+/** Column of the provider score table (T-68, DESIGN.md §3.29, docs/design/README.md §6.3). */
+export const PROVIDER_COLUMN_LABELS = {
+  name: 'Жеткізуші',
+  schools: 'Мектеп',
+  belowContract: 'Шарттан төмен',
+  incidents: 'Инцидент',
+  reaction: 'Жауап беру',
+  restore: 'Қалпына келтіру',
+  school: 'Мектеп',
+  region: 'Аудан',
+  status: 'Мәртебе',
+  belowNorm: 'Шарт нормадан төмен',
+  score: 'Баға',
+} as const
+
+/** Verdict on the score: at the passing threshold of the settings or below it. */
+export const PROVIDER_VERDICT_LABELS = {
+  pass: 'Қалыпты',
+  below_norm: 'Шектен төмен',
+} as const
+
+/** Strip of the provider card, in the order of `Providers.html`. */
+export const PROVIDER_KPI_LABELS = {
+  belowContract: 'Шарттан төмен уақыт',
+  incidents: 'Инцидент',
+  reaction: 'Орташа жауап беру',
+  restore: 'Орташа қалпына келтіру',
+  availability: 'Қолжетімділік',
+} as const
+
+/** Section «Поставщики» (T-68): claim work — score, escalation, act, contract below the norm. */
+export const PROVIDER_LABELS = {
+  context: 'Талап-шағым жұмысы',
+  subtitle: 'Негізгі арналар · кезеңдегі баға',
+  scoreTable: 'Кезеңдегі жеткізушілер бағасы',
+  scoreOf: (score: string, threshold: string) => `баға ${score} · шек ${threshold}`,
+  reactionNorm: (norm: string) => `норма ${norm}`,
+  availabilityNorm: (norm: string) => `норма ${norm}`,
+  incidentsClosed: (closed: string) => `қалпына келтірілді ${closed}`,
+  worst: (value: string) => `ең жаманы ${value}`,
+  belowNormFilter: 'Шарт нормадан төмен',
+  belowNorm: 'Шарт нормадан төмен',
+  notAClaim: 'талап емес',
+  belowNormHint: 'Шарттық жылдамдық профиль шегінен төмен: жаңа шарт керек, өтініш емес.',
+  belowNormEmpty: 'Жеткізушінің барлық шарты профиль шегінен төмен емес.',
+  contractOf: (down: string, up: string) => `шарт ${down} / ${up}`,
+  schools: 'Жеткізушінің мектептері',
+  schoolsBelowContract: 'Шарттан төмен',
+  sustained: 'тұрақты шарттан төмен',
+  escalation: 'Эскалация',
+  escalationHint:
+    'Баға шектен төмен — талап-шағым жұмысының негізі: сәйкессіздік актісі және жеткізушіге өтініш.',
+  act: 'Актіні жүктеу',
+  actTitle: 'Сәйкессіздік актісі',
+  actHint: 'Шарттан төмен замерлер, әрбір замердің шектері мен шарттық мәндерімен.',
+  actFailed: 'Акт жасалмады',
+  selectHint: 'Карточканы ашу үшін кестеден жеткізушіні таңдаңыз.',
+  empty: 'Жеткізушілер әзірге жоқ',
+  emptyHint: 'Кезеңде жеткізуші арналарында замерлер өткенде баға шығады.',
+  filteredEmpty: 'Шарты нормадан төмен жеткізуші жоқ',
+  reset: 'Сүзгіні тазалау',
+  open: 'Карточканы ашу',
+  noScore: 'кезеңде замер жоқ',
+  plannedWorks: 'Жоспарлы жұмыс терезелері бағадан әзірге шығарылмайды: күнтізбе кейін шығады.',
 } as const

@@ -13,6 +13,7 @@ from app.api import (
     exports,
     incidents,
     notifications,
+    providers,
     schools,
 )
 from app.api import map as school_map
@@ -31,6 +32,7 @@ for domain in (
     incidents,
     notifications,
     appeals,
+    providers,
     exports,
     admin,
 ):

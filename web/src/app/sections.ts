@@ -1,5 +1,6 @@
 // Sections of the panel: side navigation, routes and Refine resources (DESIGN.md §3.6).
 import {
+  Building2,
   ChartLine,
   Download,
   LayoutDashboard,
@@ -48,6 +49,7 @@ export const SECTIONS: readonly Section[] = [
   { key: 'devices', path: '/devices', icon: Monitor, permissions: ['devices:read'], task: 'T-26' },
   { key: 'incidents', path: '/incidents', icon: TriangleAlert, permissions: ['incidents:read'], task: 'T-41' },
   { key: 'appeals', path: '/appeals', icon: Mail, permissions: ['appeals:read'], task: 'T-48' },
+  { key: 'providers', path: '/providers', icon: Building2, permissions: ['analytics:read'], task: 'T-68' },
   { key: 'analytics', path: '/analytics', icon: ChartLine, permissions: ['analytics:read'], task: 'T-27' },
   { key: 'exports', path: '/exports', icon: Download, permissions: ['exports:create'], task: 'T-30' },
   { key: 'admin', path: '/admin', icon: Settings, permissions: ADMIN_PERMISSIONS, task: 'T-34' },

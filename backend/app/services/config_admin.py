@@ -292,6 +292,12 @@ async def settings_detail(session: AsyncSession) -> SettingsDetail:
             "attention_appeal_no_answer_hours": settings.attention_appeal_no_answer_hours,
             "password_reset_ttl_minutes": settings.password_reset_ttl_minutes,
             "support_contact": settings.support_contact,
+            "provider_score_weight_below_contract": (settings.provider_score_weight_below_contract),
+            "provider_score_weight_availability": settings.provider_score_weight_availability,
+            "provider_score_weight_reaction": settings.provider_score_weight_reaction,
+            "provider_score_weight_incidents": settings.provider_score_weight_incidents,
+            "provider_score_pass_pct": settings.provider_score_pass_pct,
+            "provider_score_reaction_norm_hours": settings.provider_score_reaction_norm_hours,
         }
     )
 

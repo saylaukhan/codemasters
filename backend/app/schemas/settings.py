@@ -96,6 +96,29 @@ class SettingsDetail(BaseModel):
         description="Контакт администратора на экране входа, когда SMTP не настроен; "
         "пусто — контакт не показывается (T-65)",
     )
+    provider_score_weight_below_contract: float = Field(
+        ge=0,
+        le=100,
+        examples=[40],
+        description="Вес доли замеров ниже договора в оценке поставщика (T-68, §6.3)",
+    )
+    provider_score_weight_availability: float = Field(
+        ge=0, le=100, examples=[20], description="Вес нехватки доступности в оценке поставщика"
+    )
+    provider_score_weight_reaction: float = Field(
+        ge=0, le=100, examples=[25], description="Вес просрочки реакции на инцидент в оценке"
+    )
+    provider_score_weight_incidents: float = Field(
+        ge=0, le=100, examples=[15], description="Вес числа инцидентов на школу в оценке"
+    )
+    provider_score_pass_pct: float = Field(
+        ge=0, le=100, examples=[70], description="Оценка ниже этой — «ниже нормы» (§6.3)"
+    )
+    provider_score_reaction_norm_hours: float = Field(
+        gt=0,
+        examples=[4],
+        description="Норма реакции на инцидент, ч: медиана вдвое больше нормы — полный штраф",
+    )
 
 
 class SettingsUpdate(BaseModel):
@@ -123,6 +146,20 @@ class SettingsUpdate(BaseModel):
     support_contact: (
         Annotated[str, Field(max_length=SUPPORT_CONTACT_MAX_LENGTH)] | SkipJsonSchema[None]
     ) = None
+    provider_score_weight_below_contract: (
+        Annotated[float, Field(ge=0, le=100)] | SkipJsonSchema[None]
+    ) = None
+    provider_score_weight_availability: (
+        Annotated[float, Field(ge=0, le=100)] | SkipJsonSchema[None]
+    ) = None
+    provider_score_weight_reaction: Annotated[float, Field(ge=0, le=100)] | SkipJsonSchema[None] = (
+        None
+    )
+    provider_score_weight_incidents: (
+        Annotated[float, Field(ge=0, le=100)] | SkipJsonSchema[None]
+    ) = None
+    provider_score_pass_pct: Annotated[float, Field(ge=0, le=100)] | SkipJsonSchema[None] = None
+    provider_score_reaction_norm_hours: Annotated[float, Field(gt=0)] | SkipJsonSchema[None] = None
 
     @field_validator(
         "speedtest",
@@ -143,6 +180,12 @@ class SettingsUpdate(BaseModel):
         "attention_appeal_no_answer_hours",
         "password_reset_ttl_minutes",
         "support_contact",
+        "provider_score_weight_below_contract",
+        "provider_score_weight_availability",
+        "provider_score_weight_reaction",
+        "provider_score_weight_incidents",
+        "provider_score_pass_pct",
+        "provider_score_reaction_norm_hours",
         mode="before",
     )
     @classmethod

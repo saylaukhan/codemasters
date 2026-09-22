@@ -75,3 +75,13 @@ class SystemSettings(TimestampMixin, Base):
     # instead of the link on an installation without SMTP (T-65, docs/design/README.md §4.6).
     password_reset_ttl_minutes: Mapped[int] = mapped_column(server_default=text("30"))
     support_contact: Mapped[str] = mapped_column(server_default=text("''"))
+    # Score of a provider (T-68, ТЗ п. 14, docs/design/README.md §6.3): 100 minus the penalty of
+    # every part, each part weighted here, and the score below ``provider_score_pass_pct`` is
+    # «ниже нормы». The reaction norm is the answer time an incident is expected to get; a
+    # median twice as long is the whole penalty of that part.
+    provider_score_weight_below_contract: Mapped[float] = mapped_column(server_default=text("40"))
+    provider_score_weight_availability: Mapped[float] = mapped_column(server_default=text("20"))
+    provider_score_weight_reaction: Mapped[float] = mapped_column(server_default=text("25"))
+    provider_score_weight_incidents: Mapped[float] = mapped_column(server_default=text("15"))
+    provider_score_pass_pct: Mapped[float] = mapped_column(server_default=text("70"))
+    provider_score_reaction_norm_hours: Mapped[float] = mapped_column(server_default=text("4"))
