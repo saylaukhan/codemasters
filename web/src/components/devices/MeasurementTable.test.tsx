@@ -29,6 +29,7 @@ const MEASUREMENT: MeasurementListItem = {
   externalIp: null,
   server: null,
   agentVersion: '1.2.0',
+  source: 'schedule',
   contractOk: null,
 }
 
@@ -52,5 +53,13 @@ describe('MeasurementTable', () => {
 
     expect(html).toContain('Wi‑Fi')
     expect(html).toContain('Не оценивает линию')
+  })
+
+  it('marks a measurement asked for in the panel and leaves a planned one plain', () => {
+    const asked = render([{ ...MEASUREMENT, source: 'manual' }])
+    const planned = render([MEASUREMENT])
+
+    expect(asked).toContain('По запросу')
+    expect(planned).not.toContain('По запросу')
   })
 })
