@@ -16,7 +16,11 @@ from app.models.audit_log import one_of
 from app.models.base import Base, TimestampMixin
 
 # Codes of ``NotificationKind`` in ``app/schemas/notifications.py``.
-KINDS = ("incident_opened", "incident_status_changed", "incident_restored")
+KINDS = ("incident_opened", "incident_status_changed", "incident_restored", "digest_sent")
+
+# A digest send has neither a user nor an incident, every other kind has both: the journal of
+# ТЗ п. 18 needs a notification row to hang on (T-67, ``app/services/digest.py``).
+DIGEST_TARGET = "(kind = 'digest_sent') = (user_id IS NULL AND incident_id IS NULL)"
 
 
 class Notification(TimestampMixin, Base):
@@ -25,6 +29,7 @@ class Notification(TimestampMixin, Base):
     __tablename__ = "notifications"
     __table_args__ = (
         CheckConstraint(one_of("kind", KINDS), name="kind"),
+        CheckConstraint(DIGEST_TARGET, name="digest_target"),
         # The bell and the panel read one user newest first; the unread part gets its own index
         # because the counter of the bell asks for it on every poll.
         Index("ix_notifications_user_id_created_at", "user_id", "created_at"),
@@ -36,8 +41,9 @@ class Notification(TimestampMixin, Base):
     )
 
     id: Mapped[int] = mapped_column(Identity(), primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    incident_id: Mapped[int] = mapped_column(ForeignKey("incidents.id"), index=True)
+    # Empty only for a digest send, which belongs to no one person and no one incident (T-67).
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
+    incident_id: Mapped[int | None] = mapped_column(ForeignKey("incidents.id"), index=True)
     kind: Mapped[str]
     # Russian, sentence case, as the panel shows them (ADR-013): «Новый инцидент INC-2026-000123».
     title: Mapped[str]
