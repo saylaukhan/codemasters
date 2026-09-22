@@ -55,6 +55,7 @@ VALIDATION_MESSAGES: dict[str, str] = {
     "string_too_short": "Минимальная длина — {min_length}",
     "string_too_long": "Максимальная длина — {max_length}",
     "string_pattern_mismatch": "Значение не соответствует формату",
+    "base64_decode": "Ожидается содержимое в base64",
     "int_type": "Ожидается целое число",
     "int_parsing": "Ожидается целое число",
     "int_from_float": "Ожидается целое число",

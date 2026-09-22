@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field, IPvAnyAddress
 from app.schemas.pagination import Page
 
 # What happened: sign-ins and transfer errors (ТЗ п. 12), administrative actions and blocking
-# (ТЗ п. 16); status_change — incidents and appeals, transfer_error — rejected agent request (T-39).
+# (ТЗ п. 16); status_change — incidents and appeals, transfer_error — rejected agent request (T-39),
+# import — a registry of contracts loaded into the lines (T-61).
 type AuditAction = Literal[
     "login_success",
     "login_failure",
@@ -24,6 +25,7 @@ type AuditAction = Literal[
     "password_reset",
     "status_change",
     "export",
+    "import",
     "transfer_error",
 ]
 
@@ -46,6 +48,7 @@ type AuditEntityType = Literal[
     "agent_release",
     "incident",
     "appeal",
+    "appeal_template",
     "export",
 ]
 

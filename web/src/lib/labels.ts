@@ -3,9 +3,11 @@
 import type {
   AnalyticsLevel,
   AppealDeliveryStatus,
+  AppealKind,
   AuditAction,
   AuditEntityType,
   AnalyticsPeriod,
+  ContractImportAction,
   DeviceStatus,
   ExportAggregateColumn,
   ExportColumn,
@@ -15,6 +17,7 @@ import type {
   IfaceType,
   IncidentEventKind,
   IncidentMetric,
+  IncidentRuleScope,
   IncidentStatus,
   LineStatus,
   NotificationKind,
@@ -117,10 +120,17 @@ export const APPEAL_LABELS = {
   noTargetHint: 'Откройте черновик кнопкой «Создать обращение» в карточке инцидента или школы.',
 } as const
 
+/** Kind of a letter to the provider by its template (T-60): an appeal asks, a claim cites the contract and demands. */
+export const APPEAL_KIND_LABELS: Record<AppealKind, string> = {
+  appeal: 'Обращение',
+  claim: 'Претензия',
+}
+
 /** Columns of the appeal list (T-48). */
 export const APPEAL_COLUMN_LABELS = {
   number: 'Номер',
   status: 'Статус',
+  kind: 'Вид',
   school: 'Школа',
   provider: 'Поставщик',
   subject: 'Тема',
@@ -146,12 +156,14 @@ export const APPEAL_FIELD_LABELS = {
   problems: 'Проблемных замеров',
   outages: 'Простоев',
   outagesDuration: 'Длительность простоев',
+  kind: 'Вид письма',
   /** Next to the average of a metric: the threshold it was judged by (ТЗ п. 11, ADR-004). */
   threshold: 'порог',
 } as const
 
 /** Captions of the fields a person fills in: the editor of the draft (T-47) and the status form of the card (T-48). */
 export const APPEAL_FORM_LABELS = {
+  template: 'Шаблон письма',
   subject: 'Тема',
   text: 'Текст письма',
   comment: 'Комментарий',
@@ -385,6 +397,7 @@ export const PROVIDER_SCOPE_HINTS = {
 /** Tabs of «Администрирование» (T-34): the key is the path under /admin. */
 export const ADMIN_TAB_LABELS = {
   schools: 'Школы',
+  contracts: 'Договоры',
   devices: 'Устройства',
   users: 'Пользователи',
   regions: 'Районы и города',
@@ -393,12 +406,50 @@ export const ADMIN_TAB_LABELS = {
   thresholds: 'Пороги',
   schedules: 'Расписания',
   'incident-rules': 'Правила инцидентов',
+  'appeal-templates': 'Шаблоны писем',
   settings: 'Настройки',
   audit: 'Аудит',
   events: 'События',
 } as const
 
 export type AdminTabKey = keyof typeof ADMIN_TAB_LABELS
+
+/** What the import of a contract registry does with a row of the file (T-61). */
+export const CONTRACT_IMPORT_ACTION_LABELS: Record<ContractImportAction, string> = {
+  create: 'Новая линия',
+  update: 'Изменение',
+  unchanged: 'Без изменений',
+  error: 'Ошибка',
+}
+
+/** Captions of the contract import screen (T-61, ТЗ п. 14). */
+export const CONTRACT_IMPORT_LABELS = {
+  upload: 'Перетащите файл реестра договоров или нажмите, чтобы выбрать',
+  uploadHint: 'CSV или XLSX до 2 МиБ; первая строка — заголовки колонок',
+  chooseAnother: 'Выбрать другой файл',
+  check: 'Проверка файла',
+  apply: 'Импортировать',
+  applied: 'Договоры импортированы',
+  applyFailed: 'Импорт не выполнен',
+  previewFailed: 'Файл не проверен',
+  nothingToApply: 'В файле нет строк, которые что-то изменят',
+  preview: 'Предпросмотр: ничего не записано',
+  result: 'Результат импорта',
+  rowsTotal: 'строк',
+  created: 'новых линий',
+  updated: 'изменений',
+  unchanged: 'без изменений',
+  failed: 'с ошибкой',
+} as const
+
+/** Columns of the report of an import. */
+export const CONTRACT_IMPORT_COLUMN_LABELS = {
+  row: 'Строка',
+  school: 'Школа',
+  provider: 'Поставщик',
+  action: 'Действие',
+  changes: 'Изменения',
+} as const
 
 /** Target of a threshold profile (ADR-004): the most specific active one judges a measurement. */
 export const PROFILE_SCOPE_LABELS: Record<ThresholdProfileScope, string> = {
@@ -423,6 +474,15 @@ export const INCIDENT_METRIC_LABELS: Record<IncidentMetric, string> = {
   packet_loss_pct: 'Packet Loss',
   no_connection: SCHOOL_STATUS_LABELS.offline,
 }
+
+/** Whose lines an incident rule watches (T-59): every line, or the lines of one school in place of the global rule. */
+export const INCIDENT_RULE_SCOPE_LABELS: Record<IncidentRuleScope, string> = {
+  global: 'Вся область',
+  school: 'Школа',
+}
+
+/** A rule of the oblast in the list: it applies where a school has no rule of its own for the metric. */
+export const INCIDENT_RULE_GLOBAL_TARGET_LABEL = 'Все школы без своего правила'
 
 /** A profile or a schedule is switched off, never deleted: the next one of its chain applies (T-37). */
 export const CONFIG_ACTIVITY_LABELS = {
@@ -462,6 +522,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   password_reset: 'Сброс пароля',
   status_change: 'Смена статуса',
   export: 'Экспорт',
+  import: 'Импорт',
   transfer_error: 'Ошибка передачи',
 }
 
@@ -484,6 +545,7 @@ export const AUDIT_ENTITY_LABELS: Record<AuditEntityType, string> = {
   agent_release: 'Релиз агента',
   incident: 'Инцидент',
   appeal: 'Обращение',
+  appeal_template: 'Шаблон письма',
   export: 'Выгрузка',
 }
 
@@ -518,12 +580,24 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   lineId: 'Линия',
   room: 'Кабинет',
   contractNumber: 'Номер договора',
+  contractDate: 'Дата договора',
   contractDownMbps: 'Download по договору',
   contractUpMbps: 'Upload по договору',
+  lineIdentifier: 'Идентификатор линии',
+  fileName: 'Файл',
+  rows: 'Строк',
+  created: 'Создано линий',
+  updated: 'Изменено линий',
+  failed: 'Строк с ошибкой',
   thresholds: 'Пороги',
   slots: 'Слоты',
   workingHours: 'Рабочие часы',
   speedtest: 'Сервер замеров',
+  kind: 'Вид письма',
+  subject: 'Тема',
+  body: 'Текст',
+  aiInstructions: 'Указания модели',
+  isDefault: 'По умолчанию',
 }
 
 /** Empty value of a changed field in the audit log. */

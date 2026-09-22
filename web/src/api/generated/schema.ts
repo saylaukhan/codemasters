@@ -921,9 +921,29 @@ export interface paths {
         put?: never;
         /**
          * AI-черновик обращения поставщику
-         * @description Ничего не сохраняет и номер не присваивает. Контекст собирает сервер, в модель не уходят ФИО, телефоны и e-mail (ADR-011). Модель недоступна или не настроена — не ошибка: ai_generated=false, текст — пустой шаблон (T-47). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.
+         * @description Ничего не сохраняет и номер не присваивает. Письмо пишется по шаблону template_id (без него — по шаблону по умолчанию, T-60): сервер заполняет шаблон фактами, модель пишет по нему. Контекст собирает сервер, в модель не уходят ФИО, телефоны и e-mail (ADR-011). Модель недоступна или не настроена — не ошибка: ai_generated=false, текст — заполненный шаблон (T-47). Неизвестный incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый template_id — 422.
          */
         post: operations["generate_appeal_draft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/appeals/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Шаблоны писем для выбора в редакторе черновика
+         * @description Только действующие шаблоны, по умолчанию — первым (T-60).
+         */
+        get: operations["list_appeal_template_options"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -945,7 +965,7 @@ export interface paths {
         put?: never;
         /**
          * Отправить обращение: номер, письмо поставщику, PDF
-         * @description Номер присваивается здесь. Контекст сервер пересобирает за тот же период; статус после отправки — sent_to_provider. SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы — 422.
+         * @description Номер присваивается здесь. Контекст сервер пересобирает за тот же период; вид письма — по template_id черновика; статус после отправки — sent_to_provider. SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый template_id — 422.
          */
         post: operations["create_appeal"];
         delete?: never;
@@ -1333,12 +1353,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Правила формирования инцидентов */
+        /**
+         * Правила формирования инцидентов
+         * @description Порядок: правила области, затем правила школ по названию школы. Правило школы заменяет для её линий правило области по тому же показателю (T-59).
+         */
         get: operations["list_incident_rules"];
         put?: never;
         /**
          * Создать правило инцидентов
-         * @description Без consecutive_violations и duration_min — 422.
+         * @description Без consecutive_violations и duration_min — 422. Для scope=school обязателен school_id; неизвестная школа — 422.
          */
         post: operations["create_incident_rule"];
         delete?: never;
@@ -1362,9 +1385,113 @@ export interface paths {
         head?: never;
         /**
          * Изменить или отключить правило инцидентов
-         * @description Следующая детекция применяет новые значения (T-40). Если после изменения consecutive_violations и duration_min оба пусты — 422.
+         * @description Следующая детекция применяет новые значения (T-40). Если после изменения consecutive_violations и duration_min оба пусты — 422. Показатель, уровень и школа правила не меняются: другая цель — новое правило.
          */
         patch: operations["update_incident_rule"];
+        trace?: never;
+    };
+    "/api/admin/appeal-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Шаблоны писем поставщику: обращения и претензии
+         * @description Порядок: шаблон по умолчанию, затем по названию. Модель пишет письмо по шаблону, заполненному фактами обращения; без модели редактор открывается с заполненным шаблоном (ADR-011).
+         */
+        get: operations["list_appeal_templates"];
+        put?: never;
+        /**
+         * Создать шаблон письма
+         * @description Неизвестная подстановка в теме или тексте — 422 на поле. is_default переносит признак с прежнего шаблона по умолчанию.
+         */
+        post: operations["create_appeal_template"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/appeal-templates/placeholders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Подстановки шаблона письма
+         * @description Что сервер подставляет вместо {{имя}} в тему и текст шаблона.
+         */
+        get: operations["list_appeal_placeholders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/appeal-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить или отключить шаблон письма
+         * @description Действует со следующего черновика; отправленные письма не меняются. Шаблон по умолчанию нельзя отключить или лишить признака — сначала назначьте другой (409).
+         */
+        patch: operations["update_appeal_template"];
+        trace?: never;
+    };
+    "/api/admin/contracts/import/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Проверить файл договоров: что изменится, без записи
+         * @description Колонки файла (заголовок — первая строка; регистр и порядок не важны): School ID, Поставщик — обязательные; Идентификатор линии, Статус линии (основная/резервная), Тип подключения, Номер договора, Дата договора (ДД.ММ.ГГГГ), Download по договору, Upload по договору (Мбит/с) — по наличию. Пустая ячейка ничего не меняет. Строка находит линию по School ID и поставщику — и по идентификатору линии, если он есть; без такой линии строка создаёт новую: основную, если у школы её нет, иначе резервную. Нечитаемый файл, файл без обязательных колонок или другого формата — 422 на content. Ничего не записывается и в журнал не попадает.
+         */
+        post: operations["preview_contract_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/contracts/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Импортировать договоры в линии школ
+         * @description То же, что предпросмотр, но с записью: строки с ошибкой пропускаются, остальные применяются вместе. Пустая ячейка ничего не меняет; статус существующей линии файл не меняет. Одна запись в журнале аудита: файл, число строк, созданных и изменённых линий.
+         */
+        post: operations["run_contract_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/admin/agent-releases": {
@@ -1845,6 +1972,11 @@ export interface components {
              * @description Конец периода, не включая; для инцидента — restored_at или текущий момент
              */
             period_to: string;
+            /**
+             * Template Id
+             * @description Шаблон письма (обращение или претензия, T-60); пусто — шаблон по умолчанию. Неизвестный или отключённый — 422
+             */
+            template_id?: number | null;
             /** Subject */
             subject: string;
             /**
@@ -1874,6 +2006,13 @@ export interface components {
              */
             number: string;
             status: components["schemas"]["IncidentStatus"];
+            /** @description Обращение или претензия (T-60) */
+            kind: components["schemas"]["AppealKind"];
+            /**
+             * Template Id
+             * @description Шаблон, по которому написано письмо; пусто у писем до появления шаблонов
+             */
+            template_id: number | null;
             /** Subject */
             subject: string;
             /**
@@ -1916,7 +2055,7 @@ export interface components {
             text: string;
             /**
              * Ai Generated
-             * @description false — модель недоступна или не настроена: subject и text — пустой шаблон
+             * @description false — модель недоступна или не настроена: subject и text — шаблон, заполненный фактами
              */
             ai_generated: boolean;
             /**
@@ -1924,6 +2063,15 @@ export interface components {
              * @description appeals_email поставщика; пусто — адрес не задан, письмо не уйдёт
              */
             recipient_email: string | null;
+            /**
+             * Template Id
+             * @description Шаблон, по которому написано письмо (T-60)
+             */
+            template_id: number;
+            /** Template Name */
+            template_name: string;
+            /** @description Вид письма по шаблону: обращение или претензия */
+            kind: components["schemas"]["AppealKind"];
             context: components["schemas"]["AppealContext"];
         };
         /**
@@ -1960,6 +2108,11 @@ export interface components {
              * @description Конец периода, не включая; для инцидента — restored_at или текущий момент
              */
             period_to: string;
+            /**
+             * Template Id
+             * @description Шаблон письма (обращение или претензия, T-60); пусто — шаблон по умолчанию. Неизвестный или отключённый — 422
+             */
+            template_id?: number | null;
         };
         /**
          * AppealEventDetail
@@ -1982,6 +2135,8 @@ export interface components {
             /** Comment */
             comment: string | null;
         };
+        /** @enum {string} */
+        AppealKind: "appeal" | "claim";
         /**
          * AppealListItem
          * @description Row of the appeal list and of the provider cabinet (ТЗ п. 17, T-44).
@@ -1995,6 +2150,8 @@ export interface components {
              */
             number: string;
             status: components["schemas"]["IncidentStatus"];
+            /** @description Обращение или претензия (T-60) */
+            kind: components["schemas"]["AppealKind"];
             /** Subject */
             subject: string;
             /** Incident Id */
@@ -2041,6 +2198,161 @@ export interface components {
             page_size: number;
         };
         /**
+         * AppealPlaceholder
+         * @description One placeholder a template may use and what the server puts in its place.
+         */
+        AppealPlaceholder: {
+            /**
+             * Name
+             * @description Имя внутри {{…}}
+             * @example school_name
+             */
+            name: string;
+            /** Description */
+            description: string;
+        };
+        /**
+         * AppealPlaceholderList
+         * @description Every placeholder the server fills, in the order of the letter.
+         */
+        AppealPlaceholderList: {
+            /** Items */
+            items: components["schemas"]["AppealPlaceholder"][];
+        };
+        /**
+         * AppealTemplateCreate
+         * @description New template of a letter; ``is_default`` takes the mark from the current default.
+         */
+        AppealTemplateCreate: {
+            /**
+             * Name
+             * @example Претензионное письмо
+             */
+            name: string;
+            kind: components["schemas"]["AppealKind"];
+            /**
+             * Subject
+             * @description Тема письма с подстановками {{…}}
+             * @example Претензия по договору {{contract_number}}: {{school_code}}
+             */
+            subject: string;
+            /**
+             * Body
+             * @description Текст письма в Markdown с подстановками {{…}}: сервер заполняет их фактами обращения, модель пишет письмо по заполненному шаблону (ADR-011)
+             */
+            body: string;
+            /**
+             * Ai Instructions
+             * @description Что модель должна учесть сверх фактов: тон, ссылки на договор, требования
+             */
+            ai_instructions?: string | null;
+            /**
+             * Is Default
+             * @description Шаблон, который черновик берёт без выбора; он один
+             * @default false
+             */
+            is_default: boolean;
+        };
+        /**
+         * AppealTemplateDetail
+         * @description Template of a letter as the admin panel edits it.
+         */
+        AppealTemplateDetail: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            kind: components["schemas"]["AppealKind"];
+            /**
+             * Subject
+             * @description Тема письма с подстановками {{…}}
+             */
+            subject: string;
+            /**
+             * Body
+             * @description Текст письма в Markdown с подстановками {{…}}
+             */
+            body: string;
+            /** Ai Instructions */
+            ai_instructions: string | null;
+            /**
+             * Is Default
+             * @description Черновик без выбора шаблона пишется по нему
+             */
+            is_default: boolean;
+            /**
+             * Is Active
+             * @description Отключённый шаблон не предлагается, его письма остаются
+             */
+            is_active: boolean;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * AppealTemplateDetailPage
+         * @description Page of the templates: the default first, then by name.
+         */
+        AppealTemplateDetailPage: {
+            /** Items */
+            items: components["schemas"]["AppealTemplateDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * AppealTemplateOption
+         * @description Template to choose in the editor of a draft (T-47): active ones only.
+         */
+        AppealTemplateOption: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            kind: components["schemas"]["AppealKind"];
+            /** Is Default */
+            is_default: boolean;
+        };
+        /**
+         * AppealTemplateOptionPage
+         * @description Active templates, the default first.
+         */
+        AppealTemplateOptionPage: {
+            /** Items */
+            items: components["schemas"]["AppealTemplateOption"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * AppealTemplateUpdate
+         * @description Changes of a template; the default one cannot be switched off.
+         */
+        AppealTemplateUpdate: {
+            /** Name */
+            name?: string;
+            /** Kind */
+            kind?: components["schemas"]["AppealKind"];
+            /** Subject */
+            subject?: string;
+            /** Body */
+            body?: string;
+            /** Ai Instructions */
+            ai_instructions?: string | null;
+            /** Is Default */
+            is_default?: boolean;
+            /** Is Active */
+            is_active?: boolean;
+        };
+        /**
          * AppealUpdate
          * @description Status change or comment by the provider or a user; at least one of them.
          */
@@ -2054,9 +2366,9 @@ export interface components {
             comment?: string | null;
         };
         /** @enum {string} */
-        AuditAction: "login_success" | "login_failure" | "create" | "update" | "block" | "unblock" | "password_reset" | "status_change" | "export" | "transfer_error";
+        AuditAction: "login_success" | "login_failure" | "create" | "update" | "block" | "unblock" | "password_reset" | "status_change" | "export" | "import" | "transfer_error";
         /** @enum {string} */
-        AuditEntityType: "user" | "school" | "line" | "monitoring_point" | "school_contact" | "device" | "enrollment_code" | "region" | "provider" | "connection_type" | "threshold_profile" | "schedule" | "setting" | "incident_rule" | "agent_release" | "incident" | "appeal" | "export";
+        AuditEntityType: "user" | "school" | "line" | "monitoring_point" | "school_contact" | "device" | "enrollment_code" | "region" | "provider" | "connection_type" | "threshold_profile" | "schedule" | "setting" | "incident_rule" | "agent_release" | "incident" | "appeal" | "appeal_template" | "export";
         /**
          * AuditLogListItem
          * @description One audit record: who, when, what (T-39).
@@ -2205,6 +2517,109 @@ export interface components {
              * @example 7
              */
             window_days: number;
+        };
+        /** @enum {string} */
+        ContractImportAction: "create" | "update" | "unchanged" | "error";
+        /**
+         * ContractImportReport
+         * @description What the file did, or would do, to the lines of the schools.
+         */
+        ContractImportReport: {
+            /** File Name */
+            file_name: string;
+            /**
+             * Dry Run
+             * @description true — предпросмотр: ничего не записано
+             */
+            dry_run: boolean;
+            /**
+             * Rows Total
+             * @description Строк данных в файле без заголовка
+             */
+            rows_total: number;
+            /**
+             * Created
+             * @description Новых линий
+             */
+            created: number;
+            /**
+             * Updated
+             * @description Линий с изменёнными полями договора
+             */
+            updated: number;
+            /** Unchanged */
+            unchanged: number;
+            /**
+             * Failed
+             * @description Строк с ошибкой; они пропущены, остальные применены
+             */
+            failed: number;
+            /** Items */
+            items: components["schemas"]["ContractImportRow"][];
+        };
+        /**
+         * ContractImportRequest
+         * @description File of the registry: its name says the format, the content goes as base64.
+         */
+        ContractImportRequest: {
+            /**
+             * File Name
+             * @description Имя файла: .csv или .xlsx
+             * @example contracts.xlsx
+             */
+            file_name: string;
+            /**
+             * Content
+             * Format: base64
+             * @description Содержимое файла в base64, не больше 2 МиБ. Колонки файла (заголовок — первая строка; регистр и порядок не важны): School ID, Поставщик — обязательные; Идентификатор линии, Статус линии (основная/резервная), Тип подключения, Номер договора, Дата договора (ДД.ММ.ГГГГ), Download по договору, Upload по договору (Мбит/с) — по наличию. Пустая ячейка ничего не меняет.
+             */
+            content: string;
+        };
+        /**
+         * ContractImportRow
+         * @description Verdict of the import on one row of the file.
+         */
+        ContractImportRow: {
+            /**
+             * Row
+             * @description Номер строки в файле; заголовок — строка 1
+             */
+            row: number;
+            /**
+             * School Code
+             * @description School ID из файла
+             */
+            school_code: string | null;
+            /**
+             * School Id
+             * @description Школа, если найдена
+             */
+            school_id: number | null;
+            /** School Name */
+            school_name: string | null;
+            /**
+             * Provider Name
+             * @description Поставщик из файла
+             */
+            provider_name: string | null;
+            /**
+             * Line Id
+             * @description Найденная или созданная линия
+             */
+            line_id: number | null;
+            action: components["schemas"]["ContractImportAction"];
+            /**
+             * Changes
+             * @description Изменённые поля линии {поле: {old, new}}; у новой линии old пустой
+             */
+            changes: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Error
+             * @description Почему строка не применена
+             */
+            error: string | null;
         };
         /**
          * CurrentUser
@@ -3101,6 +3516,16 @@ export interface components {
             name: string;
             metric: components["schemas"]["IncidentMetric"];
             /**
+             * @description global — все линии области; school — линии одной школы, для них правило заменяет глобальное по тому же показателю
+             * @default global
+             */
+            scope: components["schemas"]["IncidentRuleScope"];
+            /**
+             * School Id
+             * @description Только и обязательно при scope=school
+             */
+            school_id?: number | null;
+            /**
              * Consecutive Violations
              * @description N нарушений подряд для инцидента
              * @example 3
@@ -3129,6 +3554,19 @@ export interface components {
             /** Name */
             name: string;
             metric: components["schemas"]["IncidentMetric"];
+            scope: components["schemas"]["IncidentRuleScope"];
+            /**
+             * School Id
+             * @description Только при scope=school
+             */
+            school_id: number | null;
+            /**
+             * School Code
+             * @description School ID; только при scope=school
+             */
+            school_code: string | null;
+            /** School Name */
+            school_name: string | null;
             /**
              * Consecutive Violations
              * @description N нарушений подряд для инцидента
@@ -3152,7 +3590,7 @@ export interface components {
         };
         /**
          * IncidentRuleDetailPage
-         * @description Page of the incident rules.
+         * @description Page of the incident rules: the rules of the oblast first, then those of schools.
          */
         IncidentRuleDetailPage: {
             /** Items */
@@ -3164,9 +3602,12 @@ export interface components {
             /** Page Size */
             page_size: number;
         };
+        /** @enum {string} */
+        IncidentRuleScope: "global" | "school";
         /**
          * IncidentRuleUpdate
-         * @description Changes of a rule; ``metric`` is fixed: another metric is a new rule.
+         * @description Changes of a rule; ``metric``, ``scope`` and the school are fixed: another target is a
+         *     new rule.
          */
         IncidentRuleUpdate: {
             /** Name */
@@ -7796,6 +8237,49 @@ export interface operations {
             };
         };
     };
+    list_appeal_template_options: {
+        parameters: {
+            query?: {
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealTemplateOptionPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_appeals: {
         parameters: {
             query?: {
@@ -9280,6 +9764,10 @@ export interface operations {
     list_incident_rules: {
         parameters: {
             query?: {
+                scope?: components["schemas"]["IncidentRuleScope"] | null;
+                school_id?: number | null;
+                /** @description Название правила, школа или School ID */
+                q?: string | null;
                 /** @description Номер страницы, с 1 */
                 page?: number;
                 /** @description Размер страницы */
@@ -9393,6 +9881,268 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_appeal_templates: {
+        parameters: {
+            query?: {
+                /** @description Название или его часть */
+                q?: string | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealTemplateDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_appeal_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppealTemplateCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealTemplateDetail"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_appeal_placeholders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealPlaceholderList"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_appeal_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppealTemplateUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealTemplateDetail"];
+                };
+            };
+            /** @description Шаблон письма не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Шаблон по умолчанию нельзя отключить или лишить признака (type default_template_required) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_contract_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractImportReport"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    run_contract_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractImportReport"];
                 };
             };
             /** @description Ошибка валидации запроса */

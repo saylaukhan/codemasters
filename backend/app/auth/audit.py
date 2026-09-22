@@ -65,7 +65,10 @@ ENTITY_BY_SEGMENT: dict[str, AuditEntityType] = {
     "schedules": "schedule",
     "settings": "setting",
     "incident-rules": "incident_rule",
+    "appeal-templates": "appeal_template",
     "agent-releases": "agent_release",
+    # The import of a contract registry is an ``import`` of lines (T-61).
+    "contracts": "line",
 }
 # Action segments after the id of an entity.
 ACTION_BY_SEGMENT: dict[str, AuditAction] = {
@@ -73,8 +76,9 @@ ACTION_BY_SEGMENT: dict[str, AuditAction] = {
     "unblock": "unblock",
     "status": "status_change",
 }
-# POST requests that change nothing: an AI draft of an appeal is only shown to its author.
-NOT_CHANGING_SEGMENTS = frozenset({"draft"})
+# POST requests that change nothing: an AI draft of an appeal is only shown to its author, a
+# preview of an import reports what the file would change and writes nothing (T-61).
+NOT_CHANGING_SEGMENTS = frozenset({"draft", "preview"})
 
 # Rejections of an agent request that are transfer errors (ТЗ п. 12). 409 is not one: a
 # duplicate tells the agent the record is already stored (ADR-006).

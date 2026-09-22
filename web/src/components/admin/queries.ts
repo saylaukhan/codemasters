@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import {
+  createAppealTemplate,
   createConnectionType,
   createIncidentRule,
   createProvider,
@@ -8,6 +9,8 @@ import {
   createSchedule,
   createThresholdProfile,
   createUser,
+  getAppealPlaceholders,
+  getAppealTemplates,
   getAuditLog,
   getConnectionTypes,
   getIncidentRules,
@@ -17,6 +20,9 @@ import {
   getSettings,
   getThresholdProfiles,
   getUsers,
+  importContracts,
+  previewContractImport,
+  updateAppealTemplate,
   updateConnectionType,
   updateIncidentRule,
   updateProvider,
@@ -49,6 +55,8 @@ import {
   updateSchoolPoint,
 } from '../../api/schools'
 import type {
+  AppealTemplateCreate,
+  AppealTemplateUpdate,
   LineCreate,
   LineUpdate,
   MonitoringPointCreate,
@@ -245,15 +253,53 @@ export const useSchedules = (view: AdminListView) =>
 
 export const useSaveSchedule = () => useSave(createSchedule, updateSchedule)
 
-// Incident rules (T-40): the next detection takes the new values.
+// Incident rules (T-40, T-59): the next detection takes the new values; the search finds a rule or a school.
 export const useIncidentRules = (view: AdminListView) =>
   useQuery({
     queryKey: ['admin', 'incident-rules', view],
-    queryFn: ({ signal }) => getIncidentRules(pageOnly(view), signal),
+    queryFn: ({ signal }) => getIncidentRules(listQuery(view), signal),
     placeholderData: keepPreviousData,
   })
 
 export const useSaveIncidentRule = () => useSave(createIncidentRule, updateIncidentRule)
+
+// Contract import (T-61): the preview writes nothing; the import changes lines shown across the panel.
+export const usePreviewContractImport = () => useMutation({ mutationFn: previewContractImport })
+
+export const useImportContracts = () => {
+  const queryClient = useQueryClient()
+  return useMutation({ mutationFn: importContracts, onSuccess: () => invalidateShown(queryClient) })
+}
+
+// Letter templates (T-60): the next draft is written by the changed template; sent letters keep their text.
+export const useAppealTemplates = (view: AdminListView) =>
+  useQuery({
+    queryKey: ['admin', 'appeal-templates', view],
+    queryFn: ({ signal }) => getAppealTemplates(listQuery(view), signal),
+    placeholderData: keepPreviousData,
+  })
+
+export const useSaveAppealTemplate = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (save: Save<AppealTemplateCreate, AppealTemplateUpdate>) =>
+      save.id === undefined ? createAppealTemplate(save.body) : updateAppealTemplate(save.id, save.body),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin', 'appeal-templates'] }),
+        queryClient.invalidateQueries({ queryKey: ['appeals', 'templates'] }),
+      ]),
+  })
+}
+
+/** Placeholders of a template: a fixed vocabulary of the server, asked once. */
+export const useAppealPlaceholders = () =>
+  useQuery({
+    queryKey: ['admin', 'appeal-templates', 'placeholders'],
+    queryFn: ({ signal }) => getAppealPlaceholders(signal),
+    staleTime: Infinity,
+    select: (list) => list.items,
+  })
 
 export const useSystemSettings = () =>
   useQuery({ queryKey: ['admin', 'settings'], queryFn: ({ signal }) => getSettings(signal) })

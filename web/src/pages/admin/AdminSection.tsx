@@ -8,8 +8,10 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { SECTION_LABELS, type AdminTabKey } from '../../lib/labels'
 import { NotFoundPage } from '../section/NotFoundPage'
+import { AppealTemplatesPage } from './AppealTemplatesPage'
 import { AuditLogPage, EventLogPage } from './AuditLogPage'
 import { ConnectionTypesPage } from './ConnectionTypesPage'
+import { ContractsPage } from './ContractsPage'
 import { DevicesAdminPage } from './DevicesAdminPage'
 import { IncidentRulesPage } from './IncidentRulesPage'
 import { ProvidersPage } from './ProvidersPage'
@@ -22,6 +24,7 @@ import { UsersPage } from './UsersPage'
 
 const PAGES: Record<AdminTabKey, ComponentType> = {
   schools: SchoolsAdminPage,
+  contracts: ContractsPage,
   devices: DevicesAdminPage,
   users: UsersPage,
   regions: RegionsPage,
@@ -30,6 +33,7 @@ const PAGES: Record<AdminTabKey, ComponentType> = {
   thresholds: ThresholdsPage,
   schedules: SchedulesPage,
   'incident-rules': IncidentRulesPage,
+  'appeal-templates': AppealTemplatesPage,
   settings: SettingsPage,
   audit: AuditLogPage,
   events: EventLogPage,

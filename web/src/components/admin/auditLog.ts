@@ -21,6 +21,7 @@ export const KIND_ACTIONS: Record<AuditLogKind, readonly AuditAction[]> = {
     'password_reset',
     'status_change',
     'export',
+    'import',
   ],
   events: ['transfer_error'],
 }

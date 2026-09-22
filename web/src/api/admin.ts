@@ -1,13 +1,16 @@
 // References of the administration (T-34): districts and cities, providers, connection types; threshold
-// profiles, schedules and settings (T-37); users (T-38); incident rules (T-40). Nothing is deleted: schools and
-// lines refer to the references, a profile, a schedule or a rule is switched off, a user is blocked; a PATCH changes
-// only the fields present.
+// profiles, schedules and settings (T-37); users (T-38); incident rules (T-40); letter templates (T-60). Nothing is
+// deleted: schools and lines refer to the references, a profile, a schedule, a rule or a template is switched off, a
+// user is blocked; a PATCH changes only the fields present.
 // The audit log is read-only (T-39).
 import { apiRequest, type QueryValue } from './client'
 import type { components } from './generated/schema'
 import type {
+  AppealTemplateCreate,
+  AppealTemplateUpdate,
   ConnectionTypeCreate,
   ConnectionTypeUpdate,
+  ContractImportRequest,
   IncidentRuleCreate,
   IncidentRuleUpdate,
   ProviderCreate,
@@ -81,6 +84,28 @@ export const createIncidentRule = (body: IncidentRuleCreate) =>
 
 export const updateIncidentRule = (ruleId: number, body: IncidentRuleUpdate) =>
   apiRequest<Schemas['IncidentRuleDetail']>(`/admin/incident-rules/${ruleId}`, { method: 'PATCH', body })
+
+export const getAppealTemplates = (query: Record<string, QueryValue>, signal?: AbortSignal) =>
+  apiRequest<Schemas['AppealTemplateDetailPage']>('/admin/appeal-templates', { query, signal })
+
+/** What the server puts in place of `{{name}}` in a template: shown next to its editor. */
+export const getAppealPlaceholders = (signal?: AbortSignal) =>
+  apiRequest<Schemas['AppealPlaceholderList']>('/admin/appeal-templates/placeholders', { signal })
+
+export const createAppealTemplate = (body: AppealTemplateCreate) =>
+  apiRequest<Schemas['AppealTemplateDetail']>('/admin/appeal-templates', { method: 'POST', body })
+
+/** The default template cannot be switched off or demoted: the API answers 409. */
+export const updateAppealTemplate = (templateId: number, body: AppealTemplateUpdate) =>
+  apiRequest<Schemas['AppealTemplateDetail']>(`/admin/appeal-templates/${templateId}`, { method: 'PATCH', body })
+
+/** What the registry would change, without writing (T-61): the same report the import returns. */
+export const previewContractImport = (body: ContractImportRequest) =>
+  apiRequest<Schemas['ContractImportReport']>('/admin/contracts/import/preview', { method: 'POST', body })
+
+/** The registry into the lines: rows with an error are skipped, the others applied together. */
+export const importContracts = (body: ContractImportRequest) =>
+  apiRequest<Schemas['ContractImportReport']>('/admin/contracts/import', { method: 'POST', body })
 
 export const getSettings = (signal?: AbortSignal) =>
   apiRequest<Schemas['SettingsDetail']>('/admin/settings', { signal })
