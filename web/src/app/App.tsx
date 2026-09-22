@@ -10,6 +10,7 @@ import { PasswordResetPage } from '../pages/login/PasswordResetPage'
 import { LandingRoute } from '../pages/section/LandingRoute'
 import { NotFoundPage } from '../pages/section/NotFoundPage'
 import { SectionRoute } from '../pages/section/SectionRoute'
+import { WallPage } from '../pages/wall/WallPage'
 import { AppLayout } from './AppLayout'
 import { accessControlProvider, authProvider } from './authProvider'
 import { dataProvider } from './dataProvider'
@@ -54,6 +55,16 @@ export function App() {
                 <Route key={section.key} path={`${section.path}/*`} element={<SectionRoute section={section} />} />
               ))}
               <Route path="*" element={<NotFoundPage />} />
+            </Route>
+            {/* The wall (T-71): inside the authenticated part, outside AppLayout — no header, no navigation. */}
+            <Route
+              element={
+                <Authenticated key="wall" fallback={<CatchAllNavigate to="/login" />}>
+                  <Outlet />
+                </Authenticated>
+              }
+            >
+              <Route path="/wall" element={<WallPage />} />
             </Route>
             <Route
               element={

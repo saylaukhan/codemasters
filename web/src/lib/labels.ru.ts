@@ -1161,3 +1161,11 @@ export const ROLLOUT_LABELS = {
   assignFailed: 'Обновление не назначено',
   assignNoRelease: 'Нет действующего релиза агента: опубликуйте его в администрировании',
 } as const
+
+/** Captions of the wall of the situation room (T-71, DESIGN.md §3.33). */
+export const WALL_LABELS = {
+  ticker: 'Лента',
+  tickerEmpty: 'Событий пока нет',
+  hint: 'Автообновление 60 с · Esc возвращает в панель',
+  updated: (time: string) => `Данные на ${time}`,
+} as const

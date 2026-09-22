@@ -376,3 +376,19 @@ body {
   outline: var(--focus-ring-width) solid var(--accent);
   outline-offset: var(--border-width);
 }
+
+/* Wall of the situation room (T-71, DESIGN.md §3.33): sizes only — the wall reads from six metres,
+ * so its subtree redefines the type scale of the panel by these names and borrows every colour. */
+:root {
+  --wall-padding-block: 28px;
+  --wall-padding-inline: 40px;
+  --wall-aside-width: 380px;
+  --wall-mark-size: 40px;
+  --radius-wall-card: 20px;
+  --font-size-wall-figure: 52px;
+  --font-size-wall-clock: 44px;
+  --font-size-wall-verdict: 34px;
+  --font-size-wall-title: 26px;
+  --font-size-wall-body: 18px;
+  --font-size-wall-caption: 15px;
+}
