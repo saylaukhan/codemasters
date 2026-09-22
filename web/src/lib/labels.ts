@@ -268,6 +268,16 @@ export const IFACE_LABELS: Record<IfaceType, string> = {
   other: 'Другое',
 }
 
+/** Monitoring point of a school: one of them is the point the school is judged by (ТЗ п. 10). */
+export const MONITORING_POINT_LABELS = {
+  primary: 'Главная точка школы',
+} as const
+
+/** Note next to the interface of a measurement: Wi-Fi is not read as the quality of the line. */
+export const IFACE_NOTE_LABELS = {
+  wifi: 'Не оценивает линию',
+} as const
+
 /** Period presets of charts and analytics (ТЗ п. 5); «Свой период» is a separate control. */
 export const PERIOD_LABELS: Record<Exclude<AnalyticsPeriod, 'custom'>, string> = {
   today: 'Сегодня',
@@ -623,6 +633,13 @@ export const FACT_BAR_LABELS = {
 export const RESPONSIVE_TABLE_LABELS = {
   sort: 'Сортировка',
   defaultOrder: 'По умолчанию',
+} as const
+
+/** Rating of «Аналитика»: a phone card carries the place in place of the status pill (§3.12). */
+export const RATING_LABELS = {
+  place: 'Место',
+  placeOf: (rank: string) => `Место ${rank}`,
+  wholeRegion: 'Вся ВКО',
 } as const
 
 /** Controls of the side navigation and of its drawer (DESIGN.md §3.5, §3.6, §9.3). */

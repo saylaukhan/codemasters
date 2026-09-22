@@ -1,4 +1,4 @@
-import { DatePicker, Select, Table, type TableColumnsType } from 'antd'
+import { DatePicker, Select } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import { SearchX } from 'lucide-react'
 import { useCallback, useMemo } from 'react'
@@ -24,6 +24,7 @@ import { Button } from '../../components/ui/Button'
 import { ContentSkeleton } from '../../components/ui/ContentSkeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
+import { ResponsiveTable, type ResponsiveColumn } from '../../components/ui/ResponsiveTable'
 import { SearchInput } from '../../components/ui/SearchInput'
 import { formatDateTime, NO_VALUE } from '../../lib/format'
 import { AUDIT_ACTION_LABELS, AUDIT_ENTITY_LABELS, AUDIT_ERROR_LABELS } from '../../lib/labels'
@@ -34,19 +35,21 @@ const ACTION_OPTIONS = KIND_ACTIONS.audit.map((action) => ({ value: action, labe
 
 const errorLabel = (errorType: string | null) => (errorType ? (AUDIT_ERROR_LABELS[errorType] ?? errorType) : null)
 
-const WHEN: TableColumnsType<AuditLogListItem>[number] = {
+const WHEN: ResponsiveColumn<AuditLogListItem> = {
   key: 'when',
   title: 'Когда',
+  priority: 'primary',
   fixed: 'left',
   render: (_, record) => <span className={styles.code}>{formatDateTime(record.createdAt)}</span>,
 }
 
 /** «Аудит»: who, when, what — sign-ins, changes with their fields, blocks and exports (ТЗ п. 12, п. 16). */
-const AUDIT_COLUMNS: TableColumnsType<AuditLogListItem> = [
+const AUDIT_COLUMNS: readonly ResponsiveColumn<AuditLogListItem>[] = [
   WHEN,
   {
     key: 'who',
     title: 'Кто',
+    priority: 'primary',
     render: (_, record) => (
       <span className={styles.stack}>
         <span className={styles.name}>{record.userEmail ?? NO_VALUE}</span>
@@ -57,6 +60,7 @@ const AUDIT_COLUMNS: TableColumnsType<AuditLogListItem> = [
   {
     key: 'action',
     title: 'Действие',
+    priority: 'primary',
     render: (_, record) => (
       <span className={styles.stack}>
         <span>{AUDIT_ACTION_LABELS[record.action]}</span>
@@ -75,6 +79,7 @@ const AUDIT_COLUMNS: TableColumnsType<AuditLogListItem> = [
   {
     key: 'changes',
     title: 'Изменения',
+    priority: 'minor',
     render: (_, record) => {
       const lines = changeLines(record.changes)
       if (lines.length === 0) return <span className={styles.muted}>{NO_VALUE}</span>
@@ -92,7 +97,7 @@ const AUDIT_COLUMNS: TableColumnsType<AuditLogListItem> = [
 ]
 
 /** «События»: rejected requests of agents — an unknown token, a blocked device, invalid data (ТЗ п. 12). */
-const EVENT_COLUMNS: TableColumnsType<AuditLogListItem> = [
+const EVENT_COLUMNS: readonly ResponsiveColumn<AuditLogListItem>[] = [
   WHEN,
   {
     key: 'device',
@@ -113,6 +118,19 @@ const EVENT_COLUMNS: TableColumnsType<AuditLogListItem> = [
     render: (_, record) => <span className={styles.code}>{record.ip ?? NO_VALUE}</span>,
   },
 ]
+
+/** Phone card of the two logs (DESIGN.md §3.12, step 3): the action heads it, the rest are pairs. */
+const CARD = {
+  audit: {
+    title: (record: AuditLogListItem) => AUDIT_ACTION_LABELS[record.action],
+    description: (record: AuditLogListItem) =>
+      `${formatDateTime(record.createdAt)} · ${record.userEmail ?? NO_VALUE}`,
+  },
+  events: {
+    title: (record: AuditLogListItem) => formatDateTime(record.createdAt),
+    description: (record: AuditLogListItem) => errorLabel(record.errorType) ?? undefined,
+  },
+} as const
 
 const EMPTY: Record<AuditLogKind, { title: string; description: string }> = {
   audit: {
@@ -158,10 +176,11 @@ function LogPage({ kind }: { kind: AuditLogKind }) {
       <EmptyState title={EMPTY[kind].title} description={EMPTY[kind].description} />
     )
     return (
-      <Table<AuditLogListItem>
+      <ResponsiveTable<AuditLogListItem>
         rowKey="id"
         size="middle"
         columns={kind === 'audit' ? AUDIT_COLUMNS : EVENT_COLUMNS}
+        card={CARD[kind]}
         dataSource={log.data.items}
         loading={log.isFetching && log.isPlaceholderData}
         scroll={{ x: 'max-content' }}

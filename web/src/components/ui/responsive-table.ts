@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 // Rules of `ResponsiveTable` (DESIGN.md §3.12, §9.3): which columns survive at which width and
 // which of them become the «подпись — значение» pairs of a phone card. Pure, so the three steps
 // of §3.12 are checked without a DOM; the component only renders what these return.
@@ -107,4 +109,31 @@ export function pageRows<T>(rows: readonly T[], page: CardPage | undefined): T[]
   if (!page || rows.length <= page.pageSize) return [...rows]
   const start = (page.current - 1) * page.pageSize
   return rows.slice(start, start + page.pageSize)
+}
+
+// An AntD column is a union of shapes; reading a cell back needs only `dataIndex` and `render`,
+// so the wrapper looks at them structurally instead of narrowing the union at every call.
+interface Renderable {
+  dataIndex?: unknown
+  render?: unknown
+}
+
+const cellValue = (column: Renderable, row: object): unknown => {
+  const { dataIndex } = column
+  if (dataIndex === undefined || dataIndex === null) return undefined
+  const path: unknown[] = Array.isArray(dataIndex) ? dataIndex : [dataIndex]
+  return path.reduce<unknown>((value, step) => (value as Record<string, unknown> | undefined)?.[String(step)], row)
+}
+
+/**
+ * The value of one card pair: the column's own `render` when it has one, the raw field otherwise.
+ * `AdminTable` builds its card out of the columns its page handed it, so this is exported.
+ */
+export function columnContent<T extends object>(column: object, row: T, index: number): ReactNode {
+  const value = cellValue(column as Renderable, row)
+  const { render } = column as Renderable
+  if (typeof render === 'function') {
+    return (render as (value: unknown, row: T, index: number) => ReactNode)(value, row, index)
+  }
+  return value as ReactNode
 }

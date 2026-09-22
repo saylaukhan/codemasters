@@ -1,5 +1,4 @@
 import { useNotification } from '@refinedev/core'
-import { Table, type TableProps } from 'antd'
 import { useState } from 'react'
 
 import { ApiError } from '../../api/client'
@@ -9,6 +8,7 @@ import { EXPORT_FORMAT_LABELS, EXPORT_MODE_LABELS } from '../../lib/labels'
 import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
 import { ErrorState } from '../ui/ErrorState'
+import { ResponsiveTable, type ResponsiveColumn } from '../ui/ResponsiveTable'
 import { ExportStatusBadge } from '../ui/StatusBadge'
 import styles from './Exports.module.css'
 import { useDownloadExport, useExports } from './queries'
@@ -38,7 +38,23 @@ export function ExportList() {
         }),
     })
 
-  const columns: TableProps<ExportJob>['columns'] = [
+  const file = (job: ExportJob) =>
+    job.status === 'ready' ? (
+      <Button
+        kind="link"
+        size="small"
+        loading={download.isPending && download.variables?.id === job.id}
+        onClick={() => save(job)}
+      >
+        Скачать
+      </Button>
+    ) : (
+      NO_VALUE
+    )
+
+  // Priorities of DESIGN.md §3.12: what was exported heads the phone card, the period is its
+  // description and «Скачать» its only action; «Хранится до» goes first when the width runs out.
+  const columns: readonly ResponsiveColumn<ExportJob>[] = [
     {
       key: 'created',
       title: 'Создана',
@@ -47,11 +63,13 @@ export function ExportList() {
     {
       key: 'data',
       title: 'Данные',
+      priority: 'primary',
       render: (_, job) => `${EXPORT_MODE_LABELS[job.mode]} · ${EXPORT_FORMAT_LABELS[job.format]}`,
     },
     {
       key: 'period',
       title: 'Период',
+      priority: 'primary',
       render: (_, job) => (
         <span className={styles.number}>
           {formatDate(job.periodFrom)} — {formatDate(lastDay(job.periodTo))}
@@ -67,6 +85,7 @@ export function ExportList() {
     {
       key: 'status',
       title: 'Статус',
+      priority: 'primary',
       render: (_, job) => (
         <div className={styles.status}>
           <ExportStatusBadge status={job.status} />
@@ -77,27 +96,12 @@ export function ExportList() {
     {
       key: 'expires',
       title: 'Хранится до',
+      priority: 'minor',
       render: (_, job) => (
         <span className={styles.number}>{job.expiresAt ? formatDate(job.expiresAt) : NO_VALUE}</span>
       ),
     },
-    {
-      key: 'file',
-      title: 'Файл',
-      render: (_, job) =>
-        job.status === 'ready' ? (
-          <Button
-            kind="link"
-            size="small"
-            loading={download.isPending && download.variables?.id === job.id}
-            onClick={() => save(job)}
-          >
-            Скачать
-          </Button>
-        ) : (
-          NO_VALUE
-        ),
-    },
+    { key: 'file', title: 'Файл', priority: 'primary', render: (_, job) => file(job) },
   ]
 
   return (
@@ -106,13 +110,19 @@ export function ExportList() {
       {exports.isError ? (
         <ErrorState error={exports.error} onRetry={() => void exports.refetch()} />
       ) : (
-        <Table<ExportJob>
+        <ResponsiveTable<ExportJob>
           rowKey="id"
           size="middle"
           columns={columns}
           dataSource={exports.data?.items}
           loading={exports.isPending}
           scroll={{ x: 'max-content' }}
+          card={{
+            title: (job) => `${EXPORT_MODE_LABELS[job.mode]} · ${EXPORT_FORMAT_LABELS[job.format]}`,
+            status: (job) => <ExportStatusBadge status={job.status} />,
+            description: (job) => `${formatDate(job.periodFrom)} — ${formatDate(lastDay(job.periodTo))}`,
+            action: file,
+          }}
           locale={{
             emptyText: (
               <EmptyState
