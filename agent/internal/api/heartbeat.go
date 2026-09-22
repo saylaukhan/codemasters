@@ -17,10 +17,25 @@ type Heartbeat struct {
 	AgentVersion string    `json:"agent_version"`
 }
 
-// SendHeartbeat sends one heartbeat; the server answers 204. A network error
-// or a timeout means there is no connection, an answer of the server means
-// there is one (ТЗ п. 2, ADR-006).
-func (c *Client) SendHeartbeat(ctx context.Context, sentAt time.Time) error {
+// HeartbeatResponse is the answer of POST /api/devices/heartbeat
+// (backend/app/schemas/agent.py HeartbeatResponse): what the server asks of
+// the agent besides its schedule.
+type HeartbeatResponse struct {
+	// MeasureRequestedAt is when an administrator asked for a measurement in
+	// the panel (T-79); nil when nothing is asked for. The server repeats the
+	// same moment in every answer until the measurement reaches it, so the
+	// agent tells a new request from a repeated one by this moment alone.
+	MeasureRequestedAt *time.Time `json:"measure_requested_at,omitempty"`
+}
+
+// SendHeartbeat sends one heartbeat and returns what the server asks of the
+// agent. A network error or a timeout means there is no connection, an answer
+// of the server means there is one (ТЗ п. 2, ADR-006).
+func (c *Client) SendHeartbeat(ctx context.Context, sentAt time.Time) (HeartbeatResponse, error) {
 	body := Heartbeat{SentAt: sentAt, AgentVersion: buildinfo.Version}
-	return c.do(ctx, http.MethodPost, "/devices/heartbeat", body, nil)
+	var resp HeartbeatResponse
+	if err := c.do(ctx, http.MethodPost, "/devices/heartbeat", body, &resp); err != nil {
+		return HeartbeatResponse{}, err
+	}
+	return resp, nil
 }
