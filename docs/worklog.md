@@ -37,6 +37,37 @@
 ```
 
 
+### 2026-09-22 · T-83 · Провайдер LLM DeepSeek
+Сделано: третий провайдер адаптера T-46 — `DeepSeekProvider` в
+`backend/app/services/llm/deepseek.py`: `POST {LLM_URL}/chat/completions` в формате OpenAI, ключ
+в заголовке `Authorization: Bearer`, адрес по умолчанию `https://api.deepseek.com`, модель по
+умолчанию `deepseek-chat`, системный промпт T-47 — первым сообщением с ролью `system`, текст
+черновика — `choices[0].message.content` (`reasoning_content` у `deepseek-reasoner`
+отбрасывается), `stream: false`, `max_tokens` — тот же `MAX_OUTPUT_TOKENS`. Выбор —
+`LLM_PROVIDER=deepseek` в `get_provider()`, те же `LLM_API_KEY`, `LLM_MODEL`, `LLM_URL`; без
+ключа — тот же 503 `llm_not_configured`, что у Claude; ответ без текста — 503 `llm_unavailable`;
+ключ маскирует базовый класс. Логика обращений (T-47) не тронута; новых зависимостей, миграций и
+изменений контракта нет. Документация: `.env.example`, `docs/product/admin-guide.md`,
+`docs/product/deploy-single-server.md`, `README.md`, задача T-83 в `docs/tasks/README.md`.
+Тесты — `backend/tests/test_llm_provider.py`, 14 случаев вместо 7, без сети и без БД: выбор по
+настройке, адрес, заголовок и тело запроса; системное сообщение первым и произвольный `LLM_URL`
+с моделью; без ключа — 503 у обоих сетевых провайдеров; ключ не попадает в лог и в ответ у
+обоих; ответ без текста (`tool_use` у Claude, `content: null` у reasoner, пустые `choices`) —
+503, а не 500. Слияние: d2182b6.
+Чек-лист: `make check-backend` по частям на `backend/.venv` (Python 3.12.3): `ruff check` и
+`ruff format --check` (265 файлов) чисто, `mypy app` — 176 файлов без замечаний, `pytest` —
+120 passed, 2 skipped, 317 errors за 58,8 с; все 317 — одна причина, нет Docker-сокета для
+testcontainers, упавших тестов нет; 14 тестов адаптера — 0,14 с. `check-agent` и `check-web` не
+запускались — файлов агента и панели задача не касается. Пункты про миграции, эндпоинт, агента и
+UI — н/п. Diff 199 строк.
+Не сделано: живого запроса к `api.deepseek.com` не было — документация DeepSeek из сессии не
+открывается (прокси отвечает 403), формат запроса и ответа Chat Completions API взят по памяти и
+совпадает с форматом OpenAI; проверить одним запросом на стенде — строка в
+docs/known-limitations.md. Выбор провайдера по-прежнему только переменными окружения
+(ограничение T-46 остаётся).
+Потрачено / Застрял на: ~1 час. Не застревал; `developing` за время сессии ушёл на 119 коммитов
+вперёд, ветка пересоздана от свежего head до первого коммита.
+
 ### 2026-09-21 · Прогон LOCAL-CHECKS.md пп. 1–6 и 8: `make check` зелёный, аналитика вне бюджета
 Слияние: e042c72. Перед ним проверки прогнаны ещё раз на слитом дереве: `check-agent` и линтеры
 бэкенда зелёные; `pytest` под testcontainers не идёт — в песочнице агента нет
