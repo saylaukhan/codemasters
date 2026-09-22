@@ -56,7 +56,14 @@ async def an_agent(session: AsyncSession, client: AsyncClient, code: str = "VKO-
 
 
 async def rule_of(session: AsyncSession, metric: str) -> IncidentRule:
-    return (await session.scalars(select(IncidentRule).where(IncidentRule.metric == metric))).one()
+    """The rule of the oblast for ``metric``: the one the migration created."""
+    return (
+        await session.scalars(
+            select(IncidentRule).where(
+                IncidentRule.metric == metric, IncidentRule.scope == "global"
+            )
+        )
+    ).one()
 
 
 async def incidents_of(session: AsyncSession, line: Line) -> list[Incident]:
@@ -280,6 +287,73 @@ async def test_silence_in_working_hours_for_30_minutes_is_no_connection(
     # While the line stays silent the incident is moved on, not opened again.
     later = await detect_line(session, line.id, now=NOW + timedelta(minutes=5))
     assert later.updated == [incident.id] and later.opened == []
+
+
+async def test_a_rule_of_a_school_replaces_the_global_rule_of_its_metric_for_its_lines_only(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """T-59: two violations open an incident at the school with its own rule, not elsewhere."""
+    await create_settings(session)
+    satellite = await an_agent(session, api_client, code="VKO-I-SAT")
+    ordinary = await an_agent(session, api_client, code="VKO-I-ORD")
+    own = IncidentRule(
+        name="Download по спутнику",
+        metric="download_mbps",
+        scope="school",
+        school_id=satellite.line.school_id,
+        consecutive_violations=2,
+        recovery_normal_count=1,
+    )
+    session.add(own)
+    await session.flush()
+
+    assert (await satellite.measure(SLOW)).opened == []
+    by_own = (await satellite.measure(SLOW)).opened
+    assert (await ordinary.measure(SLOW)).opened == []
+    assert (await ordinary.measure(SLOW)).opened == []
+    by_global = (await ordinary.measure(SLOW)).opened
+
+    [incident] = await incidents_of(session, satellite.line)
+    assert by_own == [incident.id] and incident.rule_id == own.id
+    [other] = await incidents_of(session, ordinary.line)
+    assert by_global == [other.id]
+    assert other.rule_id == (await rule_of(session, "download_mbps")).id
+    # The global rule of the same metric opens nothing more at the school with its own rule.
+    assert (await satellite.measure(SLOW)).opened == []
+    assert [i.id for i in await incidents_of(session, satellite.line)] == [incident.id]
+
+
+async def test_an_incident_of_a_global_rule_is_restored_after_the_school_got_its_own_rule(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """A new rule of a school never leaves the incident of the global rule hanging (T-59)."""
+    await create_settings(session)
+    agent = await an_agent(session, api_client, code="VKO-I-OWN")
+    for _ in range(3):
+        opened = (await agent.measure(SLOW)).opened
+    [by_global] = opened
+    own = IncidentRule(
+        name="Download школы",
+        metric="download_mbps",
+        scope="school",
+        school_id=agent.line.school_id,
+        consecutive_violations=2,
+        recovery_normal_count=2,
+    )
+    session.add(own)
+    await session.flush()
+
+    # The old incident is moved on and restored by the global rule as before.
+    assert (await agent.measure(SLOW)).updated == [by_global]
+    assert (await agent.measure(FINE)).restored == []
+    assert (await agent.measure(FINE)).restored == [by_global]
+    # From now on the rule of the school opens the incidents of the line.
+    assert (await agent.measure(SLOW)).opened == []
+    reopened = (await agent.measure(SLOW)).opened
+
+    assert len(reopened) == 1
+    incident = await session.get_one(Incident, reopened[0])
+    assert incident.rule_id == own.id
 
 
 async def test_new_measurements_hand_their_line_to_the_detection(

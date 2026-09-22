@@ -1,7 +1,8 @@
-"""T-40: incident rules in the admin panel (ТЗ п. 18, п. 20; ADR-007).
+"""T-40, T-59: incident rules in the admin panel (ТЗ п. 18, п. 20; ADR-007).
 
 N in a row, T minutes and M normal results are not in the code: Область and Администратор
-change them, the next detection applies them, and the audit log keeps what was changed.
+change them, the next detection applies them, and the audit log keeps what was changed. A rule
+of a school (T-59) names its school and is listed after the rules of the oblast.
 """
 
 from typing import Any
@@ -93,6 +94,10 @@ async def test_rule_is_created_and_changed_with_audit(
 
     assert created == {
         "id": created["id"],
+        "scope": "global",
+        "school_id": None,
+        "school_code": None,
+        "school_name": None,
         "consecutive_violations": None,
         "is_active": True,
         **NEW_RULE,
@@ -154,6 +159,75 @@ async def test_rule_without_an_opening_condition_is_rejected(
             },
         )
     ]
+
+
+async def test_a_school_rule_names_its_school_and_is_listed_after_the_oblast(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """T-59: a rule of one school replaces the global rule of its metric for that school."""
+    school = await create_school(session, school_code="VKO-R-001")
+    other = await create_school(session, school_code="VKO-R-002")
+    oblast = bearer(await create_user(session, "oblast"))
+    school_rule = {
+        "name": "Ping по спутнику",
+        "metric": "ping_ms",
+        "scope": "school",
+        "school_id": school.id,
+        "consecutive_violations": 5,
+        "recovery_normal_count": 2,
+    }
+
+    created = ok(await api_client.post(RULES, json=school_rule, headers=oblast), 201)
+    listed = ok(await api_client.get(RULES, headers=oblast))
+    of_schools = ok(await api_client.get(RULES, params={"scope": "school"}, headers=oblast))
+    of_the_school = ok(await api_client.get(RULES, params={"school_id": school.id}, headers=oblast))
+    of_the_other = ok(await api_client.get(RULES, params={"school_id": other.id}, headers=oblast))
+    found = ok(await api_client.get(RULES, params={"q": "vko-r-001"}, headers=oblast))
+
+    assert (created["scope"], created["school_id"]) == ("school", school.id)
+    assert (created["school_code"], created["school_name"]) == (
+        "VKO-R-001",
+        f"Школа {school.school_code}",
+    )
+    # The rules of the oblast come first, the rule of the school last.
+    assert listed["total"] == len(DEFAULT_RULES) + 1
+    assert [rule["scope"] for rule in listed["items"]] == ["global"] * len(DEFAULT_RULES) + [
+        "school"
+    ]
+    assert [rule["id"] for rule in of_schools["items"]] == [created["id"]]
+    assert [rule["id"] for rule in of_the_school["items"]] == [created["id"]]
+    assert of_the_other["items"] == []
+    assert [rule["id"] for rule in found["items"]] == [created["id"]]
+    assert await audit_records(session) == [("create", created["id"], None)]
+
+
+async def test_a_school_rule_needs_an_existing_school_and_only_then(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    school = await create_school(session, school_code="VKO-R-003")
+    oblast = bearer(await create_user(session, "oblast"))
+    rule = NEW_RULE | {"scope": "school", "school_id": school.id}
+
+    without_school = problem(
+        await api_client.post(RULES, json=rule | {"school_id": None}, headers=oblast),
+        422,
+        "validation_error",
+    )
+    unknown_school = problem(
+        await api_client.post(RULES, json=rule | {"school_id": 999_999}, headers=oblast),
+        422,
+        "validation_error",
+    )
+    global_with_school = problem(
+        await api_client.post(RULES, json=rule | {"scope": "global"}, headers=oblast),
+        422,
+        "validation_error",
+    )
+
+    assert "school_id" in without_school["errors"][0]["message"]
+    assert [error["field"] for error in unknown_school["errors"]] == ["school_id"]
+    assert "school_id" in global_with_school["errors"][0]["message"]
+    assert ok(await api_client.get(RULES, headers=oblast))["total"] == len(DEFAULT_RULES)
 
 
 async def test_unknown_rule_is_not_found(session: AsyncSession, api_client: AsyncClient) -> None:

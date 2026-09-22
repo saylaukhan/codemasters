@@ -1,7 +1,12 @@
 """Incident detection with hysteresis (T-40; ТЗ п. 18, п. 19; plan.md §7; ADR-007).
 
 Every active rule is applied to every line that is not disabled, of a school that is not
-deactivated, after each measurement of the line and every 5 minutes by beat. The evidence is
+deactivated, after each measurement of the line and every 5 minutes by beat. A rule of the
+school of the line replaces the global rule of the same metric for it (T-59): the global rule
+then opens nothing on that line, but an incident it opened earlier is still moved on and
+restored, so a new rule of a school never leaves an old incident hanging. The two rules of one
+metric share one history on a line: one open incident per line and metric, and a new run never
+reaches back past the restoring of the last incident of that metric. The evidence is
 the rated measurements of the line — not Wi‑Fi, judged on receipt (T-18) — read against the
 thresholds of their own snapshot, so a later change of a profile never reopens the past
 (ADR-004). A metric the agent did not measure says
@@ -24,7 +29,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Select, case, func, select, text
+from sqlalchemy import Select, case, func, or_, select, text
 from sqlalchemy import Sequence as DbSequence
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -271,11 +276,19 @@ async def detect_line(session: AsyncSession, line_id: int, *, now: datetime) -> 
     line = await session.get_one(Line, line_id)
     rules = (
         await session.scalars(
-            select(IncidentRule).where(IncidentRule.is_active).order_by(IncidentRule.id)
+            select(IncidentRule)
+            .where(
+                IncidentRule.is_active,
+                or_(IncidentRule.scope == "global", IncidentRule.school_id == line.school_id),
+            )
+            .order_by(IncidentRule.id)
         )
     ).all()
     if not rules:
         return detection
+    # Metrics the school has a rule of its own for: the global rule of such a metric opens
+    # nothing on this line (T-59).
+    overridden = {rule.metric for rule in rules if rule.scope == "school"}
 
     settings = await system_settings(session)
     readings = await line_readings(session, line_id, now)
@@ -284,24 +297,29 @@ async def detect_line(session: AsyncSession, line_id: int, *, now: datetime) -> 
         if any(rule.metric == NO_CONNECTION for rule in rules)
         else None
     )
-    open_incidents = {
-        incident.rule_id: incident
-        for incident in await session.scalars(
-            select(Incident).where(Incident.line_id == line_id, text(OPEN_FOR_DETECTION))
-        )
-    }
-    restored_until: dict[int, datetime] = {
-        rule_id: moment
-        for rule_id, moment in await session.execute(
-            select(Incident.rule_id, func.max(Incident.restored_at))
+    open_incidents: dict[int, Incident] = {}
+    # Metrics with an open incident on the line: the rule of the school and the global rule of
+    # one metric never hold two incidents of the same run (T-59).
+    open_metrics: set[str] = set()
+    for incident, metric in await session.execute(
+        select(Incident, IncidentRule.metric)
+        .join(IncidentRule, IncidentRule.id == Incident.rule_id)
+        .where(Incident.line_id == line_id, text(OPEN_FOR_DETECTION))
+    ):
+        open_incidents[incident.rule_id] = incident
+        open_metrics.add(metric)
+    restored_until: dict[str, datetime] = {
+        metric: moment
+        for metric, moment in await session.execute(
+            select(IncidentRule.metric, func.max(Incident.restored_at))
+            .join(IncidentRule, IncidentRule.id == Incident.rule_id)
             .where(Incident.line_id == line_id, Incident.restored_at.is_not(None))
-            .group_by(Incident.rule_id)
+            .group_by(IncidentRule.metric)
         )
-        if rule_id is not None
     }
 
     for rule in rules:
-        since = restored_until.get(rule.id)
+        since = restored_until.get(rule.metric)
         results = judged(readings, rule.metric, since)
         run = current_run(results, rule.metric)
         if rule.metric == NO_CONNECTION and silence is not None:
@@ -326,6 +344,8 @@ async def detect_line(session: AsyncSession, line_id: int, *, now: datetime) -> 
                 detection.restored.append(incident.id)
             continue
 
+        if rule.metric in open_metrics or (rule.scope == "global" and rule.metric in overridden):
+            continue
         if run is not None and opens(rule, run):
             incident = Incident(
                 number=await incident_number(session, settings, now),
@@ -347,6 +367,7 @@ async def detect_line(session: AsyncSession, line_id: int, *, now: datetime) -> 
                     incident_id=incident.id, kind="created", to_status="new", created_at=now
                 )
             )
+            open_metrics.add(rule.metric)
             detection.opened.append(incident.id)
 
     await session.flush()
