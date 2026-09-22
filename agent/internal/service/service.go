@@ -270,6 +270,7 @@ func measureFunc(cfg Config, client *api.Client, q *queue.Queue, settings *Setti
 			}
 			return
 		}
+		m.Source = measurementSource(run)
 		if err := q.Add(ctx, m); err != nil {
 			logger.Error("замер не сохранён в очередь", "err", err)
 			return
@@ -283,6 +284,16 @@ func measureFunc(cfg Config, client *api.Client, q *queue.Queue, settings *Setti
 		default: // a wake-up is already pending
 		}
 	}
+}
+
+// measurementSource names what started the run for the server (T-79, ADR-016):
+// the schedule of the agent or a request of the panel. The server keeps both
+// side by side and the history of a computer says which is which.
+func measurementSource(run scheduler.Run) string {
+	if run.Manual {
+		return api.SourceManual
+	}
+	return api.SourceSchedule
 }
 
 // QueuePath returns the measurement queue file inside dataDir.

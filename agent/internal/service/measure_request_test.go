@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/saylaukhan/codemasters/agent/internal/api"
 	"github.com/saylaukhan/codemasters/agent/internal/scheduler"
 )
 
@@ -104,5 +105,16 @@ func TestMeasureRequestMeasuresOncePerRequest(t *testing.T) {
 	restarted.handle(requested.Add(time.Minute))
 	if run := waitRun(t, runs, "новый запрос из панели"); !run.Manual {
 		t.Errorf("run = %+v, want Manual", run)
+	}
+}
+
+// TestMeasurementSourceTellsThePanelApart: the server keeps both kinds of
+// measurement side by side, so the agent must name which one it took (T-79).
+func TestMeasurementSourceTellsThePanelApart(t *testing.T) {
+	cases := map[bool]string{false: api.SourceSchedule, true: api.SourceManual}
+	for manual, want := range cases {
+		if got := measurementSource(scheduler.Run{Manual: manual}); got != want {
+			t.Errorf("measurementSource(Manual=%v) = %q, want %q", manual, got, want)
+		}
 	}
 }
