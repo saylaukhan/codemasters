@@ -1,4 +1,4 @@
-// Contract import of the administration (T-61, ТЗ п. 14): the file read for the request, the summary of a report
+// Contract import of the administration (T-87, ТЗ п. 14): the file read for the request, the summary of a report
 // and the rows of it as the table shows them.
 import type { ContractImportReport, ContractImportRequest, ContractImportRow } from '../../api/types'
 import { CONTRACT_IMPORT_LABELS } from '../../lib/labels'

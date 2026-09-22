@@ -3,6 +3,7 @@
   min-height: 100vh;
 }
 
+/* 64px on --bg-page, without a line under it (DESIGN.md §3.5). */
 .header {
   display: flex;
   align-items: center;
@@ -11,7 +12,6 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  border-bottom: var(--border-width) solid var(--border);
   line-height: normal;
 }
 
@@ -28,22 +28,38 @@
   text-overflow: ellipsis;
 }
 
+/* The mark is the one place where colour is decoration and not meaning (DESIGN.md §1, rule 3). */
+.mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--brand-mark-size);
+  height: var(--brand-mark-size);
+  border-radius: var(--radius-control);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
 .tools {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
+/* Profile chip, DESIGN.md §3.5: 40px on --bg-surface around a 32px avatar on --accent-soft. */
 .profile {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
+  height: var(--profile-chip-height);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
   border: none;
-  border-radius: var(--radius-control);
-  background: transparent;
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
   color: var(--text-primary);
   font: inherit;
+  text-align: start;
   cursor: pointer;
   transition: background var(--motion-duration) var(--motion-easing);
 }
@@ -56,25 +72,32 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: none;
   width: var(--avatar-size);
   height: var(--avatar-size);
   border-radius: 50%;
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+  background: var(--accent-soft);
+  color: var(--accent-pressed);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
 }
 
 .profileMeta {
   display: flex;
   flex-direction: column;
-  color: var(--text-secondary);
+  min-width: 0;
+  color: var(--text-muted);
   font-size: var(--font-size-xs);
+  line-height: 1.15;
 }
 
 .profileMeta strong {
   color: var(--text-primary);
-  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sider {
@@ -102,11 +125,53 @@
   padding: var(--space-2) var(--space-2) 0;
 }
 
+/* The navigation drawer of 1024px and narrower holds the same menu, so it needs the same insets. */
+.drawer :global(.ant-drawer-body) {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) 0;
+}
+
+/* AntD gives the content only `flex: auto` and `min-height: 0`: without `min-width: 0` a wide
+ * child widens the flex row and the whole page scrolls sideways (DESIGN.md §3.12, §9.3). */
 .content {
+  min-width: 0;
   padding: var(--space-5) var(--content-padding);
 }
 
 .container {
+  min-width: 0;
   max-width: var(--content-max);
   margin: 0 auto;
+}
+
+/* DESIGN.md §9.3: at 1024px and narrower the profile chip is the avatar alone. */
+@media (max-width: 1024px) {
+  .profile {
+    padding: var(--space-1);
+  }
+
+  .profileMeta {
+    display: none;
+  }
+
+  .tools {
+    flex: none;
+  }
+}
+
+/* The header padding comes from theme.ts and cannot follow a breakpoint, so the phone takes it
+ * from --content-padding here (DESIGN.md §9.3, row «Отступы контента»). */
+@media (max-width: 768px) {
+  .header:global(.ant-layout-header) {
+    padding-inline: var(--content-padding);
+  }
+}
+
+/* A screen whose Action is pinned to the bottom (DESIGN.md §9.3) reserves the height of that bar,
+ * so the last block of the page stays readable above it. */
+@media (max-width: 768px) {
+  .content:has([data-sticky-action]) {
+    padding-bottom: calc(var(--sticky-action-height) + var(--space-5));
+  }
 }

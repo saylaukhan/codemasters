@@ -1,4 +1,4 @@
-"""Requests and responses of the letter templates (T-60; ТЗ п. 17, п. 20; ADR-011).
+"""Requests and responses of the letter templates (T-86; ТЗ п. 17, п. 20; ADR-011).
 
 A template is the subject and the body of a letter to the provider with placeholders the server
 fills with the facts of the appeal — ``{{school_name}}``, ``{{contract_number}}``,

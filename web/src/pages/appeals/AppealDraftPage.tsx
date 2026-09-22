@@ -54,7 +54,7 @@ interface AppealEditorProps {
   draft: AppealDraft | undefined
   asking: boolean
   onRetry: () => void
-  /** Another template of the letter (T-60): the address changes and the model is asked anew. */
+  /** Another template of the letter (T-86): the address changes and the model is asked anew. */
   onTemplateChange: (templateId: number) => void
 }
 
@@ -127,9 +127,13 @@ function AppealEditor({ target, draft, asking, onRetry, onTemplateChange }: Appe
                 {APPEAL_LABELS.regenerate}
               </Button>
             )}
-            <Button kind="action" disabled={!ready} loading={send.isPending} onClick={submit}>
-              {APPEAL_LABELS.send}
-            </Button>
+            <div className={styles.sendAction}>
+              <Button kind="action" disabled={!ready} loading={send.isPending} onClick={submit}>
+                {APPEAL_LABELS.send}
+              </Button>
+              {/* The sending is the handing over of the incident itself (T-63, ADR-007). */}
+              {target.incidentId != null && <span className={styles.sendHint}>{APPEAL_LABELS.incidentHandover}</span>}
+            </div>
           </>
         }
       />

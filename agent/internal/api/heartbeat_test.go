@@ -16,20 +16,25 @@ var almaty = time.FixedZone("Asia/Almaty", 5*60*60)
 func TestSendHeartbeat(t *testing.T) {
 	var got map[string]any
 	var auth, method, path string
-	status := http.StatusNoContent
+	status, answerBody := http.StatusNoContent, ""
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		method, path, auth = r.Method, r.URL.Path, r.Header.Get("Authorization")
 		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
 			t.Errorf("decode body: %v", err)
 		}
 		w.WriteHeader(status)
+		_, _ = w.Write([]byte(answerBody))
 	}))
 	defer srv.Close()
 	c := New(srv.URL, "tok")
 
 	at := time.Date(2026, 9, 17, 9, 0, 0, 0, almaty)
-	if err := c.SendHeartbeat(context.Background(), at); err != nil {
+	answer, err := c.SendHeartbeat(context.Background(), at)
+	if err != nil {
 		t.Fatalf("SendHeartbeat on 204 = %v, want nil", err)
+	}
+	if answer.MeasureRequestedAt != nil {
+		t.Fatalf("MeasureRequestedAt = %v, want nil: the server asked for nothing", answer.MeasureRequestedAt)
 	}
 	if method != http.MethodPost || path != "/api/devices/heartbeat" || auth != "Device tok" {
 		t.Fatalf("request = %s %s (%q), want POST /api/devices/heartbeat with the device token", method, path, auth)
@@ -38,9 +43,19 @@ func TestSendHeartbeat(t *testing.T) {
 		t.Fatalf("body = %v, want sent_at with the offset (ADR-014) and agent_version", got)
 	}
 
+	// An administrator asked for a measurement in the panel (T-79).
+	status, answerBody = http.StatusOK, `{"measure_requested_at": "2026-09-17T09:05:00+05:00"}`
+	answer, err = c.SendHeartbeat(context.Background(), at)
+	if err != nil {
+		t.Fatalf("SendHeartbeat on 200 = %v, want nil", err)
+	}
+	if answer.MeasureRequestedAt == nil || !answer.MeasureRequestedAt.Equal(at.Add(5*time.Minute)) {
+		t.Fatalf("MeasureRequestedAt = %v, want 2026-09-17T09:05:00+05:00", answer.MeasureRequestedAt)
+	}
+
 	// The server answered, even with an error: the line is up, so this is not an outage.
-	status = http.StatusInternalServerError
-	err := c.SendHeartbeat(context.Background(), at)
+	status, answerBody = http.StatusInternalServerError, ""
+	_, err = c.SendHeartbeat(context.Background(), at)
 	var pe *ProblemError
 	if !errors.As(err, &pe) || pe.Status != http.StatusInternalServerError {
 		t.Fatalf("SendHeartbeat on 500 = %v, want *ProblemError with status 500", err)

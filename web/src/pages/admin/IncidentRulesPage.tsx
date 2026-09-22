@@ -61,7 +61,7 @@ const COLUMNS: TableColumnsType<IncidentRuleDetail> = [
 
 /**
  * Incident rules (ТЗ п. 18, ADR-007): each watches one metric on every line, or on the lines of one school in
- * place of the rule of the oblast (T-59); N violations in a row or T minutes open an incident, M normal results in
+ * place of the rule of the oblast (T-85); N violations in a row or T minutes open an incident, M normal results in
  * a row restore it.
  */
 export function IncidentRulesPage() {

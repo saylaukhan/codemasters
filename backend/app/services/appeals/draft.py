@@ -1,5 +1,5 @@
 """Draft of an appeal: fill the template, ask the model, then sign the contacts under the answer
-(T-47, T-60, ТЗ п. 17).
+(T-47, T-86, ТЗ п. 17).
 
 The order is the point of ADR-011. The template of the admin panel is filled with facts only
 (``template.py``), the prompt is built from the facts and the filled letter (``prompt.py``),

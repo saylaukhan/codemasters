@@ -1,11 +1,19 @@
 /* Sign-in page, DESIGN.md §3.26: 400px card centred on the page background. */
 .page {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
   padding: var(--space-4);
   background: var(--bg-page);
+}
+
+/* Language switch in the top right corner of the screen (DESIGN.md §3.26). */
+.locale {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
 }
 
 .card {
@@ -32,4 +40,24 @@
 
 .error {
   margin-bottom: var(--space-4);
+}
+
+/* Explanation above the fields of a form on this card: «Забыли пароль?» and the new password. */
+.hint {
+  margin: 0 0 var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* «Забыли пароль?» under the password field: a link, aligned with the fields (T-65). */
+.reset {
+  margin-bottom: var(--space-4);
+  padding-inline: 0;
+}
+
+/* Contact of the administrator instead of the link on an installation without SMTP. */
+.support {
+  margin: var(--space-4) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
 }

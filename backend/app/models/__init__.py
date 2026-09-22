@@ -10,8 +10,10 @@ from app.models.appeal_event import AppealEvent
 from app.models.appeal_template import AppealTemplate
 from app.models.audit_log import AuditLog
 from app.models.base import Base
+from app.models.calendar_event import CalendarEvent
 from app.models.connection_type import ConnectionType
 from app.models.device import Device
+from app.models.digest_settings import DigestSettings
 from app.models.enrollment_code import EnrollmentCode
 from app.models.export import Export
 from app.models.heartbeat import Heartbeat
@@ -26,6 +28,7 @@ from app.models.monitoring_point import MonitoringPoint
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
 from app.models.outage import Outage
+from app.models.password_reset_token import PasswordResetToken
 from app.models.provider import Provider
 from app.models.region import Region
 from app.models.role import Role
@@ -44,8 +47,10 @@ __all__ = [
     "AppealTemplate",
     "AuditLog",
     "Base",
+    "CalendarEvent",
     "ConnectionType",
     "Device",
+    "DigestSettings",
     "EnrollmentCode",
     "Export",
     "Heartbeat",
@@ -60,6 +65,7 @@ __all__ = [
     "Notification",
     "NotificationLog",
     "Outage",
+    "PasswordResetToken",
     "Provider",
     "Region",
     "Role",

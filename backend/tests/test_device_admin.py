@@ -4,6 +4,9 @@ A code is shown once and the database keeps only its hash (ADR-005); a blocked a
 while its measurements stay (ТЗ п. 16, п. 20); a rotated token replaces the old one, which stops
 working, and the agent learns about the rotation from its configuration. Every action of the
 panel is audited, the code and the token never are.
+
+A measurement asked for in the panel (T-79) is one more mark the agent takes itself: it travels
+with the answer of the heartbeat and is cleared by the measurement that answers it.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -140,7 +143,7 @@ async def test_a_blocked_device_is_refused_and_keeps_its_history(
     assert unblocked["status"] == "active"
     assert (
         await api_client.post(HEARTBEAT, json=beat(), headers=as_device(token))
-    ).status_code == 204
+    ).status_code == 200
     assert await session.scalar(select(func.count()).select_from(Measurement)) == 1
 
     district = bearer(await create_user(session, "district", region_id=school.region_id))
@@ -231,7 +234,7 @@ async def test_a_rotated_token_replaces_the_old_one(
     problem(await api_client.post(TOKEN, headers=as_device(old_token)), 401, "unauthorized")
     assert (
         await api_client.post(HEARTBEAT, json=beat(), headers=as_device(new_token))
-    ).status_code == 204
+    ).status_code == 200
     assert (
         ok(await api_client.get(CONFIG, headers=as_device(new_token)))["token_rotation_required"]
         is False
@@ -243,3 +246,65 @@ async def test_a_rotated_token_replaces_the_old_one(
     # No token gets into the log: the request is an update with the fact of the rotation.
     records = await audit_records(session, "device")
     assert records == [("update", device.id, {"token_rotation": {"old": None, "new": "requested"}})]
+
+
+async def test_a_measurement_asked_for_in_the_panel_is_taken_once_and_expires(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """T-79: отметка на устройстве, ответ heartbeat, снятие пришедшим замером и срок в час."""
+    await create_settings(session)
+    school = await create_school(session)
+    device, token = await register_device(session, await primary_point(session, school))
+    admin = bearer(await create_user(session, "admin"))
+
+    quiet = ok(await api_client.post(HEARTBEAT, json=beat(), headers=as_device(token)))
+    assert quiet["measure_requested_at"] is None
+
+    asked = ok(await api_client.post(f"/api/devices/{device.id}/measure", headers=admin))
+    requested_at = asked["measure_requested_at"]
+    assert requested_at is not None
+    # A second press while the first request waits asks for nothing more.
+    again = ok(await api_client.post(f"/api/devices/{device.id}/measure", headers=admin))
+    assert again["measure_requested_at"] == requested_at
+
+    told = ok(await api_client.post(HEARTBEAT, json=beat(), headers=as_device(token)))
+    assert told["measure_requested_at"] == requested_at
+
+    # A record that waited in the queue since before the request answers nothing.
+    ok(
+        await api_client.post("/api/measurements", json=measurement(), headers=as_device(token)),
+        201,
+    )
+    card = ok(await api_client.get(f"/api/devices/{device.id}", headers=admin))
+    assert card["measure_requested_at"] == requested_at
+
+    fresh = measurement(measured_at=datetime.now(UTC).isoformat())
+    ok(await api_client.post("/api/measurements", json=fresh, headers=as_device(token)), 201)
+    assert (await session.get_one(Device, device.id)).measure_requested_at is None
+    answered = ok(await api_client.post(HEARTBEAT, json=beat(), headers=as_device(token)))
+    assert answered["measure_requested_at"] is None
+
+    # The computer was off for an hour: the request is not handed out and is not shown as
+    # pending any more, and the button works again instead of doing nothing.
+    device.measure_requested_at = datetime.now(UTC) - timedelta(hours=2)
+    await session.commit()
+    stale = ok(await api_client.post(HEARTBEAT, json=beat(), headers=as_device(token)))
+    assert stale["measure_requested_at"] is None
+    assert (
+        ok(await api_client.get(f"/api/devices/{device.id}", headers=admin))["measure_requested_at"]
+        is None
+    )
+    renewed = ok(await api_client.post(f"/api/devices/{device.id}/measure", headers=admin))
+    assert renewed["measure_requested_at"] not in (None, requested_at)
+
+    district = bearer(await create_user(session, "district", region_id=school.region_id))
+    problem(
+        await api_client.post(f"/api/devices/{device.id}/measure", headers=district),
+        403,
+        "forbidden",
+    )
+    problem(await api_client.post("/api/devices/999999/measure", headers=admin), 404, "not_found")
+
+    asked_for = {"measurement": {"old": None, "new": "requested"}}
+    records = await audit_records(session, "device")
+    assert [changes for _, _, changes in records] == [asked_for, None, asked_for]

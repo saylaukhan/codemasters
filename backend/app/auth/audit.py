@@ -67,7 +67,7 @@ ENTITY_BY_SEGMENT: dict[str, AuditEntityType] = {
     "incident-rules": "incident_rule",
     "appeal-templates": "appeal_template",
     "agent-releases": "agent_release",
-    # The import of a contract registry is an ``import`` of lines (T-61).
+    # The import of a contract registry is an ``import`` of lines (T-87).
     "contracts": "line",
 }
 # Action segments after the id of an entity.
@@ -77,7 +77,7 @@ ACTION_BY_SEGMENT: dict[str, AuditAction] = {
     "status": "status_change",
 }
 # POST requests that change nothing: an AI draft of an appeal is only shown to its author, a
-# preview of an import reports what the file would change and writes nothing (T-61).
+# preview of an import reports what the file would change and writes nothing (T-87).
 NOT_CHANGING_SEGMENTS = frozenset({"draft", "preview"})
 
 # Rejections of an agent request that are transfer errors (ТЗ п. 12). 409 is not one: a
@@ -163,6 +163,30 @@ def record_login(
         user_id=user_id,
         user_email=email,
         error_type=error_type,
+        ip=client_ip(request.scope),
+    )
+    session.add(entry.row())
+
+
+def record_self_change(
+    session: AsyncSession,
+    request: Request,
+    *,
+    user: AuthUser,
+    changes: dict[str, Any],
+) -> None:
+    """Add an ``update`` record of a user changing his own account (no commit).
+
+    The middleware skips the sign-in module (``AUTH_MODULE``), so the endpoints of a profile
+    write their record themselves, the way ``record_login`` does.
+    """
+    entry = AuditEntry(
+        action="update",
+        entity_type="user",
+        entity_id=user.id,
+        user_id=user.id,
+        user_email=user.email,
+        changes=changes,
         ip=client_ip(request.scope),
     )
     session.add(entry.row())

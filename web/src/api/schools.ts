@@ -32,6 +32,10 @@ export const createSchool = (body: SchoolCreate) =>
 export const updateSchool = (schoolId: number, body: SchoolUpdate) =>
   apiRequest<Schemas['SchoolDetail']>(`/schools/${schoolId}`, { method: 'PATCH', body })
 
+/** Status of every local day of the last `days` for the day strip of the cabinet (T-61). */
+export const getSchoolDays = (schoolId: number, days: number, signal?: AbortSignal) =>
+  apiRequest<Schemas['SchoolDays']>(`/schools/${schoolId}/days`, { query: { days }, signal })
+
 export const getSchoolDevices = (schoolId: number, signal?: AbortSignal) =>
   apiRequest<Schemas['DeviceListItemPage']>(`/schools/${schoolId}/devices`, { query: CARD_PAGE, signal })
 

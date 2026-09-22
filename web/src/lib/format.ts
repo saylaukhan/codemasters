@@ -1,10 +1,16 @@
 // Numbers, units, dates and durations for the panel (ADR-014, DESIGN.md §5): the API speaks
 // RFC 3339 in UTC, the panel shows Asia/Almaty. The only place in web/ that formats them.
+import { activeLocale, type Locale } from './locale'
 
 export const TIME_ZONE = 'Asia/Almaty'
 export const NO_VALUE = '—'
 
-const LOCALE = 'ru-RU'
+// Dates and numbers follow the language of this page load (DESIGN.md §5.1); the time zone never
+// does (ADR-014), and identifiers and units are not translated at all.
+const LOCALE_TAGS: Record<Locale, string> = { ru: 'ru-RU', kk: 'kk-KZ' }
+const locale = activeLocale()
+const KAZAKH = locale === 'kk'
+const LOCALE = LOCALE_TAGS[locale]
 // Non-breaking space: «45,3 Мбит/с» never wraps between the number and the unit.
 const NBSP = ' '
 
@@ -38,6 +44,20 @@ function numberFormat(fractionDigits: number): Intl.NumberFormat {
   }
   return format
 }
+
+/**
+ * Words of a duration and of «2 мин назад» in Kazakh: short units («4 сағ») and
+ * `RelativeTimeFormat` («3 сағат бұрын»), so this file invents no wording of its own — the
+ * strings of the panel live in the dictionaries (ADR-013). Russian keeps the forms below.
+ */
+const kazakh = KAZAKH
+  ? {
+      ago: new Intl.RelativeTimeFormat(LOCALE, { numeric: 'always' }),
+      justNow: new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' }),
+      unit: (value: number, unit: 'day' | 'hour' | 'minute'): string =>
+        new Intl.NumberFormat(LOCALE, { style: 'unit', unit, unitDisplay: 'short' }).format(value),
+    }
+  : null
 
 type DateInput = string | number | Date | null | undefined
 
@@ -109,13 +129,37 @@ export function formatDuration(seconds: number | null | undefined): string {
     return NO_VALUE
   }
   const minutes = Math.floor(seconds / 60)
-  if (minutes < 1) return 'меньше минуты'
   const days = Math.floor(minutes / 1440)
   const hours = Math.floor((minutes % 1440) / 60)
   const rest = minutes % 60
+  if (kazakh) {
+    const day = kazakh.unit(days, 'day')
+    const hour = kazakh.unit(hours, 'hour')
+    if (minutes < 1) return `< ${kazakh.unit(1, 'minute')}`
+    if (days > 0) return hours > 0 ? `${day} ${hour}` : day
+    if (hours > 0) return rest > 0 ? `${hour} ${kazakh.unit(rest, 'minute')}` : hour
+    return kazakh.unit(rest, 'minute')
+  }
+  if (minutes < 1) return 'меньше минуты'
   if (days > 0) return hours > 0 ? `${days}${NBSP}д ${hours}${NBSP}ч` : `${days}${NBSP}д`
   if (hours > 0) return rest > 0 ? `${hours}${NBSP}ч ${rest}${NBSP}мин` : `${hours}${NBSP}ч`
   return `${rest}${NBSP}мин`
+}
+
+/**
+ * Three Russian forms of a counted noun, in the order «1 школа», «2 школы», «5 школ»; the forms
+ * themselves live in labels.ts (ADR-013). Used by the status strip and the lists of days.
+ */
+export function plural(count: number, forms: readonly [string, string, string]): string {
+  // A Kazakh noun does not change after a numeral («5 мектеп»), so the first form is the one.
+  if (KAZAKH) return forms[0]
+  const absolute = Math.abs(Math.trunc(count))
+  const tens = absolute % 100
+  if (tens >= 11 && tens <= 14) return forms[2]
+  const units = absolute % 10
+  if (units === 1) return forms[0]
+  if (units >= 2 && units <= 4) return forms[1]
+  return forms[2]
 }
 
 /** «только что», «2 мин назад», «3 ч назад»; older than a day — the date in Asia/Almaty. */
@@ -123,9 +167,15 @@ export function formatRelative(value: DateInput, now: Date = new Date()): string
   const date = toDate(value)
   if (!date) return NO_VALUE
   const minutes = Math.floor((now.getTime() - date.getTime()) / 60_000)
+  const hours = Math.floor(minutes / 60)
+  if (kazakh) {
+    if (minutes < 1) return kazakh.justNow.format(0, 'second')
+    if (minutes < 60) return kazakh.ago.format(-minutes, 'minute')
+    if (hours < 24) return kazakh.ago.format(-hours, 'hour')
+    return formatDate(date)
+  }
   if (minutes < 1) return 'только что'
   if (minutes < 60) return `${minutes}${NBSP}мин назад`
-  const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}${NBSP}ч назад`
   return formatDate(date)
 }

@@ -33,6 +33,7 @@ from app.schemas.schools import (
     SchoolContactDetailPage,
     SchoolContactUpdate,
     SchoolCreate,
+    SchoolDays,
     SchoolDetail,
     SchoolListItemPage,
     SchoolSort,
@@ -42,6 +43,7 @@ from app.schemas.statuses import SchoolStatus
 from app.services import references, school_setup
 from app.services.incident_card import school_incidents
 from app.services.school_card import school_contacts, school_detail, school_devices, school_lines
+from app.services.school_days import school_days
 from app.services.schools import SchoolListFilters, school_list
 
 router = APIRouter(
@@ -163,6 +165,33 @@ async def update_school(
     changes = await references.update_school(session, school_id, body)
     describe_action(request, changes=changes or None)
     return await school_detail(session, school_id, now=datetime.now(UTC))
+
+
+@router.get(
+    "/{school_id}/days",
+    summary="Статус каждого из последних дней школы",
+    description=(
+        "Полоса дней кабинета школы: по элементу на каждый локальный день Asia/Almaty, старые "
+        "сверху, включая дни без замеров. День — «Нет соединения», если простой попал в рабочие "
+        "часы школы (ADR-014); иначе худший замер дня по основным линиям без Wi‑Fi (ADR-012); "
+        "иначе «Нет данных»."
+    ),
+    responses={404: SCHOOL_NOT_FOUND},
+)
+async def list_school_days(
+    school_id: int,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    days: Annotated[
+        int, Query(ge=1, le=90, description="Сколько последних локальных дней вернуть")
+    ] = 30,
+    period_to: Annotated[
+        AwareDatetime | None,
+        Query(description="Конец окна, не включая; по умолчанию — текущий момент"),
+    ] = None,
+) -> SchoolDays:
+    return await school_days(
+        session, school_id, days=days, period_to=period_to or datetime.now(UTC)
+    )
 
 
 @router.get(

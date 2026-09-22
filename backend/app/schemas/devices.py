@@ -12,12 +12,14 @@ from pydantic import BaseModel, Field, IPvAnyAddress, field_validator
 from pydantic.json_schema import SkipJsonSchema
 
 from app.schemas.agent_releases import AgentChannel
+from app.schemas.calendar import CalendarKind
 from app.schemas.pagination import Page
 from app.schemas.statuses import (
     ConnectionStatus,
     DeviceStatus,
     IfaceType,
     LineStatus,
+    MeasurementSource,
     QualityStatus,
     SchoolStatus,
 )
@@ -62,6 +64,10 @@ class DeviceListItem(BaseModel):
         description="По правилу T-16: heartbeat в рабочие часы и последний замер; "
         "вне рабочих часов — no_data"
     )
+    quiet_reason: CalendarKind | None = Field(
+        default=None,
+        description="Почему нет данных: событие календаря школы на этот момент; null — обычный",
+    )
     latest_measurement: LatestMeasurement | None
 
 
@@ -79,6 +85,10 @@ class DeviceDetail(DeviceListItem):
     registered_at: datetime
     token_rotation_requested_at: datetime | None = Field(
         description="Запрошена замена токена; пусто — агент уже получил новый или замены не было"
+    )
+    measure_requested_at: datetime | None = Field(
+        description="Запрошен внеплановый замер и запрос ещё ждёт агента; пусто — замер уже "
+        "пришёл, запроса не было или он старше часа"
     )
 
 
@@ -119,6 +129,9 @@ class MeasurementListItem(LatestMeasurement):
     external_ip: IPvAnyAddress | None
     server: str | None = Field(description="Сервер и метод замера")
     agent_version: str | None
+    source: MeasurementSource = Field(
+        description="Замер по расписанию агента или по запросу «Замерить сейчас» из панели"
+    )
     contract_ok: bool | None = Field(
         description="Факт не ниже договорной скорости линии; пусто — договорных значений нет"
     )

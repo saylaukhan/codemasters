@@ -288,6 +288,17 @@ async def settings_detail(session: AsyncSession) -> SettingsDetail:
             "export_retention_days": settings.export_retention_days,
             "incident_auto_close_hours": settings.incident_auto_close_hours,
             "agent_queue_retention_days": settings.agent_queue_retention_days,
+            "attention_incident_unassigned_hours": settings.attention_incident_unassigned_hours,
+            "attention_appeal_no_answer_hours": settings.attention_appeal_no_answer_hours,
+            "rollout_silent_days": settings.rollout_silent_days,
+            "password_reset_ttl_minutes": settings.password_reset_ttl_minutes,
+            "support_contact": settings.support_contact,
+            "provider_score_weight_below_contract": (settings.provider_score_weight_below_contract),
+            "provider_score_weight_availability": settings.provider_score_weight_availability,
+            "provider_score_weight_reaction": settings.provider_score_weight_reaction,
+            "provider_score_weight_incidents": settings.provider_score_weight_incidents,
+            "provider_score_pass_pct": settings.provider_score_pass_pct,
+            "provider_score_reaction_norm_hours": settings.provider_score_reaction_norm_hours,
         }
     )
 

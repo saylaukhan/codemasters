@@ -3,7 +3,7 @@
 A draft is not stored and has no number: the number is assigned by «Отправить» (ADR-011).
 The context the server builds holds no personal data; contacts of the school are put into the
 text only after generation (ADR-011). The letter is written by a template of the admin panel
-— an appeal or a formal claim (T-60). An appeal has the six statuses of an incident, each
+— an appeal or a formal claim (T-86). An appeal has the six statuses of an incident, each
 change is an ``appeal_events`` row (ADR-007, ADR-011).
 """
 
@@ -45,7 +45,7 @@ class AppealDraftRequest(BaseModel):
     )
     template_id: int | None = Field(
         default=None,
-        description="Шаблон письма (обращение или претензия, T-60); пусто — шаблон по умолчанию. "
+        description="Шаблон письма (обращение или претензия, T-86); пусто — шаблон по умолчанию. "
         "Неизвестный или отключённый — 422",
     )
 
@@ -115,7 +115,7 @@ class AppealDraft(BaseModel):
     recipient_email: str | None = Field(
         description="appeals_email поставщика; пусто — адрес не задан, письмо не уйдёт"
     )
-    template_id: int = Field(description="Шаблон, по которому написано письмо (T-60)")
+    template_id: int = Field(description="Шаблон, по которому написано письмо (T-86)")
     template_name: str
     kind: AppealKind = Field(description="Вид письма по шаблону: обращение или претензия")
     context: AppealContext
@@ -161,7 +161,7 @@ class AppealListItem(BaseModel):
     id: int
     number: str = Field(examples=["ОБР-2026-000045"])
     status: IncidentStatus
-    kind: AppealKind = Field(description="Обращение или претензия (T-60)")
+    kind: AppealKind = Field(description="Обращение или претензия (T-86)")
     subject: str
     incident_id: int | None
     incident_number: str | None = Field(examples=["INC-2026-000123"])
@@ -196,7 +196,7 @@ class AppealDetail(BaseModel):
     id: int
     number: str = Field(examples=["ОБР-2026-000045"], description="Присвоен при отправке")
     status: IncidentStatus
-    kind: AppealKind = Field(description="Обращение или претензия (T-60)")
+    kind: AppealKind = Field(description="Обращение или претензия (T-86)")
     template_id: int | None = Field(
         description="Шаблон, по которому написано письмо; пусто у писем до появления шаблонов"
     )

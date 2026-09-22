@@ -402,9 +402,13 @@ def test_panel_endpoints_declare_the_bearer_token() -> None:
 
 
 def test_personal_data_only_in_contacts_and_users() -> None:
-    """ТЗ п. 15, ADR-003: phones and e-mails of people live only in contacts and user accounts."""
+    """ТЗ п. 15, ADR-003: phones and e-mails of people live only in contacts and user accounts.
+
+    A request that signs a person in or asks for a reset of his password names the account by its
+    address, which is the identifier of that account and not a stored contact of a person (T-65).
+    """
     components = create_app().openapi()["components"]["schemas"]
-    allowed = ("SchoolContact", "CurrentUser", "Login", "User")
+    allowed = ("SchoolContact", "CurrentUser", "Login", "User", "PasswordReset")
 
     for name, component in components.items():
         if set(component.get("properties", {})) & {"phone", "email", "position"}:

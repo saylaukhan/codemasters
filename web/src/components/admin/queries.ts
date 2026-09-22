@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 
 import {
   createAppealTemplate,
+  createCalendarEvent,
   createConnectionType,
   createIncidentRule,
   createProvider,
@@ -9,9 +10,11 @@ import {
   createSchedule,
   createThresholdProfile,
   createUser,
+  deleteCalendarEvent,
   getAppealPlaceholders,
   getAppealTemplates,
   getAuditLog,
+  getCalendarEvents,
   getConnectionTypes,
   getIncidentRules,
   getProviders,
@@ -20,9 +23,11 @@ import {
   getSettings,
   getThresholdProfiles,
   getUsers,
+  importCalendar,
   importContracts,
   previewContractImport,
   updateAppealTemplate,
+  updateCalendarEvent,
   updateConnectionType,
   updateIncidentRule,
   updateProvider,
@@ -37,6 +42,7 @@ import {
   blockDevice,
   createEnrollmentCode,
   getDevices,
+  requestMeasurement,
   requestTokenRotation,
   unblockDevice,
   updateDevice,
@@ -198,11 +204,16 @@ export const useAdminDevices = (view: AdminListView) =>
     placeholderData: keepPreviousData,
   })
 
-const DEVICE_ACTIONS = { block: blockDevice, unblock: unblockDevice, rotate: requestTokenRotation } as const
+const DEVICE_ACTIONS = {
+  block: blockDevice,
+  unblock: unblockDevice,
+  rotate: requestTokenRotation,
+  measure: requestMeasurement,
+} as const
 
 export type DeviceAction = keyof typeof DEVICE_ACTIONS
 
-/** Blocking, unblocking or a new token of a device, each after a confirmation. */
+/** Blocking, unblocking, a new token or a measurement of a device, each after a confirmation. */
 export const useDeviceAction = () => {
   const queryClient = useQueryClient()
   return useMutation({
@@ -253,7 +264,7 @@ export const useSchedules = (view: AdminListView) =>
 
 export const useSaveSchedule = () => useSave(createSchedule, updateSchedule)
 
-// Incident rules (T-40, T-59): the next detection takes the new values; the search finds a rule or a school.
+// Incident rules (T-40, T-85): the next detection takes the new values; the search finds a rule or a school.
 export const useIncidentRules = (view: AdminListView) =>
   useQuery({
     queryKey: ['admin', 'incident-rules', view],
@@ -263,7 +274,7 @@ export const useIncidentRules = (view: AdminListView) =>
 
 export const useSaveIncidentRule = () => useSave(createIncidentRule, updateIncidentRule)
 
-// Contract import (T-61): the preview writes nothing; the import changes lines shown across the panel.
+// Contract import (T-87): the preview writes nothing; the import changes lines shown across the panel.
 export const usePreviewContractImport = () => useMutation({ mutationFn: previewContractImport })
 
 export const useImportContracts = () => {
@@ -271,7 +282,7 @@ export const useImportContracts = () => {
   return useMutation({ mutationFn: importContracts, onSuccess: () => invalidateShown(queryClient) })
 }
 
-// Letter templates (T-60): the next draft is written by the changed template; sent letters keep their text.
+// Letter templates (T-86): the next draft is written by the changed template; sent letters keep their text.
 export const useAppealTemplates = (view: AdminListView) =>
   useQuery({
     queryKey: ['admin', 'appeal-templates', view],
@@ -343,3 +354,31 @@ export const useAuditLog = (query: Record<string, QueryValue>) =>
     queryFn: ({ signal }) => getAuditLog(query, signal),
     placeholderData: keepPreviousData,
   })
+
+// Календарь каникул, праздников и плановых работ (T-70): он меняет статусы, доступность и оценку
+// поставщика, поэтому правка события обновляет всё, что показывает эти числа.
+export const useCalendarEvents = (view: AdminListView) =>
+  useQuery({
+    queryKey: ['admin', 'calendar', view],
+    queryFn: ({ signal }) => getCalendarEvents(listQuery(view), signal),
+    placeholderData: keepPreviousData,
+  })
+
+export const useSaveCalendarEvent = () => useSave(createCalendarEvent, updateCalendarEvent)
+
+export const useDeleteCalendarEvent = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteCalendarEvent,
+    onSuccess: () => invalidateShown(queryClient),
+  })
+}
+
+/** Импорт календаря из таблицы: файл читается в панели и уходит текстом (T-70). */
+export const useImportCalendar = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: importCalendar,
+    onSuccess: () => invalidateShown(queryClient),
+  })
+}

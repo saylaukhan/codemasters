@@ -1,97 +1,193 @@
 /*
- * Design tokens of DESIGN.md (front matter: colors, radius, spacing, control-heights, shadow,
- * motion). Besides theme.ts this is the only file in web/ with hex values and raw px:
- * components use var(--…) only. The dark theme overrides the same names under
- * :root[data-theme="dark"], so a component never knows which theme is on.
+ * Fonts of DESIGN.md §2.1: Manrope for the interface, JetBrains Mono for identifiers. The woff2
+ * subsets live in web/public/fonts, never on a CDN — the panel runs in a closed network (T-59).
+ * Both are variable fonts, so one file per subset covers the whole weight range. The subsets and
+ * their unicode-range come from the Google Fonts CSS API; `cyrillic-ext` carries the Kazakh
+ * letters Ә Ғ Қ Ң Ө Ұ Ү Һ and is needed by T-66. The licences are next to the files.
+ */
+
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/manrope-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/manrope-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/manrope-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/manrope-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/*
+ * Design tokens of DESIGN.md v2 (front matter: colors, radius, spacing, control-heights, shadow,
+ * motion, breakpoints). Besides theme.ts this is the only file in web/ with hex values and raw
+ * px: components use var(--…) only. The names are the same as in v1, only the values changed
+ * (ADR-015), so a component written on tokens gets the new look without edits. The dark theme
+ * overrides the same names under :root[data-theme="dark"], so a component never knows which
+ * theme is on.
  */
 
 :root {
   /* colors.light */
-  --bg-page: #f5f6f7;
+  --bg-page: #f5f7fa;
   --bg-surface: #ffffff;
-  --bg-subtle: #eff1f3;
-  --bg-selected: #e6f7ee;
-  --border: #e3e5e8;
-  --border-strong: #c9cdd2;
-  --text-primary: #1f2328;
-  --text-secondary: #5f6670;
-  --text-muted: #9aa0a8;
-  --text-link: #1f6fd1;
+  --bg-subtle: #f0f3f7;
+  --bg-selected: #eaf0fe;
+  /* Hairline: the edge of a card is visible, the outline is not (DESIGN.md §1, rule 6). */
+  --border: rgba(23, 29, 38, 0.06);
+  --border-strong: rgba(23, 29, 38, 0.14);
+  --text-primary: #171d26;
+  --text-secondary: #5b6472;
+  --text-muted: #8b94a1;
+  --text-link: #2e6be6;
 
-  /* colors.accent */
-  --accent: #1db866;
-  --accent-hover: #17a35a;
-  --accent-pressed: #128c4c;
-  --accent-soft: #e6f7ee;
+  /* colors.accent: blue is the action, green is only the status «Норма» */
+  --accent: #2e6be6;
+  --accent-hover: #2559c9;
+  --accent-pressed: #1f4fb8;
+  --accent-soft: #eaf0fe;
+  /* Border of a control that sits on --accent-soft: an active filter chip (DESIGN.md §3.9). */
+  --accent-border: rgba(46, 107, 230, 0.25);
   --text-on-accent: #ffffff;
 
-  /* colors.status: main — marker, badge dot, cluster ring; bg and text — badge */
-  --status-normal-main: #1db866;
-  --status-normal-bg: #e6f7ee;
-  --status-normal-text: #117a42;
-  --status-unstable-main: #f5a300;
-  --status-unstable-bg: #fff4db;
-  --status-unstable-text: #8a5a00;
-  --status-critical-main: #e5484d;
-  --status-critical-bg: #fdecec;
-  --status-critical-text: #b4232a;
-  --status-offline-main: #8a9099;
-  --status-offline-bg: #eff1f3;
-  --status-offline-text: #4b525b;
-  --status-no-data-main: #c9cdd2;
-  --status-no-data-bg: #f5f6f7;
-  --status-no-data-text: #6b727b;
+  /* colors.status: main — marker, pill dot, day strip, cluster ring; bg and text — pill */
+  --status-normal-main: #1a9e5c;
+  --status-normal-bg: #e3f6eb;
+  --status-normal-text: #0e6b3b;
+  --status-unstable-main: #e0900f;
+  --status-unstable-bg: #fff2da;
+  --status-unstable-text: #7a4e00;
+  --status-critical-main: #dc3f44;
+  --status-critical-bg: #fde9ea;
+  --status-critical-text: #a8262b;
+  --status-offline-main: #7b8794;
+  --status-offline-bg: #eef1f4;
+  --status-offline-text: #414b57;
+  --status-no-data-main: #c3cad3;
+  --status-no-data-bg: #f3f5f7;
+  --status-no-data-text: #6b7480;
 
-  /* colors.incident: incidents and appeals, badge without a dot */
-  --incident-new-bg: #e8f1fc;
-  --incident-new-text: #1f5fb0;
+  /* colors.incident: incidents and appeals, pill without a dot */
+  --incident-new-bg: #eaf0fe;
+  --incident-new-text: #1f4fb8;
   --incident-sent-to-provider-bg: #f1eafb;
-  --incident-sent-to-provider-text: #6a3fb5;
-  --incident-in-progress-bg: #fff4db;
-  --incident-in-progress-text: #8a5a00;
-  --incident-awaiting-info-bg: #eff1f3;
-  --incident-awaiting-info-text: #4b525b;
-  --incident-resolved-bg: #e6f7ee;
-  --incident-resolved-text: #117a42;
-  --incident-closed-bg: #f5f6f7;
-  --incident-closed-text: #6b727b;
+  --incident-sent-to-provider-text: #5e37a6;
+  --incident-in-progress-bg: #fff2da;
+  --incident-in-progress-text: #7a4e00;
+  --incident-awaiting-info-bg: #eef1f4;
+  --incident-awaiting-info-text: #414b57;
+  --incident-resolved-bg: #e3f6eb;
+  --incident-resolved-text: #0e6b3b;
+  --incident-closed-bg: #f3f5f7;
+  --incident-closed-text: #6b7480;
 
-  /* colors.chart: series strictly in this order */
-  --chart-series-1: #1db866;
-  --chart-series-2: #1f6fd1;
-  --chart-series-3: #f5a300;
+  /* colors.chart: series strictly in this order; series 1 is the accent, not the status green */
+  --chart-series-1: #2e6be6;
+  --chart-series-2: #13a8a8;
+  --chart-series-3: #e0900f;
   --chart-series-4: #8e5cd9;
-  --chart-series-5: #13a8a8;
-  --chart-series-6: #e5484d;
-  --chart-threshold: #9aa0a8;
-  --chart-grid: #eff1f3;
-  --chart-below-threshold: rgba(229, 72, 77, 0.06);
-  /* colors.chart.heatmap: bad → mid → good, the other two of the 5 steps are mixed in heatmapOption.ts */
-  --chart-heatmap-bad: #fdecec;
+  --chart-series-5: #1a9e5c;
+  --chart-series-6: #dc3f44;
+  --chart-threshold: #8b94a1;
+  --chart-grid: #f0f3f7;
+  --chart-area-fill: rgba(46, 107, 230, 0.08);
+  --chart-below-threshold: rgba(220, 63, 68, 0.06);
+  /* colors.chart.heatmap: good → mid → bad, the other two of the 5 steps are mixed in heatmapOption.ts */
+  --chart-heatmap-good: #e3f6eb;
   --chart-heatmap-mid: #fff4db;
-  --chart-heatmap-good: #e6f7ee;
-  --chart-heatmap-empty: #f5f6f7;
+  --chart-heatmap-bad: #fde9ea;
+  --chart-heatmap-empty: #f5f7fa;
 
-  /* typography */
-  --font-sans: Inter, Onest, Manrope, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* typography: Manrope is served from web/public/fonts (T-59), never from a CDN */
+  --font-sans: Manrope, Onest, Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-size-xs: 12px;
   --font-size-sm: 13px;
   --font-size-md: 14px;
+  --font-size-block: 15px;
   --font-size-lg: 16px;
   --font-size-xl: 20px;
-  --font-size-2xl: 24px;
-  --font-size-3xl: 32px;
-  --font-size-kpi: 28px;
+  --font-size-2xl: 26px;
+  --font-size-3xl: 30px;
+  --font-size-kpi: 24px;
+  --font-size-hero: 34px;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
+  --letter-spacing-tight: -0.02em;
 
   /* radius */
-  --radius-chip: 4px;
-  --radius-control: 6px;
-  --radius-dropdown: 8px;
-  --radius-card: 12px;
+  --radius-chip: 999px;
+  --radius-pill: 999px;
+  --radius-control: 10px;
+  --radius-dropdown: 12px;
+  --radius-card: 16px;
   --radius-modal: 16px;
 
   /* spacing: multiples of 4 */
@@ -101,70 +197,162 @@
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
+  /* Gap between blocks of a page and inside a card (DESIGN.md spacing.scale). */
+  --space-block: 20px;
 
   /* control-heights */
-  --control-height-s: 28px;
-  --control-height-m: 36px;
+  --control-height-s: 32px;
+  --control-height-m: 38px;
   --control-height-l: 44px;
+  /* Chip of the filter bar, DESIGN.md §3.9: between Small and the normal control. */
+  --chip-height: 36px;
 
-  /* layout (DESIGN.md §2.2, §9.1) and fixed component sizes (§3) */
-  --header-height: 56px;
-  --sider-width: 240px;
-  --sider-collapsed-width: 56px;
+  /* layout (DESIGN.md §2.2, §9) and fixed component sizes (§3) */
+  --header-height: 64px;
+  --sider-width: 232px;
+  --sider-collapsed-width: 64px;
   --content-max: 1440px;
-  --content-padding: 24px;
-  --login-card-width: 400px;
+  --content-padding: 32px;
+  --card-padding: 20px 24px;
+  --cabinet-width: 1040px;
+  --login-card-width: 420px;
   --popover-width: 320px;
   --notification-panel-width: 400px;
-  /* Counter of the bell, DESIGN.md §3.5: the only 11px in the panel, outside the type scale. */
-  --notification-counter-font: 11px;
-  --badge-height: 22px;
+  --sticky-action-height: 56px;
+  /* Counter of the bell, DESIGN.md §3.5: the only 10px in the panel, outside the type scale. */
+  --notification-counter-font: 10px;
+  --badge-height: 24px;
   --badge-dot: 6px;
   --icon-sm: 16px;
+  --icon-nav: 18px;
   --icon-md: 20px;
   --icon-empty: 48px;
   --avatar-size: 32px;
+  /* Header, DESIGN.md §3.5: the 28px brand mark and the 40px profile chip around a 32px avatar. */
+  --brand-mark-size: 28px;
+  --profile-chip-height: 40px;
+  /* Language switch of the header and of the sign-in screen (DESIGN.md §3.5, §3.26). */
+  --locale-switch-height: 34px;
+  /* Day strip of the school cabinet, DESIGN.md §3.27: 40px cells, 32 on a phone. */
+  --day-cell-height: 40px;
+  --day-cell-radius: 4px;
+  /* Map of the main screen once the two cards stack, DESIGN.md §9.3: «столбцом: карта 360px». */
+  --map-compact-height: 360px;
+  /* Map screen at 1024 and narrower, docs/design/README.md §2: the window minus the header and the
+   * padding the content keeps above and below it. */
+  --map-fill-height: calc(100vh - var(--header-height) - 2 * var(--space-5));
+  /* Column of the incident board, DESIGN.md §9.3: «колонка 280px» once the board scrolls. */
+  --board-column-width: 280px;
+  /* Verdict of the school cabinet, DESIGN.md §3.27: a 14px status dot in a 5px ring of its own light
+   * colour; a phone draws 12px in a 4px ring (School.html, SchoolPhone.html). */
+  --verdict-dot: 14px;
+  --verdict-ring: 5px;
+  /* Bar «fact against the threshold», DESIGN.md §3.10: 8px track with 2×14 ticks. */
+  --fact-bar-height: 8px;
+  --fact-tick-width: 2px;
+  --fact-tick-height: 14px;
   --border-width: 1px;
   --focus-ring-width: 2px;
+  --touch-target: 44px;
 
   /* shadow and motion */
-  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 1px 2px rgba(23, 29, 38, 0.04);
+  --shadow-dropdown: 0 8px 24px rgba(23, 29, 38, 0.12);
   --motion-duration: 150ms;
   --motion-easing: ease-out;
 }
 
-/* colors.dark; values DESIGN.md left open are decided in T-21 there (contrast ≥ 4.5:1). */
+/* colors.dark (DESIGN.md front matter): colours lighten, pills sit on 18 % tints, text on the
+ * accent button is dark because white on #5B8DFF fails 4.5:1. */
 :root[data-theme='dark'] {
-  --bg-page: #141619;
-  --bg-surface: #1e2125;
-  --bg-subtle: #272b30;
-  --bg-selected: #173a28;
-  --border: #33383e;
-  --border-strong: #4a5057;
-  --text-primary: #edeff2;
-  --text-secondary: #a4abb3;
-  --text-muted: #6f767e;
-  --text-link: #4c9aff;
+  --bg-page: #0f1115;
+  --bg-surface: #171a20;
+  --bg-subtle: #262b33;
+  --bg-selected: rgba(91, 141, 255, 0.16);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --text-primary: #e8ecf1;
+  --text-secondary: #a3abb8;
+  --text-muted: #8a93a1;
+  --text-link: #5b8dff;
 
-  --accent: #2bc775;
-  --accent-hover: #4ad68b;
-  --accent-pressed: #5fe09b;
-  --accent-soft: #173a28;
-  --text-on-accent: #141619;
+  --accent: #5b8dff;
+  --accent-hover: #7aa3ff;
+  --accent-pressed: #9dbbff;
+  --accent-soft: rgba(91, 141, 255, 0.16);
+  --accent-border: rgba(91, 141, 255, 0.32);
+  --text-on-accent: #0f1115;
 
-  /* Light heatmap steps glare on the dark surface: the same scale, darkened (T-28). */
-  --chart-heatmap-bad: #4d2427;
-  --chart-heatmap-mid: #4a3b16;
+  --status-normal-main: #2fbf72;
+  --status-normal-bg: rgba(47, 191, 114, 0.18);
+  --status-normal-text: #6fd39c;
+  --status-unstable-main: #f0a62a;
+  --status-unstable-bg: rgba(240, 166, 42, 0.18);
+  --status-unstable-text: #f2b24a;
+  --status-critical-main: #f0555a;
+  --status-critical-bg: rgba(240, 85, 90, 0.18);
+  --status-critical-text: #ff8a8e;
+  --status-offline-main: #8f9aa7;
+  --status-offline-bg: rgba(143, 154, 167, 0.2);
+  --status-offline-text: #b5bdc7;
+  --status-no-data-main: #5d6673;
+  --status-no-data-bg: rgba(163, 171, 184, 0.14);
+  --status-no-data-text: #a3abb8;
+
+  --incident-new-bg: rgba(91, 141, 255, 0.16);
+  --incident-new-text: #9dbbff;
+  --incident-sent-to-provider-bg: rgba(142, 92, 217, 0.22);
+  --incident-sent-to-provider-text: #c7a9f5;
+  --incident-in-progress-bg: rgba(240, 166, 42, 0.18);
+  --incident-in-progress-text: #f2b24a;
+  --incident-awaiting-info-bg: rgba(143, 154, 167, 0.2);
+  --incident-awaiting-info-text: #b5bdc7;
+  --incident-resolved-bg: rgba(47, 191, 114, 0.18);
+  --incident-resolved-text: #6fd39c;
+  --incident-closed-bg: rgba(163, 171, 184, 0.14);
+  --incident-closed-text: #a3abb8;
+
+  --chart-series-1: #5b8dff;
+  --chart-series-2: #3cc9be;
+  --chart-series-3: #f0a62a;
+  --chart-series-4: #b28cf0;
+  --chart-series-5: #2fbf72;
+  --chart-series-6: #f0555a;
+  --chart-grid: rgba(255, 255, 255, 0.06);
+  --chart-area-fill: rgba(91, 141, 255, 0.16);
+  /* Light heatmap steps glare on the dark surface: the same scale, darkened. */
   --chart-heatmap-good: #173a28;
-  --chart-heatmap-empty: #272b30;
+  --chart-heatmap-mid: #4a3b16;
+  --chart-heatmap-bad: #4d2427;
+  --chart-heatmap-empty: #1f232b;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-dropdown: 0 8px 24px rgba(0, 0, 0, 0.45);
 
   color-scheme: dark;
 }
 
-/* At 1024px and narrower the content padding shrinks (DESIGN.md §2.2, breakpoint inclusive). */
+/* Bands of DESIGN.md §9.3, each including its upper bound: «≥ 1280» keeps 32, «1025–1279»
+ * takes 24, «769–1024» and «≤ 768» take 16. 1280 itself belongs to the first band. */
+@media (max-width: 1279px) {
+  :root {
+    --content-padding: 24px;
+  }
+}
+
 @media (max-width: 1024px) {
   :root {
     --content-padding: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --card-padding: 16px 18px;
+    --control-height-m: 44px;
+    --day-cell-height: 32px;
+    --verdict-dot: 12px;
+    --verdict-ring: 4px;
   }
 }
 
@@ -180,10 +368,27 @@ body {
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: var(--font-size-md);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* The focus ring is always visible (DESIGN.md §6): 2px accent with a 1px offset. */
 :focus-visible {
   outline: var(--focus-ring-width) solid var(--accent);
   outline-offset: var(--border-width);
+}
+
+/* Wall of the situation room (T-71, DESIGN.md §3.33): sizes only — the wall reads from six metres,
+ * so its subtree redefines the type scale of the panel by these names and borrows every colour. */
+:root {
+  --wall-padding-block: 28px;
+  --wall-padding-inline: 40px;
+  --wall-aside-width: 380px;
+  --wall-mark-size: 40px;
+  --radius-wall-card: 20px;
+  --font-size-wall-figure: 52px;
+  --font-size-wall-clock: 44px;
+  --font-size-wall-verdict: 34px;
+  --font-size-wall-title: 26px;
+  --font-size-wall-body: 18px;
+  --font-size-wall-caption: 15px;
 }

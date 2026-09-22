@@ -247,7 +247,7 @@ async def test_requests_over_the_limit_are_refused_with_retry_after(
     ]
     refused = await api_client.post(HEARTBEAT, json=heartbeat(), headers=headers)
 
-    assert [response.status_code for response in allowed] == [204] * narrow_limit
+    assert [response.status_code for response in allowed] == [200] * narrow_limit
     problem(refused, 429, "too_many_requests")
     # The agent waits the pause out instead of hammering the server (agent/internal/api/retry.go).
     assert refused.headers["Retry-After"] == str(get_settings().agent_rate_limit_window_s)
@@ -267,7 +267,7 @@ async def test_the_limit_counts_devices_apart(
 
     response = await api_client.post(HEARTBEAT, json=heartbeat(), headers=as_device(other))
 
-    assert response.status_code == 204, response.text
+    assert response.status_code == 200, response.text
 
 
 async def test_the_first_refusal_of_a_window_is_written_to_the_audit_log(

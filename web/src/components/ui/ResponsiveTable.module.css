@@ -1,0 +1,127 @@
+/* Wide table, DESIGN.md §3.12 and mockup Tables.html: three steps in the order they apply. */
+
+/* Step 2, 769–1024, is AntD's own: `fixed: 'left'` on the first column plus `scroll.x` already
+ * pin it with the shadow the theme colours, so there is nothing to redraw here (DESIGN.md §7).
+ * Step 3, ≤ 768: the row becomes a card. */
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* The list itself; the sort select stands above it and the pagination under it (§3.12). */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.empty {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  padding: var(--space-6) 0;
+}
+
+.pagination {
+  min-width: 0;
+}
+
+.sort {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.sortField {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--card-padding);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--text-primary);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.title {
+  min-width: 0;
+  font-size: var(--font-size-block);
+  font-weight: var(--font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.description {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Up to four values as tiles on the page background (DESIGN.md §3.12, step 3). */
+.pairs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--bg-page);
+}
+
+.pairLabel {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pairValue {
+  min-width: 0;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+/* The card list only exists at ≤ 768, so the row action is a touch target (DESIGN.md §9.3). */
+.action :global(.ant-btn) {
+  min-height: var(--touch-target);
+}

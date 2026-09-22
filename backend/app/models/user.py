@@ -24,6 +24,9 @@ class User(TimestampMixin, Base):
     # Chat of the user with the notification bot (T-42); empty — the Telegram channel is skipped
     # for him and the skip is written to ``notification_log``.
     telegram_chat_id: Mapped[str | None]
+    # Language of the panel of this user (T-66, DESIGN.md §5.1); the browser keeps the same
+    # choice, the profile makes it follow him to another computer and into his letters.
+    locale: Mapped[str] = mapped_column(server_default=text("'ru'"))
     # Goes into every token of the user; logout raises it and every token issued before dies.
     token_version: Mapped[int] = mapped_column(server_default=text("0"))
     last_login_at: Mapped[datetime | None]

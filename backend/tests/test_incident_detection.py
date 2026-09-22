@@ -292,7 +292,7 @@ async def test_silence_in_working_hours_for_30_minutes_is_no_connection(
 async def test_a_rule_of_a_school_replaces_the_global_rule_of_its_metric_for_its_lines_only(
     session: AsyncSession, api_client: AsyncClient
 ) -> None:
-    """T-59: two violations open an incident at the school with its own rule, not elsewhere."""
+    """T-85: two violations open an incident at the school with its own rule, not elsewhere."""
     await create_settings(session)
     satellite = await an_agent(session, api_client, code="VKO-I-SAT")
     ordinary = await an_agent(session, api_client, code="VKO-I-ORD")
@@ -326,7 +326,7 @@ async def test_a_rule_of_a_school_replaces_the_global_rule_of_its_metric_for_its
 async def test_an_incident_of_a_global_rule_is_restored_after_the_school_got_its_own_rule(
     session: AsyncSession, api_client: AsyncClient
 ) -> None:
-    """A new rule of a school never leaves the incident of the global rule hanging (T-59)."""
+    """A new rule of a school never leaves the incident of the global rule hanging (T-85)."""
     await create_settings(session)
     agent = await an_agent(session, api_client, code="VKO-I-OWN")
     for _ in range(3):

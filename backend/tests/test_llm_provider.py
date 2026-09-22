@@ -23,14 +23,16 @@ from httpx import ASGITransport, AsyncClient
 from app.core.config import Settings
 from app.core.errors import PROBLEM_MEDIA_TYPE, ApiError, register_error_handlers
 from app.services.llm import NOT_CONFIGURED, UNAVAILABLE, get_provider
-from app.services.llm.base import SECRET_MASK, LLMProvider
+from app.services.llm.base import MAX_OUTPUT_TOKENS, SECRET_MASK, LLMProvider
 from app.services.llm.claude import ANTHROPIC_VERSION, DEFAULT_MODEL, ClaudeProvider
+from app.services.llm.deepseek import DeepSeekProvider
 from app.services.llm.ollama import OllamaProvider
 
 # A key of the test: made up, not a secret (AGENTS.md §2.7).
 KEY = "test-llm-key-0123456789"
 PROMPT = "Школа 12345, договор 100 Мбит/с, факт 12 Мбит/с. Напиши обращение провайдеру."
 DRAFT = "Уважаемый поставщик услуг, просим устранить несоответствие скорости."
+SYSTEM_PROMPT = "Ты пишешь официальные обращения к поставщику связи от имени школы."
 LOGGER = "app.services.llm.base"
 
 
@@ -62,6 +64,12 @@ def fails(monkeypatch: pytest.MonkeyPatch, error: Exception) -> None:
         raise error
 
     monkeypatch.setattr("app.services.llm.base.request_json", fake)
+
+
+def deepseek_answer(text: str) -> dict[str, Any]:
+    """Answer of the Chat Completions API with one choice, the way DeepSeek shapes it."""
+    message = {"role": "assistant", "content": text}
+    return {"choices": [{"index": 0, "message": message, "finish_reason": "stop"}]}
 
 
 def no_network(*args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -139,6 +147,46 @@ async def test_ollama_is_chosen_by_the_setting(monkeypatch: pytest.MonkeyPatch) 
     assert "x-api-key" not in call.headers
 
 
+async def test_deepseek_is_chosen_by_the_setting(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``LLM_PROVIDER=deepseek`` asks the Chat Completions API with the key as a bearer token."""
+    call = answers(monkeypatch, deepseek_answer(f"{DRAFT}\n"))
+    provider = get_provider(settings_of(llm_provider="deepseek", llm_api_key=KEY))
+
+    assert isinstance(provider, DeepSeekProvider)
+    assert await draft(provider, PROMPT) == DRAFT
+    assert call.url == "https://api.deepseek.com/chat/completions"
+    assert call.headers["Authorization"] == f"Bearer {KEY}"
+    assert "x-api-key" not in call.headers
+    assert call.payload["model"] == "deepseek-chat"
+    assert call.payload["messages"] == [{"role": "user", "content": PROMPT}]
+    assert call.payload["max_tokens"] == MAX_OUTPUT_TOKENS
+    assert call.payload["stream"] is False
+
+
+async def test_deepseek_sends_the_system_prompt_as_the_first_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The system prompt of T-47 goes first with the role ``system``; address and model as set."""
+    call = answers(monkeypatch, deepseek_answer(DRAFT))
+    provider = get_provider(
+        settings_of(
+            llm_provider="deepseek",
+            llm_api_key=KEY,
+            llm_model="deepseek-reasoner",
+            llm_url="https://llm.example.kz/v1/",
+        )
+    )
+
+    assert await provider.generate(PROMPT, system=SYSTEM_PROMPT) == DRAFT
+    assert call.url == "https://llm.example.kz/v1/chat/completions"
+    assert call.payload["model"] == "deepseek-reasoner"
+    assert call.payload["messages"] == [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": PROMPT},
+    ]
+    assert "system" not in call.payload
+
+
 async def test_without_a_key_the_service_answers_problem_json() -> None:
     """No key — 503 problem+json with a reason, not a 500 and not a traceback."""
     application = FastAPI()
@@ -163,6 +211,17 @@ async def test_without_a_key_the_service_answers_problem_json() -> None:
     assert problem["instance"] == "/draft"
 
 
+@pytest.mark.parametrize("name", ["claude", "deepseek"])
+async def test_every_provider_behind_a_key_needs_the_key(name: str) -> None:
+    """Both providers of the network answer the same 503 while ``LLM_API_KEY`` is empty."""
+    with pytest.raises(ApiError) as raised:
+        get_provider(settings_of(llm_provider=name, llm_api_key=""))
+
+    assert raised.value.status == 503
+    assert raised.value.type == NOT_CONFIGURED
+    assert "LLM_API_KEY" in (raised.value.detail or "")
+
+
 async def test_an_unknown_provider_is_a_problem_too() -> None:
     """A typo in ``LLM_PROVIDER`` names the allowed values instead of falling."""
     with pytest.raises(ApiError) as raised:
@@ -171,15 +230,16 @@ async def test_an_unknown_provider_is_a_problem_too() -> None:
     assert raised.value.status == 503
     assert raised.value.type == NOT_CONFIGURED
     assert "«gpt»" in (raised.value.detail or "")
-    assert "claude, ollama" in (raised.value.detail or "")
+    assert "claude, deepseek, ollama" in (raised.value.detail or "")
 
 
+@pytest.mark.parametrize("name", ["claude", "deepseek"])
 async def test_the_key_never_reaches_the_log_or_the_answer(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    name: str, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     """A network error that quotes the key back leaves it in neither the log nor the answer."""
     fails(monkeypatch, urllib.error.URLError(f"ключ {KEY} отклонён"))
-    provider = get_provider(settings_of(llm_provider="claude", llm_api_key=KEY))
+    provider = get_provider(settings_of(llm_provider=name, llm_api_key=KEY))
 
     with caplog.at_level(logging.WARNING, logger=LOGGER):
         with pytest.raises(ApiError) as raised:
@@ -194,10 +254,21 @@ async def test_the_key_never_reaches_the_log_or_the_answer(
     assert caplog.records
 
 
-async def test_a_refusal_of_the_model_is_not_a_crash(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("name", "body"),
+    [
+        ("claude", {"content": [{"type": "tool_use", "id": "toolu_1"}]}),
+        # ``deepseek-reasoner`` that spent every token on thinking: reasoning, no letter.
+        ("deepseek", {"choices": [{"message": {"content": None, "reasoning_content": "…"}}]}),
+        ("deepseek", {"choices": []}),
+    ],
+)
+async def test_a_refusal_of_the_model_is_not_a_crash(
+    name: str, body: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
     """An answer without text is an unavailable model, not a 500 in the middle of a draft."""
-    answers(monkeypatch, {"content": [{"type": "tool_use", "id": "toolu_1"}]})
-    provider = get_provider(settings_of(llm_provider="claude", llm_api_key=KEY))
+    answers(monkeypatch, body)
+    provider = get_provider(settings_of(llm_provider=name, llm_api_key=KEY))
 
     with pytest.raises(ApiError) as raised:
         await draft(provider, PROMPT)

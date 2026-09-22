@@ -34,6 +34,11 @@ const FIELDS = [
   'exportSyncMaxRows',
   'exportRetentionDays',
   'incidentAutoCloseHours',
+  'attentionIncidentUnassignedHours',
+  'attentionAppealNoAnswerHours',
+  'rolloutSilentDays',
+  'passwordResetTtlMinutes',
+  'supportContact',
 ]
 
 const valuesOf = ({ speedtest, defaultWorkingHours, ...rest }: SettingsDetail): SettingsValues => ({
@@ -162,6 +167,37 @@ function SettingsForm({ settings }: { settings: SettingsDetail }) {
             />
             <NumberField name="contractMismatchWindowDays" label="Окно несоответствия договору, дней" />
             <NumberField name="incidentAutoCloseHours" label="Закрывать решённый инцидент через, ч" />
+            <NumberField
+              name="attentionIncidentUnassignedHours"
+              label="Инцидент без ответственного, ч"
+              extra="Через столько часов инцидент без ответственного попадает в «Требуют внимания» на главной."
+            />
+            <NumberField
+              name="attentionAppealNoAnswerHours"
+              label="Обращение без ответа, ч"
+              extra="Через столько часов обращение «Передан поставщику» считается оставшимся без ответа."
+            />
+            <NumberField
+              name="rolloutSilentDays"
+              label="Молчащий агент, суток"
+              extra="Через столько суток без heartbeat школа попадает в список «Молчат» раздела «Внедрение»."
+            />
+          </section>
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Вход в панель</h3>
+            <NumberField
+              name="passwordResetTtlMinutes"
+              label="Срок ссылки на смену пароля, мин"
+              extra="Сколько минут действует ссылка из письма «Забыли пароль?»."
+            />
+            <Form.Item
+              label="Контакт администратора"
+              name="supportContact"
+              extra="Показывается на входе вместо ссылки, когда SMTP не настроен. Пусто — не показывать."
+              rules={[maxLength(255)]}
+            >
+              <Input autoComplete="off" />
+            </Form.Item>
           </section>
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>Агент и выгрузки</h3>

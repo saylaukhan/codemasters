@@ -1,4 +1,4 @@
-"""Letter templates of the admin panel (T-60; ТЗ п. 17, п. 20; ADR-011): list, placeholders,
+"""Letter templates of the admin panel (T-86; ТЗ п. 17, п. 20; ADR-011): list, placeholders,
 create, change.
 
 There is no DELETE: a template is switched off with ``is_active`` and the appeals written by it

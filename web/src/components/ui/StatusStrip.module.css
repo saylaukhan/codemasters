@@ -1,0 +1,131 @@
+/* Status strip of the main screen, DESIGN.md §3.10, §3.28: one card, four clickable columns. */
+.strip {
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  color: var(--text-primary);
+  transition: background var(--motion-duration) var(--motion-easing);
+}
+
+.column:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.column + .column {
+  border-inline-start: var(--border-width) solid var(--border);
+}
+
+.caption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.captionText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dot {
+  flex: none;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: 50%;
+  background: var(--column-main);
+}
+
+.figure {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.count {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: 1.1;
+}
+
+.unit {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.delta {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.delta[data-tone='good'] {
+  color: var(--status-normal-text);
+}
+
+.delta[data-tone='bad'] {
+  color: var(--status-critical-text);
+}
+
+.delta[data-tone='neutral'] {
+  color: var(--text-muted);
+}
+
+/* «Нет данных» is display-only (ADR-004): a muted footnote, never a fifth clickable column. */
+.footnote {
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  border-block-start: var(--border-width) solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.column[data-status='normal'] {
+  --column-main: var(--status-normal-main);
+}
+.column[data-status='unstable'] {
+  --column-main: var(--status-unstable-main);
+}
+.column[data-status='critical'] {
+  --column-main: var(--status-critical-main);
+}
+.column[data-status='offline'] {
+  --column-main: var(--status-offline-main);
+}
+
+/* DESIGN.md §9.3: 2 × 2 at 1024px and narrower. */
+@media (max-width: 1024px) {
+  .columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .column:nth-child(odd) {
+    border-inline-start: none;
+  }
+
+  .column:nth-child(n + 3) {
+    border-block-start: var(--border-width) solid var(--border);
+  }
+}

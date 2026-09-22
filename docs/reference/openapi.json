@@ -143,7 +143,7 @@
           "agent"
         ],
         "summary": "Сигнал «агент жив»",
-        "description": "Record that the agent is alive and remember the version it runs (ТЗ п. 3, ADR-014).\n\nThe moment is the clock of the database, not ``sent_at`` of the computer: the status of a\nschool and its availability are counted against one clock, and a machine whose time is off\nmust not look silent or alive by mistake. ``sent_at`` stays in the contract as what the\nagent believes the time is.",
+        "description": "Ответ несёт `measure_requested_at`, если администратор запросил замер (T-79): агент делает один внеплановый замер, запоминает момент запроса и по нему же отличает повтор того же запроса от нового. Запрос старше часа не выдаётся.",
         "operationId": "send_heartbeat",
         "requestBody": {
           "content": {
@@ -156,8 +156,15 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "Successful Response"
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeartbeatResponse"
+                }
+              }
+            }
           },
           "401": {
             "description": "Токен устройства отсутствует или недействителен",
@@ -1055,6 +1062,138 @@
         ]
       }
     },
+    "/api/auth/password-reset": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Запросить ссылку на смену пароля",
+        "description": "Ответ одинаков для любого адреса: есть такая учётная запись или нет, заблокирована она или нет, настроен SMTP или нет — 204 и пустое тело, чтобы эндпоинт не выдавал чужие e-mail (T-65). Письмо со ссылкой уходит, только когда настроен SMTP и учётная запись активна; срок ссылки — password_reset_ttl_minutes из настроек.",
+        "operationId": "request_password_reset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password-reset/confirm": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Задать новый пароль по ссылке из письма",
+        "description": "Ссылка действует один раз и до истечения срока; после смены пароля остальные ссылки пользователя погашены, а его открытые сессии завершены. Недействительная, погашенная и истёкшая ссылка отвечают одинаково.",
+        "operationId": "confirm_password_reset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetConfirm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Ссылка недействительна или устарела (type invalid_reset_token)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login-info": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Что показать на экране входа: ссылку сброса или контакт",
+        "description": "Без авторизации: настроен ли SMTP (иначе ссылка «Забыли пароль?» не показывается) и контакт администратора из настроек — пустая строка, если контакт не заполнен (T-65).",
+        "operationId": "get_login_info",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginInfo"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/me": {
       "get": {
         "tags": [
@@ -1089,6 +1228,61 @@
             "BearerAuth": []
           }
         ]
+      },
+      "patch": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Изменить свой профиль: язык панели",
+        "description": "Пользователь меняет только свой язык интерфейса (T-66); роль, область видимости и пароль здесь не меняются. Панель выбирает словарь подписей один раз при загрузке, поэтому после ответа она перезагружает страницу. Смена языка пишется в журнал.",
+        "operationId": "update_current_user",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUser"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/dashboard/summary": {
@@ -1097,7 +1291,7 @@
           "dashboard"
         ],
         "summary": "Сводка главного экрана: KPI",
-        "description": "Восемь KPI из ТЗ п. 4 по школам в области видимости, отобранным фильтрами; status — статус школы на момент period_to (ADR-004), как на карте. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Замеры, средние и проблемные устройства — за период, по основным линиям, без Wi-Fi (ADR-012).",
+        "description": "Показатели ТЗ п. 4 по школам в области видимости, отобранным фильтрами; status — статус школы на момент period_to (ADR-004), как на карте. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Замеры, средние и проблемные устройства — за период, по основным линиям, без Wi-Fi (ADR-012). status_counts считается до фильтра по статусу, поэтому сумма пяти чисел не меняется при клике по колонке полосы; schools_total_count включает отключённые школы. previous — те же показатели за предыдущий период такой же длины по тем же школам; null, если за тот период не было ни замеров, ни heartbeat.",
         "operationId": "get_dashboard_summary",
         "security": [
           {
@@ -1220,6 +1414,136 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/attention": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Требуют внимания: школы, инциденты и обращения, которые ждут человека",
+        "description": "Школы со статусом «Нет соединения» и «Критично» на момент period_to, инциденты без ответственного и обращения «Передан поставщику» без движения дольше окон из настроек (attention_incident_unassigned_hours, attention_appeal_no_answer_hours). Фильтры отбирают школы так же, как GET /api/dashboard/summary. Порядок: severity по возрастанию, затем since от старого к новому; total — число строк до ограничения limit, для подписи «Ещё N школ».",
+        "operationId": "get_attention",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region Id"
+            }
+          },
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "connection_type_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Type Id"
+            }
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Момент, на который собирается список; по умолчанию — текущий",
+              "title": "Period To"
+            },
+            "description": "Момент, на который собирается список; по умолчанию — текущий"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "description": "Сколько строк вернуть",
+              "default": 10,
+              "title": "Limit"
+            },
+            "description": "Сколько строк вернуть"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttentionPage"
                 }
               }
             }
@@ -1901,6 +2225,107 @@
           },
           "409": {
             "description": "School ID уже занят другой школой (type school_code_taken)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schools/{school_id}/days": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Статус каждого из последних дней школы",
+        "description": "Полоса дней кабинета школы: по элементу на каждый локальный день Asia/Almaty, старые сверху, включая дни без замеров. День — «Нет соединения», если простой попал в рабочие часы школы (ADR-014); иначе худший замер дня по основным линиям без Wi‑Fi (ADR-012); иначе «Нет данных».",
+        "operationId": "list_school_days",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "school_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "School Id"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 90,
+              "minimum": 1,
+              "description": "Сколько последних локальных дней вернуть",
+              "default": 30,
+              "title": "Days"
+            },
+            "description": "Сколько последних локальных дней вернуть"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец окна, не включая; по умолчанию — текущий момент",
+              "title": "Period To"
+            },
+            "description": "Конец окна, не включая; по умолчанию — текущий момент"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolDays"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Школа не найдена",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3569,6 +3994,74 @@
         }
       }
     },
+    "/api/devices/{device_id}/measure": {
+      "post": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Запросить внеплановый замер",
+        "description": "Замер здесь не выполняется: агент видит measure_requested_at в ответе на POST /api/devices/heartbeat, делает один замер и присылает его как обычно, не дожидаясь слота. Расписание устройства не меняется (ТЗ п. 2). Пока замер не пришёл, measure_requested_at заполнен; запрос старше часа агенту не выдаётся, и повторное нажатие тогда создаёт новый.",
+        "operationId": "request_measurement",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/analytics": {
       "get": {
         "tags": [
@@ -4710,13 +5203,117 @@
         ]
       }
     },
+    "/api/assistant": {
+      "get": {
+        "tags": [
+          "assistant"
+        ],
+        "summary": "Доступен ли помощник по интерфейсу",
+        "description": "Панель показывает кнопку «Помощник» в шапке, только когда available=true: помощник включён (ASSISTANT_ENABLED) и модель ADR-011 настроена. Запроса к модели здесь нет.",
+        "operationId": "get_assistant_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/assistant/ask": {
+      "post": {
+        "tags": [
+          "assistant"
+        ],
+        "summary": "Вопрос помощнику по интерфейсу",
+        "description": "Диалог целиком и код открытого экрана; последняя реплика — вопрос. Модель получает описание панели, профиль роли и открытый экран — и ничего из данных школ; ответ — текст с абзацами, списками и **жирным**. Ничего не сохраняется и в журнал не пишется. Помощник выключен, модель не настроена или не ответила — 503 problem+json.",
+        "operationId": "ask_assistant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistantQuestion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantAnswer"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Помощник выключен, модель не настроена или не ответила (type assistant_disabled, llm_not_configured, llm_unavailable)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/appeals/draft": {
       "post": {
         "tags": [
           "appeals"
         ],
         "summary": "AI-черновик обращения поставщику",
-        "description": "Ничего не сохраняет и номер не присваивает. Письмо пишется по шаблону template_id (без него — по шаблону по умолчанию, T-60): сервер заполняет шаблон фактами, модель пишет по нему. Контекст собирает сервер, в модель не уходят ФИО, телефоны и e-mail (ADR-011). Модель недоступна или не настроена — не ошибка: ai_generated=false, текст — заполненный шаблон (T-47). Неизвестный incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый template_id — 422.",
+        "description": "Ничего не сохраняет и номер не присваивает. Письмо пишется по шаблону template_id (без него — по шаблону по умолчанию, T-86): сервер заполняет шаблон фактами, модель пишет по нему. Контекст собирает сервер, в модель не уходят ФИО, телефоны и e-mail (ADR-011). Модель недоступна или не настроена — не ошибка: ai_generated=false, текст — заполненный шаблон (T-47). Неизвестный incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый template_id — 422.",
         "operationId": "generate_appeal_draft",
         "requestBody": {
           "content": {
@@ -4773,7 +5370,7 @@
           "appeals"
         ],
         "summary": "Шаблоны писем для выбора в редакторе черновика",
-        "description": "Только действующие шаблоны, по умолчанию — первым (T-60).",
+        "description": "Только действующие шаблоны, по умолчанию — первым (T-86).",
         "operationId": "list_appeal_template_options",
         "security": [
           {
@@ -5050,7 +5647,7 @@
           "appeals"
         ],
         "summary": "Отправить обращение: номер, письмо поставщику, PDF",
-        "description": "Номер присваивается здесь. Контекст сервер пересобирает за тот же период; вид письма — по template_id черновика; статус после отправки — sent_to_provider. SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый template_id — 422.",
+        "description": "Номер присваивается здесь. Контекст сервер пересобирает за тот же период; вид письма — по template_id черновика; статус после отправки — sent_to_provider. Обращение из инцидента в статусе new переводит его в sent_to_provider с записью в incident_events; инцидент в другом статусе не меняется (T-63). SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый template_id — 422.",
         "operationId": "create_appeal",
         "security": [
           {
@@ -5322,6 +5919,354 @@
         }
       }
     },
+    "/api/providers/score": {
+      "get": {
+        "tags": [
+          "providers"
+        ],
+        "summary": "Оценка поставщиков за период",
+        "description": "Строка на каждого поставщика, доступного пользователю (ADR-008), по имени. Замеры, доступность и доля ниже договора — из агрегатов через аналитику T-27; инциденты — T-45; реакция — время до первой смены статуса инцидента. Оценка — 100 минус штрафы частей; веса, порог «ниже нормы» и норма реакции — настройки (ТЗ п. 11, п. 20). Окна плановых работ пока не исключаются: календарь появится в T-70.",
+        "operationId": "get_provider_score",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsPeriod",
+              "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+            },
+            "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало, включительно; только и обязательно при period=custom",
+              "title": "Period From"
+            },
+            "description": "Начало, включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец, не включительно; только и обязательно при period=custom",
+              "title": "Period To"
+            },
+            "description": "Конец, не включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Район или город (regions)",
+              "title": "Region Id"
+            },
+            "description": "Район или город (regions)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderScoreReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/providers/{provider_id}/score": {
+      "get": {
+        "tags": [
+          "providers"
+        ],
+        "summary": "Карточка поставщика: оценка, школы, договор ниже норматива",
+        "description": "Те же числа по одному поставщику плюс его школы со статусом и линии, у которых договорная скорость ниже порога применимого профиля («не претензия»: нужен новый договор, а не обращение). Поставщик, ни одной линии которого пользователь не видит, — 404.",
+        "operationId": "get_provider_card",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsPeriod",
+              "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+            },
+            "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало, включительно; только и обязательно при period=custom",
+              "title": "Period From"
+            },
+            "description": "Начало, включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец, не включительно; только и обязательно при period=custom",
+              "title": "Period To"
+            },
+            "description": "Конец, не включительно; только и обязательно при period=custom"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderScoreDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Поставщик не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/providers/{provider_id}/act": {
+      "get": {
+        "tags": [
+          "providers"
+        ],
+        "summary": "Акт о несоответствии: PDF по поставщику за период",
+        "description": "Замеры ниже договорной скорости с порогами и договорными значениями из thresholds_snapshot каждого замера, а не из профиля и договора на сегодня (ТЗ п. 11). Генератор — тот же, что у обращения (T-48).",
+        "operationId": "get_provider_act",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Provider Id"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsPeriod",
+              "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+            },
+            "description": "today, 7 или 30 суток с текущими, custom — period_from и period_to"
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало, включительно; только и обязательно при period=custom",
+              "title": "Period From"
+            },
+            "description": "Начало, включительно; только и обязательно при period=custom"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец, не включительно; только и обязательно при period=custom",
+              "title": "Period To"
+            },
+            "description": "Конец, не включительно; только и обязательно при period=custom"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF-файл акта",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Поставщик не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/exports": {
       "post": {
         "tags": [
@@ -5426,6 +6371,129 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ExportJobPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exports/estimate": {
+      "get": {
+        "tags": [
+          "exports"
+        ],
+        "summary": "Сколько строк будет в файле: оценка до формирования",
+        "description": "Сводка конструктора «Будет выгружено ≈ N строк» (DESIGN.md §3.24) с теми же фильтрами, что POST /api/exports: режим, период, school_ids и — только для raw — device_ids и statuses; для aggregates они, как и в POST, 422. Режим school_report не оценивается: PDF-отчёт строится по одной школе из её карточки (T-32). Неизвестные или вне области видимости school_ids и device_ids — 422 (ADR-008). Считается по дневным агрегатам m_daily, а не по measurements: для aggregates это число школ в файле и оно точное (exact=true), для raw — оценка (exact=false), потому что Wi‑Fi в агрегаты не входит (ADR-012), а задетые периодом сутки считаются целиком.",
+        "operationId": "estimate_export",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ExportEstimateMode"
+            }
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Начало периода по measured_at, включительно",
+              "title": "Period From"
+            },
+            "description": "Начало периода по measured_at, включительно"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Конец периода, не включается",
+              "title": "Period To"
+            },
+            "description": "Конец периода, не включается"
+          },
+          {
+            "name": "school_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "Пусто — все школы в области видимости",
+              "title": "School Ids"
+            },
+            "description": "Пусто — все школы в области видимости"
+          },
+          {
+            "name": "device_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "Только raw: ПК выбранных школ; пусто — все",
+              "title": "Device Ids"
+            },
+            "description": "Только raw: ПК выбранных школ; пусто — все"
+          },
+          {
+            "name": "statuses",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/QualityStatus"
+              },
+              "description": "Только raw: статусы замера; пусто — все",
+              "title": "Statuses"
+            },
+            "description": "Только raw: статусы замера; пусто — все"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportEstimate"
                 }
               }
             }
@@ -5566,6 +6634,276 @@
             }
           }
         }
+      }
+    },
+    "/api/rollout/summary": {
+      "get": {
+        "tags": [
+          "rollout"
+        ],
+        "summary": "Ход внедрения: подключённые школы, компьютеры на связи, районы",
+        "description": "«Подключена» — у школы есть хотя бы один активный компьютер, как считает GET /api/dashboard/summary: schools_count и devices_count совпадают с его числами по тем же фильтрам. «На связи» — сигнал не старше offline_after_s, «молчит» — тишина дольше rollout_silent_days, «старая версия» — версия, которой нет среди действующих релизов канала stable и новее (T-50). Все окна берутся из настроек (ТЗ п. 20). schools_total_count включает отключённые школы, lists — размеры четырёх списков.",
+        "operationId": "get_rollout_summary",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region Id"
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Момент, на который собираются числа; по умолчанию — текущий",
+              "title": "As Of"
+            },
+            "description": "Момент, на который собираются числа; по умолчанию — текущий"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RolloutSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rollout/schools": {
+      "get": {
+        "tags": [
+          "rollout"
+        ],
+        "summary": "Школы одного из четырёх списков внедрения",
+        "description": "filter выбирает критерий (docs/design/README.md §6.4): not_connected — нет ни одного активного компьютера; silent — компьютер есть, но последний heartbeat старше rollout_silent_days; code_unused — код установки выдан и не использован, с его возрастом; old_version — есть компьютер не на действующем релизе агента. Порядок — худшие сверху: самая долгая тишина, самый старый код, больше всего устаревших компьютеров. total считается до ограничения limit, для подписи «Ещё N школ».",
+        "operationId": "get_rollout_schools",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RolloutFilter",
+              "description": "Критерий списка",
+              "default": "not_connected"
+            },
+            "description": "Критерий списка"
+          },
+          {
+            "name": "region_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Region Id"
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Момент, на который собирается список; по умолчанию — текущий",
+              "title": "As Of"
+            },
+            "description": "Момент, на который собирается список; по умолчанию — текущий"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "Сколько строк вернуть",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Сколько строк вернуть"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RolloutSchoolPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rollout/devices/agent-update": {
+      "post": {
+        "tags": [
+          "rollout"
+        ],
+        "summary": "Назначить обновление: перевести компьютеры в канал целевой версии",
+        "description": "Целевая версия у устройства не хранится: агент ставит последний релиз своего канала (T-50), поэтому назначение переводит выбранные компьютеры — или все компьютеры района — в канал, который выдаёт эту версию. Версия, не являющаяся последней в своём канале, — 409 release_not_latest: доставить её нечем. Новую версию агенты возьмут при следующем GET /api/agent/config.",
+        "operationId": "assign_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentUpdateAssign"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentUpdateAssigned"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Релиз или устройство не найдены",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Версия не последняя в своём канале (type release_not_latest)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/admin/users": {
@@ -7311,7 +8649,7 @@
           "admin"
         ],
         "summary": "Правила формирования инцидентов",
-        "description": "Порядок: правила области, затем правила школ по названию школы. Правило школы заменяет для её линий правило области по тому же показателю (T-59).",
+        "description": "Порядок: правила области, затем правила школ по названию школы. Правило школы заменяет для её линий правило области по тому же показателю (T-85).",
         "operationId": "list_incident_rules",
         "security": [
           {
@@ -7956,6 +9294,410 @@
         ]
       }
     },
+    "/api/admin/digests": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Рассылки сводки для руководителя",
+        "operationId": "list_digests",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DigestSettingsDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Создать рассылку сводки",
+        "description": "scope=oblast — выпуск по всей области, scope=region — по одному району, и тогда обязателен region_id. weekday (1 — понедельник) и hour — в settings.timezone (Asia/Almaty): расписание хранится в таблице, а не в коде (ТЗ п. 11, п. 20). Без адресов и без чата Telegram — 422: отправлять некуда.",
+        "operationId": "create_digest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DigestSettingsCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DigestSettingsDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/digests/{digest_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить или отключить рассылку сводки",
+        "description": "Охват рассылки не меняется: для другого района создайте новую рассылку.",
+        "operationId": "update_digest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "digest_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Digest Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DigestSettingsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DigestSettingsDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Рассылка сводки не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Удалить рассылку сводки",
+        "description": "Рассылка — настройка, а не история: удаление ничего не теряет.",
+        "operationId": "delete_digest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "digest_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Digest Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Рассылка сводки не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/digests/{digest_id}/send-now": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Отправить сводку сейчас",
+        "description": "Тот же выпуск, что уходит по расписанию, вне расписания. Каждая попытка каждого канала пишется в notification_log (ТЗ п. 18): установка без SMTP или без бота Telegram даёт skipped с причиной, а не ошибку запроса.",
+        "operationId": "send_digest_now",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "digest_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Digest Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DigestSendResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Рассылка сводки не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/digests/{digest_id}/preview": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Предпросмотр сводки одной страницей PDF",
+        "description": "Страница A4 выпуска за неделю, которая заканчивается сейчас. Тот же генератор, что письмо рассылки, поэтому предпросмотр совпадает с PDF.",
+        "operationId": "preview_digest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "digest_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Digest Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Рассылка сводки не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/agent-releases": {
       "get": {
         "tags": [
@@ -8359,6 +10101,385 @@
           }
         }
       }
+    },
+    "/api/admin/calendar": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "События календаря: каникулы, праздники, плановые работы",
+        "description": "Ближайшие сверху. В каникулы и праздники доступность не считается и инциденты не создаются, окно плановых работ не входит в оценку поставщика (ТЗ п. 14).",
+        "operationId": "list_calendar_events",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CalendarKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "period_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Конец события позже этого",
+              "title": "Period From"
+            },
+            "description": "Конец события позже этого"
+          },
+          {
+            "name": "period_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Начало события не позже этого",
+              "title": "Period To"
+            },
+            "description": "Начало события не позже этого"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarEventDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Добавить событие календаря",
+        "description": "scope=oblast — вся область, scope=district — район (обязателен region_id), scope=school — школа (обязателен school_id). provider_id указывается только при kind=planned_works. Границы каникул и праздника — целые местные сутки.",
+        "operationId": "create_calendar_event",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarEventCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarEventDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/calendar/{event_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить событие календаря",
+        "description": "Тип и цель события не меняются: для другой цели заведите новое событие.",
+        "operationId": "update_calendar_event",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarEventUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarEventDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Событие календаря не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Удалить событие календаря",
+        "description": "Событие — настройка, а не история: удаление ничего не теряет.",
+        "operationId": "delete_calendar_event",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Событие календаря не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/calendar/import": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Импорт календаря из таблицы",
+        "description": "Содержимое файла CSV с заголовком kind,title,start,end и необязательными school_code, region_code и comment. Дата YYYY-MM-DD — целые местные сутки, последний день входит целиком. Строка с ошибкой не останавливает импорт: она возвращается в errors.",
+        "operationId": "import_calendar",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarImportResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -8687,6 +10808,87 @@
         "type": "object",
         "title": "AgentReleaseUpdate",
         "description": "Promotion to another channel or withdrawal of a release."
+      },
+      "AgentUpdateAssign": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+            "title": "Version",
+            "description": "Версия релиза T-50, которую должны поставить агенты",
+            "examples": [
+              "0.2.0"
+            ]
+          },
+          "device_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array",
+                "maxItems": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Ids",
+            "description": "Выбранные компьютеры; null — по району"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Все компьютеры района или города; null — вся область видимости"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "AgentUpdateAssign",
+        "description": "«Назначить обновление»: which computers take ``version`` on their next configuration.\n\nEither ``device_ids`` or ``region_id`` — the chosen computers or every computer of a district;\nwithout both the whole scope of the user is meant."
+      },
+      "AgentUpdateAssigned": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/AgentChannel",
+            "description": "Канал обновления, который выдаёт эту версию (T-50)"
+          },
+          "devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Count",
+            "description": "Компьютеры выборки"
+          },
+          "devices_changed_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Changed Count",
+            "description": "Из них переведены в канал; остальные уже получают эту версию"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "channel",
+          "devices_count",
+          "devices_changed_count"
+        ],
+        "title": "AgentUpdateAssigned",
+        "description": "What the assignment changed: the channel that delivers ``version`` and how many moved."
       },
       "AnalyticsGranularity": {
         "type": "string",
@@ -9321,7 +11523,7 @@
               }
             ],
             "title": "Template Id",
-            "description": "Шаблон письма (обращение или претензия, T-60); пусто — шаблон по умолчанию. Неизвестный или отключённый — 422"
+            "description": "Шаблон письма (обращение или претензия, T-86); пусто — шаблон по умолчанию. Неизвестный или отключённый — 422"
           },
           "subject": {
             "type": "string",
@@ -9386,7 +11588,7 @@
           },
           "kind": {
             "$ref": "#/components/schemas/AppealKind",
-            "description": "Обращение или претензия (T-60)"
+            "description": "Обращение или претензия (T-86)"
           },
           "template_id": {
             "anyOf": [
@@ -9503,7 +11705,7 @@
           "template_id": {
             "type": "integer",
             "title": "Template Id",
-            "description": "Шаблон, по которому написано письмо (T-60)"
+            "description": "Шаблон, по которому написано письмо (T-86)"
           },
           "template_name": {
             "type": "string",
@@ -9591,7 +11793,7 @@
               }
             ],
             "title": "Template Id",
-            "description": "Шаблон письма (обращение или претензия, T-60); пусто — шаблон по умолчанию. Неизвестный или отключённый — 422"
+            "description": "Шаблон письма (обращение или претензия, T-86); пусто — шаблон по умолчанию. Неизвестный или отключённый — 422"
           }
         },
         "type": "object",
@@ -9681,7 +11883,7 @@
           },
           "kind": {
             "$ref": "#/components/schemas/AppealKind",
-            "description": "Обращение или претензия (T-60)"
+            "description": "Обращение или претензия (T-86)"
           },
           "subject": {
             "type": "string",
@@ -10140,6 +12342,312 @@
         "title": "AppealUpdate",
         "description": "Status change or comment by the provider or a user; at least one of them."
       },
+      "AssistantAnswer": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Ответ помощника: абзацы, списки и **жирный**, как в черновике обращения"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "AssistantAnswer",
+        "description": "Answer of the model; nothing is stored (T-84)."
+      },
+      "AssistantAuthor": {
+        "type": "string",
+        "enum": [
+          "user",
+          "assistant"
+        ]
+      },
+      "AssistantMessage": {
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/AssistantAuthor"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "author",
+          "text"
+        ],
+        "title": "AssistantMessage",
+        "description": "One line of the dialog."
+      },
+      "AssistantQuestion": {
+        "properties": {
+          "screen": {
+            "$ref": "#/components/schemas/AssistantScreen",
+            "description": "Открытый экран панели: помощник отвечает с учётом него"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/AssistantMessage"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Messages",
+            "description": "Диалог целиком, последняя реплика — вопрос пользователя"
+          }
+        },
+        "type": "object",
+        "required": [
+          "screen",
+          "messages"
+        ],
+        "title": "AssistantQuestion",
+        "description": "The open screen and the dialog so far; the last line is the question."
+      },
+      "AssistantScreen": {
+        "type": "string",
+        "enum": [
+          "overview",
+          "map",
+          "schools",
+          "school_card",
+          "school_cabinet",
+          "device_card",
+          "incidents",
+          "incident_card",
+          "appeals",
+          "appeal_draft",
+          "appeal_card",
+          "providers",
+          "rollout",
+          "analytics",
+          "exports",
+          "admin",
+          "other"
+        ]
+      },
+      "AssistantStatus": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "description": "Помощник включён и модель настроена: панель показывает кнопку в шапке"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssistantUnavailableReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему недоступен; null — доступен"
+          }
+        },
+        "type": "object",
+        "required": [
+          "available"
+        ],
+        "title": "AssistantStatus",
+        "description": "Whether the panel shows the button of the assistant (T-84)."
+      },
+      "AssistantUnavailableReason": {
+        "type": "string",
+        "enum": [
+          "disabled",
+          "llm_not_configured"
+        ]
+      },
+      "AttentionItem": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/AttentionKind"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/AttentionReason"
+          },
+          "severity": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Severity",
+            "description": "Ключ сортировки, меньше — хуже: 1 «Нет соединения», 2 «Критично», 3 инцидент без ответственного, 4 обращение без ответа"
+          },
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "school_code": {
+            "type": "string",
+            "title": "School Code"
+          },
+          "school_name": {
+            "type": "string",
+            "title": "School Name"
+          },
+          "region_name": {
+            "type": "string",
+            "title": "Region Name"
+          },
+          "provider_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Name",
+            "description": "Поставщик: у школы — основной линии, у инцидента и обращения — их линии"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchoolStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Статус школы; null у строки инцидента и обращения"
+          },
+          "incident_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Id"
+          },
+          "incident_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Number"
+          },
+          "appeal_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appeal Id"
+          },
+          "appeal_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appeal Number"
+          },
+          "metric": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IncidentMetric"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Первое основание инцидента: из него строится причина словами (§4.1)"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Since",
+            "description": "Школа — когда её в последний раз слышали или мерили, иначе period_to; инцидент — started_at; обращение — sent_at"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "reason",
+          "severity",
+          "school_id",
+          "school_code",
+          "school_name",
+          "region_name",
+          "provider_name",
+          "status",
+          "incident_id",
+          "incident_number",
+          "appeal_id",
+          "appeal_number",
+          "metric",
+          "since"
+        ],
+        "title": "AttentionItem",
+        "description": "One row of «Требуют внимания»: what is wrong, where, and since when (§4.1)."
+      },
+      "AttentionKind": {
+        "type": "string",
+        "enum": [
+          "school",
+          "incident",
+          "appeal"
+        ]
+      },
+      "AttentionPage": {
+        "properties": {
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total",
+            "description": "Сколько строк до ограничения limit: подпись «Ещё N школ»"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_to",
+          "total",
+          "items"
+        ],
+        "title": "AttentionPage",
+        "description": "Rows that ask for a person at ``period_to``, the worst first (§4.1)."
+      },
+      "AttentionReason": {
+        "type": "string",
+        "enum": [
+          "offline",
+          "critical",
+          "incident_unassigned",
+          "appeal_unanswered"
+        ]
+      },
       "AuditAction": {
         "type": "string",
         "enum": [
@@ -10335,6 +12843,351 @@
         ],
         "title": "AuditLogListItemPage",
         "description": "Page of the audit log, newest first."
+      },
+      "CalendarComment": {
+        "anyOf": [
+          {
+            "type": "string",
+            "maxLength": 1000
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Комментарий, например приказ"
+      },
+      "CalendarEventCreate": {
+        "properties": {
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starts At",
+            "description": "Начало периода, со смещением часового пояса"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ends At",
+            "description": "Конец периода, не включается"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CalendarKind"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/CalendarScope"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Только и обязательно при scope=district"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Только и обязательно при scope=school"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id",
+            "description": "Только при kind=planned_works: окно линий этого поставщика"
+          },
+          "title": {
+            "$ref": "#/components/schemas/CalendarTitle"
+          },
+          "comment": {
+            "$ref": "#/components/schemas/CalendarComment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "starts_at",
+          "ends_at",
+          "kind",
+          "scope",
+          "title"
+        ],
+        "title": "CalendarEventCreate",
+        "description": "Новое событие календаря; поставщик указывается только у плановых работ."
+      },
+      "CalendarEventDetail": {
+        "properties": {
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starts At",
+            "description": "Начало периода, со смещением часового пояса"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ends At",
+            "description": "Конец периода, не включается"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CalendarKind"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/CalendarScope"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Только при scope=district"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
+          },
+          "school_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Id",
+            "description": "Только при scope=school"
+          },
+          "school_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Name"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id",
+            "description": "Только при kind=planned_works"
+          },
+          "provider_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "starts_at",
+          "ends_at",
+          "id",
+          "kind",
+          "scope",
+          "region_id",
+          "region_name",
+          "school_id",
+          "school_name",
+          "provider_id",
+          "provider_name",
+          "title",
+          "comment"
+        ],
+        "title": "CalendarEventDetail",
+        "description": "Событие календаря с наименованиями его цели."
+      },
+      "CalendarEventDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarEventDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "CalendarEventDetailPage",
+        "description": "Страница событий календаря."
+      },
+      "CalendarEventUpdate": {
+        "properties": {
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ends At"
+          },
+          "title": {
+            "$ref": "#/components/schemas/CalendarTitle",
+            "title": "Title"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "title": "CalendarEventUpdate",
+        "description": "Изменения события: период, название и комментарий; тип и цель не меняются."
+      },
+      "CalendarImportRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1000000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Содержимое файла CSV с заголовком kind,title,start,end"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "CalendarImportRequest",
+        "description": "Импорт календаря из таблицы: содержимое файла CSV одной строкой (T-70).\n\nКолонки: ``kind``, ``title``, ``start``, ``end`` обязательны, ``school_code``,\n``region_code`` и ``comment`` — нет. Дата ``YYYY-MM-DD`` — целые местные сутки\n``settings.timezone``, ``YYYY-MM-DDTHH:MM`` — момент этих суток."
+      },
+      "CalendarImportResult": {
+        "properties": {
+          "created": {
+            "type": "integer",
+            "title": "Created",
+            "description": "Сколько событий добавлено"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "description": "Строки файла, которые не удалось прочитать"
+          }
+        },
+        "type": "object",
+        "required": [
+          "created",
+          "errors"
+        ],
+        "title": "CalendarImportResult",
+        "description": "Итог импорта: сколько событий заведено и что не удалось прочитать."
+      },
+      "CalendarKind": {
+        "type": "string",
+        "enum": [
+          "vacation",
+          "holiday",
+          "planned_works"
+        ]
+      },
+      "CalendarScope": {
+        "type": "string",
+        "enum": [
+          "oblast",
+          "district",
+          "school"
+        ]
+      },
+      "CalendarTitle": {
+        "type": "string",
+        "maxLength": 200,
+        "minLength": 1,
+        "description": "Название события в календаре"
       },
       "ConnectionStatus": {
         "type": "string",
@@ -10735,6 +13588,10 @@
                 "appeals:create"
               ]
             ]
+          },
+          "locale": {
+            "$ref": "#/components/schemas/Locale",
+            "description": "Язык панели пользователя (T-66); меняется PATCH /auth/me"
           }
         },
         "type": "object",
@@ -10744,35 +13601,14 @@
           "full_name",
           "role",
           "scope",
-          "permissions"
+          "permissions",
+          "locale"
         ],
         "title": "CurrentUser",
         "description": "User of the access token: role, scope and permissions to shape the panel.\n\nPermissions only hide what the panel cannot use: the API checks them again (ТЗ п. 16)."
       },
-      "DashboardSummary": {
+      "DashboardPeriodKpis": {
         "properties": {
-          "period_from": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Period From"
-          },
-          "period_to": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Period To"
-          },
-          "schools_count": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Schools Count",
-            "description": "Подключённые школы: активные школы по фильтрам"
-          },
-          "devices_count": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Devices Count",
-            "description": "Зарегистрированные компьютеры, кроме заблокированных"
-          },
           "active_devices_count": {
             "type": "integer",
             "minimum": 0.0,
@@ -10830,10 +13666,6 @@
         },
         "type": "object",
         "required": [
-          "period_from",
-          "period_to",
-          "schools_count",
-          "devices_count",
           "active_devices_count",
           "measurements_count",
           "avg_download_mbps",
@@ -10841,8 +13673,127 @@
           "avg_ping_ms",
           "problem_devices_count"
         ],
+        "title": "DashboardPeriodKpis",
+        "description": "KPIs that depend on the period, so the previous period of equal length also answers them.\n\nMeasurement values cover main lines only, without Wi-Fi (ADR-012)."
+      },
+      "DashboardSummary": {
+        "properties": {
+          "active_devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Active Devices Count",
+            "description": "Устройства, выходившие на связь за период: heartbeat или замер"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Measurements Count",
+            "description": "Замеры за период"
+          },
+          "avg_download_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Download Mbps",
+            "description": "null — замеров за период нет"
+          },
+          "avg_upload_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Upload Mbps",
+            "description": "null — замеров за период нет"
+          },
+          "avg_ping_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Ping Ms",
+            "description": "null — замеров за период нет"
+          },
+          "problem_devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Devices Count",
+            "description": "Устройства, чей последний замер за период — unstable, critical или offline"
+          },
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To"
+          },
+          "schools_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Count",
+            "description": "Подключённые школы: активные школы по фильтрам"
+          },
+          "schools_total_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Total Count",
+            "description": "Школы тех же фильтров вместе с отключёнными: подпись «350 из 366 в реестре»"
+          },
+          "devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Count",
+            "description": "Зарегистрированные компьютеры, кроме заблокированных"
+          },
+          "status_counts": {
+            "$ref": "#/components/schemas/SchoolStatusCounts",
+            "description": "Школы по статусам на period_to, до применения фильтра по статусу"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DashboardPeriodKpis"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Те же показатели за предыдущий период той же длины; null — данных за него нет"
+          }
+        },
+        "type": "object",
+        "required": [
+          "active_devices_count",
+          "measurements_count",
+          "avg_download_mbps",
+          "avg_upload_mbps",
+          "avg_ping_ms",
+          "problem_devices_count",
+          "period_from",
+          "period_to",
+          "schools_count",
+          "schools_total_count",
+          "devices_count",
+          "status_counts",
+          "previous"
+        ],
         "title": "DashboardSummary",
-        "description": "KPIs in the order of ТЗ п. 4 for the applied period.\n\nMeasurement values cover main lines only, without Wi-Fi (ADR-012)."
+        "description": "The KPIs of ТЗ п. 4 for the applied period, with the status strip and the previous period.\n\nThe period-dependent half is inherited, so the very same six numbers describe ``previous``:\nthe period of equal length that ends at ``period_from``, counted over the same schools. It is\nnull while that period holds neither a measurement nor a heartbeat, and the panel says\n«первые данные» instead of a delta (docs/design/README.md §4.1)."
       },
       "DeviceDetail": {
         "properties": {
@@ -10929,6 +13880,17 @@
             "$ref": "#/components/schemas/SchoolStatus",
             "description": "По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data"
           },
+          "quiet_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalendarKind"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему нет данных: событие календаря школы на этот момент; null — обычный"
+          },
           "latest_measurement": {
             "anyOf": [
               {
@@ -10980,6 +13942,19 @@
             ],
             "title": "Token Rotation Requested At",
             "description": "Запрошена замена токена; пусто — агент уже получил новый или замены не было"
+          },
+          "measure_requested_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measure Requested At",
+            "description": "Запрошен внеплановый замер и запрос ещё ждёт агента; пусто — замер уже пришёл, запроса не было или он старше часа"
           }
         },
         "type": "object",
@@ -11003,7 +13978,8 @@
           "school_code",
           "school_name",
           "registered_at",
-          "token_rotation_requested_at"
+          "token_rotation_requested_at",
+          "measure_requested_at"
         ],
         "title": "DeviceDetail",
         "description": "Device card (ТЗ п. 4): the list row plus the school, the OS and the registration time."
@@ -11127,6 +14103,17 @@
           "current_status": {
             "$ref": "#/components/schemas/SchoolStatus",
             "description": "По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data"
+          },
+          "quiet_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalendarKind"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему нет данных: событие календаря школы на этот момент; null — обычный"
           },
           "latest_measurement": {
             "anyOf": [
@@ -11308,6 +14295,314 @@
         "title": "DeviceUpdate",
         "description": "Changes of a device: its monitoring point (T-36) and its update channel (T-50).\n\nThe school and the line of new measurements follow the point, measurements already taken\nkeep theirs (ADR-005); the channel decides which release the agent installs."
       },
+      "DigestDelivery": {
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/NotificationChannel"
+          },
+          "result": {
+            "$ref": "#/components/schemas/NotificationResult",
+            "description": "skipped — канал не настроен на сервере"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Причина skipped или failed; null у доставленной"
+          }
+        },
+        "type": "object",
+        "required": [
+          "channel",
+          "result",
+          "target",
+          "error"
+        ],
+        "title": "DigestDelivery",
+        "description": "Одна попытка доставки сводки: канал, адресат и что из этого вышло (ТЗ п. 18)."
+      },
+      "DigestHour": {
+        "type": "integer",
+        "maximum": 23.0,
+        "minimum": 0.0,
+        "description": "Час отправки в settings.timezone"
+      },
+      "DigestRecipients": {
+        "items": {
+          "type": "string",
+          "maxLength": 320,
+          "minLength": 3,
+          "pattern": "^[^@\\s]+@[^@\\s]+$"
+        },
+        "type": "array",
+        "maxItems": 100,
+        "description": "Адреса рассылки; пустой список — сводка уходит только в Telegram"
+      },
+      "DigestScope": {
+        "type": "string",
+        "enum": [
+          "oblast",
+          "region"
+        ]
+      },
+      "DigestSendResult": {
+        "properties": {
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sent At"
+          },
+          "deliveries": {
+            "items": {
+              "$ref": "#/components/schemas/DigestDelivery"
+            },
+            "type": "array",
+            "title": "Deliveries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sent_at",
+          "deliveries"
+        ],
+        "title": "DigestSendResult",
+        "description": "Итог «Отправить сейчас»: каждая попытка записана в notification_log (ТЗ п. 18)."
+      },
+      "DigestSettingsCreate": {
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/DigestScope"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Только и обязательно при scope=region"
+          },
+          "weekday": {
+            "$ref": "#/components/schemas/DigestWeekday"
+          },
+          "hour": {
+            "$ref": "#/components/schemas/DigestHour"
+          },
+          "recipients": {
+            "$ref": "#/components/schemas/DigestRecipients",
+            "default": []
+          },
+          "telegram_chat_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Chat Id",
+            "description": "Чат Telegram; null — канал не используется"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope",
+          "weekday",
+          "hour"
+        ],
+        "title": "DigestSettingsCreate",
+        "description": "Новая рассылка сводки; охват «region» требует region_id, «oblast» — запрещает."
+      },
+      "DigestSettingsDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/DigestScope"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Только при scope=region"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
+          },
+          "weekday": {
+            "$ref": "#/components/schemas/DigestWeekday"
+          },
+          "hour": {
+            "$ref": "#/components/schemas/DigestHour"
+          },
+          "recipients": {
+            "$ref": "#/components/schemas/DigestRecipients"
+          },
+          "telegram_chat_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Chat Id"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "Отключённая рассылка не уходит по расписанию"
+          },
+          "last_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sent At",
+            "description": "null — сводка ещё не уходила"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "scope",
+          "region_id",
+          "region_name",
+          "weekday",
+          "hour",
+          "recipients",
+          "telegram_chat_id",
+          "is_active",
+          "last_sent_at"
+        ],
+        "title": "DigestSettingsDetail",
+        "description": "Рассылка сводки с наименованием района и временем последней отправки."
+      },
+      "DigestSettingsDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DigestSettingsDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "DigestSettingsDetailPage",
+        "description": "Страница рассылок сводки."
+      },
+      "DigestSettingsUpdate": {
+        "properties": {
+          "weekday": {
+            "$ref": "#/components/schemas/DigestWeekday",
+            "title": "Weekday"
+          },
+          "hour": {
+            "$ref": "#/components/schemas/DigestHour",
+            "title": "Hour"
+          },
+          "recipients": {
+            "$ref": "#/components/schemas/DigestRecipients",
+            "title": "Recipients"
+          },
+          "telegram_chat_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Chat Id"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "DigestSettingsUpdate",
+        "description": "Изменения рассылки; охват и его цель не меняются."
+      },
+      "DigestWeekday": {
+        "type": "integer",
+        "maximum": 7.0,
+        "minimum": 1.0,
+        "description": "1 — понедельник, 7 — воскресенье"
+      },
       "EnrollmentCodeCreate": {
         "properties": {
           "school_id": {
@@ -11377,7 +14672,8 @@
           "duration_s",
           "external_ip",
           "server",
-          "agent_version"
+          "agent_version",
+          "source"
         ]
       },
       "ExportCreate": {
@@ -11456,6 +14752,53 @@
         ],
         "title": "ExportCreate",
         "description": "Export request: mode, format, period, filters and columns (ТЗ п. 9, DESIGN.md §3.24)."
+      },
+      "ExportEstimate": {
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/ExportEstimateMode"
+          },
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From",
+            "description": "Начало периода запроса, включительно"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To",
+            "description": "Конец периода запроса, не включается"
+          },
+          "rows_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rows Count",
+            "description": "Строк в файле: замеров (raw) или школ (aggregates)"
+          },
+          "exact": {
+            "type": "boolean",
+            "title": "Exact",
+            "description": "true — число точное (aggregates); false — оценка по дневным агрегатам: Wi-Fi в них не учитывается, а задетые периодом сутки считаются целиком (raw)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "period_from",
+          "period_to",
+          "rows_count",
+          "exact"
+        ],
+        "title": "ExportEstimate",
+        "description": "How many rows the file of the selection would have, before it is built (T-64)."
+      },
+      "ExportEstimateMode": {
+        "type": "string",
+        "enum": [
+          "raw",
+          "aggregates"
+        ]
       },
       "ExportFormat": {
         "type": "string",
@@ -11810,6 +15153,26 @@
         ],
         "title": "HeartbeatRequest",
         "description": "Liveness signal of the agent, every 5 minutes by default (plan.md §4.2)."
+      },
+      "HeartbeatResponse": {
+        "properties": {
+          "measure_requested_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measure Requested At",
+            "description": "Администратор запросил замер: агент делает один внеплановый замер и запоминает этот момент, чтобы не повторить запрос после перезапуска службы. Пусто — запроса нет или он старше часа"
+          }
+        },
+        "type": "object",
+        "title": "HeartbeatResponse",
+        "description": "Answer of a heartbeat: what the server asks of the agent besides its schedule (T-79)."
       },
       "IfaceType": {
         "type": "string",
@@ -13480,6 +16843,37 @@
         "title": "LineUpdate",
         "description": "Changes of a line; ``status = disabled`` switches it off and keeps its measurements."
       },
+      "Locale": {
+        "type": "string",
+        "enum": [
+          "ru",
+          "kk"
+        ]
+      },
+      "LoginInfo": {
+        "properties": {
+          "password_reset_available": {
+            "type": "boolean",
+            "title": "Password Reset Available",
+            "description": "SMTP настроен — на входе показывается ссылка «Забыли пароль?»"
+          },
+          "support_contact": {
+            "type": "string",
+            "title": "Support Contact",
+            "description": "Контакт администратора, когда сброс недоступен; пусто — не показывать",
+            "examples": [
+              "admin@edu.vko.kz, +7 7232 00-00-00"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "password_reset_available",
+          "support_contact"
+        ],
+        "title": "LoginInfo",
+        "description": "What the sign-in screen needs before a sign-in: the reset link or the contact (T-65)."
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -13787,6 +17181,11 @@
             "type": "string",
             "maxLength": 32,
             "title": "Agent Version"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MeasurementSource",
+            "description": "Что запустило замер: расписание агента или запрос из панели (T-79). Агент старой версии поля не шлёт, и замер считается плановым",
+            "default": "schedule"
           }
         },
         "type": "object",
@@ -13958,6 +17357,10 @@
             ],
             "title": "Agent Version"
           },
+          "source": {
+            "$ref": "#/components/schemas/MeasurementSource",
+            "description": "Замер по расписанию агента или по запросу «Замерить сейчас» из панели"
+          },
           "contract_ok": {
             "anyOf": [
               {
@@ -13990,6 +17393,7 @@
           "external_ip",
           "server",
           "agent_version",
+          "source",
           "contract_ok"
         ],
         "title": "MeasurementListItem",
@@ -14029,6 +17433,13 @@
         ],
         "title": "MeasurementListItemPage",
         "description": "Page of the measurement history of a device, newest first."
+      },
+      "MeasurementSource": {
+        "type": "string",
+        "enum": [
+          "schedule",
+          "manual"
+        ]
       },
       "MetricStats": {
         "properties": {
@@ -14233,6 +17644,14 @@
         "title": "MonitoringPointUpdate",
         "description": "Changes of a point; a new ``line_id`` moves its computers to that line."
       },
+      "NotificationChannel": {
+        "type": "string",
+        "enum": [
+          "panel",
+          "telegram",
+          "email"
+        ]
+      },
       "NotificationKind": {
         "type": "string",
         "enum": [
@@ -14357,6 +17776,14 @@
         "title": "NotificationListItemPage",
         "description": "Page of the notifications of the caller, newest first."
       },
+      "NotificationResult": {
+        "type": "string",
+        "enum": [
+          "sent",
+          "failed",
+          "skipped"
+        ]
+      },
       "NotificationUnreadCount": {
         "properties": {
           "unread": {
@@ -14406,6 +17833,53 @@
         ],
         "title": "OutageCreate",
         "description": "Period without connection recorded by the agent (T-12).\n\nIdempotency key is the device (from the token) plus ``started_at``: a resent outage gets\n409 ``duplicate_outage``, which, like 201, means \"delete from the queue\" (ADR-006)."
+      },
+      "PasswordResetConfirm": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Token",
+            "description": "Токен из ссылки письма (параметр token)"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "format": "password",
+            "title": "Password",
+            "description": "Новый пароль; хранится только хэшем",
+            "writeOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "password"
+        ],
+        "title": "PasswordResetConfirm",
+        "description": "New password by the link from the letter; the password never shows up in logs."
+      },
+      "PasswordResetRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 1,
+            "title": "Email",
+            "description": "E-mail учётной записи; ответ не зависит от того, есть ли такая",
+            "examples": [
+              "admin@example.kz"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "PasswordResetRequest",
+        "description": "Request of a reset link; the answer is the same for every address (T-65)."
       },
       "Problem": {
         "properties": {
@@ -14465,6 +17939,20 @@
         ],
         "title": "Problem",
         "description": "Error of any endpoint; clients branch on ``type``, ``detail`` is for a human."
+      },
+      "ProfileUpdate": {
+        "properties": {
+          "locale": {
+            "$ref": "#/components/schemas/Locale",
+            "description": "Язык панели: ru или kk (DESIGN.md §5.1)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "locale"
+        ],
+        "title": "ProfileUpdate",
+        "description": "What a user changes in his own account (T-66): so far only the language of the panel."
       },
       "ProviderCreate": {
         "properties": {
@@ -14567,6 +18055,524 @@
         ],
         "title": "ProviderDetailPage",
         "description": "Page of the providers, by name."
+      },
+      "ProviderLineBelowNorm": {
+        "properties": {
+          "line_id": {
+            "type": "integer",
+            "title": "Line Id"
+          },
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "school_name": {
+            "type": "string",
+            "title": "School Name"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
+          },
+          "contract_down_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Down Mbps"
+          },
+          "contract_up_mbps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Up Mbps"
+          },
+          "download_min_mbps": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Download Min Mbps",
+            "description": "Порог профиля, применимого к линии"
+          },
+          "upload_min_mbps": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Upload Min Mbps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_id",
+          "school_id",
+          "school_name",
+          "region_name",
+          "contract_down_mbps",
+          "contract_up_mbps",
+          "download_min_mbps",
+          "upload_min_mbps"
+        ],
+        "title": "ProviderLineBelowNorm",
+        "description": "Line whose contract itself is below the thresholds it is judged by — «не претензия».\n\nNothing here is the fault of the provider: the contract promises less than ТЗ п. 11 asks,\nso the school needs a new contract, not an appeal (docs/design/README.md §6.3)."
+      },
+      "ProviderSchoolRow": {
+        "properties": {
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SchoolStatus",
+            "description": "Статус школы сейчас (ADR-004)"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Measurements Count"
+          },
+          "below_contract_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Below Contract Pct"
+          },
+          "availability_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Availability Pct"
+          },
+          "sustained_mismatch": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sustained Mismatch",
+            "description": "Устойчиво ниже договора по пересчёту T-29; null — ещё не рассчитано"
+          }
+        },
+        "type": "object",
+        "required": [
+          "school_id",
+          "name",
+          "region_name",
+          "status",
+          "measurements_count",
+          "below_contract_pct",
+          "availability_pct",
+          "sustained_mismatch"
+        ],
+        "title": "ProviderSchoolRow",
+        "description": "School on a main line of the provider: its status now and its numbers of the period."
+      },
+      "ProviderScoreDetail": {
+        "properties": {
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/ProviderScoreWeights"
+          },
+          "availability_min_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Availability Min Pct"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderScoreRow"
+          },
+          "appeals_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appeals Email",
+            "description": "Адрес поставщика для обращений и акта (T-48)"
+          },
+          "schools": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderSchoolRow"
+            },
+            "type": "array",
+            "title": "Schools"
+          },
+          "lines_below_norm": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderLineBelowNorm"
+            },
+            "type": "array",
+            "title": "Lines Below Norm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_from",
+          "period_to",
+          "weights",
+          "availability_min_pct",
+          "provider",
+          "appeals_email",
+          "schools",
+          "lines_below_norm"
+        ],
+        "title": "ProviderScoreDetail",
+        "description": "Card of one provider: its row, its schools and the lines whose contract is below the norm."
+      },
+      "ProviderScoreReport": {
+        "properties": {
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/ProviderScoreWeights"
+          },
+          "availability_min_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Availability Min Pct",
+            "description": "Порог доступности (п. 11)"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderScoreRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_from",
+          "period_to",
+          "weights",
+          "availability_min_pct",
+          "rows"
+        ],
+        "title": "ProviderScoreReport",
+        "description": "Rows of every provider the user may see, ordered by name (ADR-008)."
+      },
+      "ProviderScoreRow": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "schools_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Count",
+            "description": "Школ на основных линиях поставщика"
+          },
+          "lines_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Lines Count"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Measurements Count"
+          },
+          "problem_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Count"
+          },
+          "problem_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem Pct",
+            "description": "Доля проблемных замеров, %"
+          },
+          "availability_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Availability Pct",
+            "description": "Доступность школ поставщика в рабочие часы (T-16, ADR-014)"
+          },
+          "below_contract_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Below Contract Pct",
+            "description": "Доля замеров ниже договорной скорости, %; null без договорных значений"
+          },
+          "incidents_opened": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Incidents Opened",
+            "description": "Инцидентов начато за период (по started_at)"
+          },
+          "incidents_closed": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Incidents Closed",
+            "description": "Из них с восстановлением линии (restored_at)"
+          },
+          "reaction_median_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reaction Median S",
+            "description": "Медиана времени до первой смены статуса инцидента, с; null без таких"
+          },
+          "reaction_worst_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reaction Worst S",
+            "description": "Худшее время до смены статуса, с"
+          },
+          "restore_avg_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restore Avg S",
+            "description": "Среднее устранение: restored_at − started_at, с (T-45)"
+          },
+          "restore_worst_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restore Worst S",
+            "description": "Худшее устранение, с"
+          },
+          "lines_below_norm_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Lines Below Norm Count",
+            "description": "Линий, у которых договорная скорость ниже порога профиля — «не претензия»"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score",
+            "description": "Оценка 0–100; null — за период нет ни одного замера"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderScoreVerdict"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "below_norm — оценка ниже порога настроек; null вместе с пустой оценкой"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "schools_count",
+          "lines_count",
+          "measurements_count",
+          "problem_count",
+          "problem_pct",
+          "availability_pct",
+          "below_contract_pct",
+          "incidents_opened",
+          "incidents_closed",
+          "reaction_median_s",
+          "reaction_worst_s",
+          "restore_avg_s",
+          "restore_worst_s",
+          "lines_below_norm_count",
+          "score",
+          "verdict"
+        ],
+        "title": "ProviderScoreRow",
+        "description": "One provider over the period: what is counted and the score it adds up to."
+      },
+      "ProviderScoreVerdict": {
+        "type": "string",
+        "enum": [
+          "pass",
+          "below_norm"
+        ]
+      },
+      "ProviderScoreWeights": {
+        "properties": {
+          "below_contract": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Below Contract",
+            "description": "Вес доли замеров ниже договора"
+          },
+          "availability": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Availability",
+            "description": "Вес нехватки доступности"
+          },
+          "reaction": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Reaction",
+            "description": "Вес просрочки реакции на инцидент"
+          },
+          "incidents": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Incidents",
+            "description": "Вес числа инцидентов на школу"
+          },
+          "pass_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Pass Pct",
+            "description": "Оценка ниже этой — «ниже нормы»"
+          },
+          "reaction_norm_hours": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Reaction Norm Hours",
+            "description": "Норма реакции на инцидент, ч"
+          }
+        },
+        "type": "object",
+        "required": [
+          "below_contract",
+          "availability",
+          "reaction",
+          "incidents",
+          "pass_pct",
+          "reaction_norm_hours"
+        ],
+        "title": "ProviderScoreWeights",
+        "description": "Weights of the parts and the passing threshold, as the admin panel holds them (T-37)."
       },
       "ProviderUpdate": {
         "properties": {
@@ -14917,6 +18923,405 @@
         ],
         "title": "RoleListItemPage",
         "description": "Page of the roles."
+      },
+      "RolloutFilter": {
+        "type": "string",
+        "enum": [
+          "not_connected",
+          "silent",
+          "code_unused",
+          "old_version"
+        ]
+      },
+      "RolloutListCounts": {
+        "properties": {
+          "not_connected": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Not Connected",
+            "description": "Нет ни одного активного компьютера"
+          },
+          "silent": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Silent",
+            "description": "Агент установлен, но молчит дольше rollout_silent_days"
+          },
+          "code_unused": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Code Unused",
+            "description": "Код установки выдан и не использован"
+          },
+          "old_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Old Version",
+            "description": "Есть компьютер с версией ниже текущего релиза"
+          }
+        },
+        "type": "object",
+        "required": [
+          "not_connected",
+          "silent",
+          "code_unused",
+          "old_version"
+        ],
+        "title": "RolloutListCounts",
+        "description": "How many schools each of the four lists holds, for the tabs of the screen (§6.4)."
+      },
+      "RolloutRegionRow": {
+        "properties": {
+          "schools_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Count",
+            "description": "Активные школы выборки, как schools_count у GET /api/dashboard/summary"
+          },
+          "schools_connected_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Connected Count",
+            "description": "Школы, у которых есть хотя бы один активный компьютер"
+          },
+          "connected_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Connected Pct",
+            "description": "Доля подключённых школ; 0 при пустой выборке"
+          },
+          "devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Count",
+            "description": "Зарегистрированные компьютеры, кроме заблокированных, как devices_count у GET /api/dashboard/summary"
+          },
+          "devices_alive_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Alive Count",
+            "description": "Компьютеры на связи: сигнал не старше offline_after_s"
+          },
+          "devices_silent_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Silent Count",
+            "description": "Компьютеры, молчащие дольше rollout_silent_days"
+          },
+          "devices_old_version_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Old Version Count",
+            "description": "Компьютеры не на текущем релизе агента (T-50)"
+          },
+          "region_id": {
+            "type": "integer",
+            "title": "Region Id"
+          },
+          "region_name": {
+            "type": "string",
+            "title": "Region Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schools_count",
+          "schools_connected_count",
+          "connected_pct",
+          "devices_count",
+          "devices_alive_count",
+          "devices_silent_count",
+          "devices_old_version_count",
+          "region_id",
+          "region_name"
+        ],
+        "title": "RolloutRegionRow",
+        "description": "Row of «По районам и городам»: the same numbers for one district or city."
+      },
+      "RolloutSchoolItem": {
+        "properties": {
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "school_code": {
+            "type": "string",
+            "title": "School Code"
+          },
+          "school_name": {
+            "type": "string",
+            "title": "School Name"
+          },
+          "region_id": {
+            "type": "integer",
+            "title": "Region Id"
+          },
+          "region_name": {
+            "type": "string",
+            "title": "Region Name"
+          },
+          "devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Count",
+            "description": "Активные компьютеры школы"
+          },
+          "devices_alive_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Alive Count",
+            "description": "Из них на связи"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At",
+            "description": "Последний сигнал любого компьютера школы; null — школу ни разу не слышали"
+          },
+          "silent_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Silent Days",
+            "description": "Сколько полных суток школа молчит; null — школа на связи или не подключена"
+          },
+          "code_issued_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code Issued At",
+            "description": "Когда выдан последний неиспользованный код установки (T-36)"
+          },
+          "code_age_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code Age Days",
+            "description": "Сколько полных суток коду: «не использован N дней»"
+          },
+          "agent_versions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Agent Versions",
+            "description": "Версии агента компьютеров школы; версия ниже текущего релиза попадает в список «старая версия»"
+          },
+          "has_contact": {
+            "type": "boolean",
+            "title": "Has Contact",
+            "description": "Есть ответственный за интернет (ТЗ п. 15)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "school_id",
+          "school_code",
+          "school_name",
+          "region_id",
+          "region_name",
+          "devices_count",
+          "devices_alive_count",
+          "last_seen_at",
+          "silent_days",
+          "code_issued_at",
+          "code_age_days",
+          "agent_versions",
+          "has_contact"
+        ],
+        "title": "RolloutSchoolItem",
+        "description": "School of one of the four lists, with the fact that put it there (§6.4)."
+      },
+      "RolloutSchoolPage": {
+        "properties": {
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/RolloutFilter"
+          },
+          "target_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Version",
+            "description": "Текущий stable-релиз агента (T-50)"
+          },
+          "silent_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Silent Days",
+            "description": "Окно «молчит» из настроек"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total",
+            "description": "Сколько школ подходит критерию: подпись «Ещё N школ»"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RolloutSchoolItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "as_of",
+          "filter",
+          "target_version",
+          "silent_days",
+          "total",
+          "items"
+        ],
+        "title": "RolloutSchoolPage",
+        "description": "Schools of one list, the worst first; ``total`` counts them before ``limit`` (§6.4)."
+      },
+      "RolloutSummary": {
+        "properties": {
+          "schools_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Count",
+            "description": "Активные школы выборки, как schools_count у GET /api/dashboard/summary"
+          },
+          "schools_connected_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Connected Count",
+            "description": "Школы, у которых есть хотя бы один активный компьютер"
+          },
+          "connected_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Connected Pct",
+            "description": "Доля подключённых школ; 0 при пустой выборке"
+          },
+          "devices_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Count",
+            "description": "Зарегистрированные компьютеры, кроме заблокированных, как devices_count у GET /api/dashboard/summary"
+          },
+          "devices_alive_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Alive Count",
+            "description": "Компьютеры на связи: сигнал не старше offline_after_s"
+          },
+          "devices_silent_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Silent Count",
+            "description": "Компьютеры, молчащие дольше rollout_silent_days"
+          },
+          "devices_old_version_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Devices Old Version Count",
+            "description": "Компьютеры не на текущем релизе агента (T-50)"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of",
+            "description": "Момент, на который собраны числа"
+          },
+          "schools_total_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Schools Total Count",
+            "description": "Школы тех же фильтров вместе с отключёнными: «350 из 366 в реестре»"
+          },
+          "target_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Version",
+            "description": "Версия текущего активного stable-релиза агента; null — релизов нет (T-50)"
+          },
+          "silent_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Silent Days",
+            "description": "Окно «молчит» из настроек: rollout_silent_days (ТЗ п. 20)"
+          },
+          "alive_after_s": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Alive After S",
+            "description": "Окно «на связи» из настроек: offline_after_s (ADR-014)"
+          },
+          "lists": {
+            "$ref": "#/components/schemas/RolloutListCounts"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/RolloutRegionRow"
+            },
+            "type": "array",
+            "title": "Regions",
+            "description": "Районы и города выборки, по названию"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schools_count",
+          "schools_connected_count",
+          "connected_pct",
+          "devices_count",
+          "devices_alive_count",
+          "devices_silent_count",
+          "devices_old_version_count",
+          "as_of",
+          "schools_total_count",
+          "target_version",
+          "silent_days",
+          "alive_after_s",
+          "lists",
+          "regions"
+        ],
+        "title": "RolloutSummary",
+        "description": "Numbers of the rollout screen: the oblast, its districts and the four lists (§6.4)."
       },
       "ScheduleCreate": {
         "properties": {
@@ -15504,6 +19909,85 @@
         "title": "SchoolCreate",
         "description": "New school (ТЗ п. 14, п. 20); working hours start from the admin defaults (ADR-014)."
       },
+      "SchoolDay": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date",
+            "description": "Локальный день Asia/Almaty"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SchoolStatus",
+            "description": "«Нет соединения» — простой в рабочие часы дня; иначе худший замер дня, иначе «Нет данных»"
+          },
+          "measurements_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Measurements Count",
+            "description": "Замеры основных линий без Wi‑Fi за день"
+          },
+          "problem_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Problem Count",
+            "description": "Из них со статусом unstable, critical или offline"
+          },
+          "downtime_s": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Downtime S",
+            "description": "Простой в рабочие часы этого дня, секунды"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "status",
+          "measurements_count",
+          "problem_count",
+          "downtime_s"
+        ],
+        "title": "SchoolDay",
+        "description": "One local day of the school in the day strip of the cabinet (DESIGN.md §3.27, T-61)."
+      },
+      "SchoolDays": {
+        "properties": {
+          "school_id": {
+            "type": "integer",
+            "title": "School Id"
+          },
+          "period_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period From",
+            "description": "Начало первого дня окна, включительно"
+          },
+          "period_to": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period To",
+            "description": "Конец окна, не включая"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/SchoolDay"
+            },
+            "type": "array",
+            "title": "Days",
+            "description": "По одному элементу на каждый день окна, включая дни без замеров"
+          }
+        },
+        "type": "object",
+        "required": [
+          "school_id",
+          "period_from",
+          "period_to",
+          "days"
+        ],
+        "title": "SchoolDays",
+        "description": "Day strip of the school cabinet: every local day of the window, oldest first (T-61)."
+      },
       "SchoolDetail": {
         "properties": {
           "id": {
@@ -16003,6 +20487,46 @@
           "no_data"
         ]
       },
+      "SchoolStatusCounts": {
+        "properties": {
+          "normal": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Normal"
+          },
+          "unstable": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unstable"
+          },
+          "critical": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Critical"
+          },
+          "offline": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offline"
+          },
+          "no_data": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "No Data",
+            "description": "Показ, а не статус качества (ТЗ п. 13, ADR-004)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "normal",
+          "unstable",
+          "critical",
+          "offline",
+          "no_data"
+        ],
+        "title": "SchoolStatusCounts",
+        "description": "Schools per status at ``period_to`` (ТЗ п. 13, ADR-004).\n\nCounted over the schools the district, provider and connection-type filters select, before\nthe status filter narrows them: the five numbers always sum to the same selection, so a\nclick on a column of the status strip does not rewrite the strip (docs/design/README.md §4.1)."
+      },
       "SchoolUpdate": {
         "properties": {
           "school_code": {
@@ -16173,6 +20697,110 @@
             "examples": [
               30
             ]
+          },
+          "attention_incident_unassigned_hours": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Attention Incident Unassigned Hours",
+            "description": "Инцидент без ответственного дольше стольких часов попадает в «Требуют внимания» главного экрана (T-60)",
+            "examples": [
+              24
+            ]
+          },
+          "attention_appeal_no_answer_hours": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Attention Appeal No Answer Hours",
+            "description": "Обращение «Передан поставщику» без движения дольше стольких часов считается оставшимся без ответа (T-60)",
+            "examples": [
+              48
+            ]
+          },
+          "rollout_silent_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Rollout Silent Days",
+            "description": "Установленный агент без heartbeat дольше стольких суток — школа «молчит» в разделе «Внедрение» (T-69)",
+            "examples": [
+              7
+            ]
+          },
+          "password_reset_ttl_minutes": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Password Reset Ttl Minutes",
+            "description": "Срок действия ссылки «Забыли пароль?» в минутах (T-65)",
+            "examples": [
+              30
+            ]
+          },
+          "support_contact": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Support Contact",
+            "description": "Контакт администратора на экране входа, когда SMTP не настроен; пусто — контакт не показывается (T-65)",
+            "examples": [
+              "admin@edu.vko.kz, +7 7232 00-00-00"
+            ]
+          },
+          "provider_score_weight_below_contract": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Below Contract",
+            "description": "Вес доли замеров ниже договора в оценке поставщика (T-68, §6.3)",
+            "examples": [
+              40
+            ]
+          },
+          "provider_score_weight_availability": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Availability",
+            "description": "Вес нехватки доступности в оценке поставщика",
+            "examples": [
+              20
+            ]
+          },
+          "provider_score_weight_reaction": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Reaction",
+            "description": "Вес просрочки реакции на инцидент в оценке",
+            "examples": [
+              25
+            ]
+          },
+          "provider_score_weight_incidents": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Incidents",
+            "description": "Вес числа инцидентов на школу в оценке",
+            "examples": [
+              15
+            ]
+          },
+          "provider_score_pass_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Pass Pct",
+            "description": "Оценка ниже этой — «ниже нормы» (§6.3)",
+            "examples": [
+              70
+            ]
+          },
+          "provider_score_reaction_norm_hours": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Provider Score Reaction Norm Hours",
+            "description": "Норма реакции на инцидент, ч: медиана вдвое больше нормы — полный штраф",
+            "examples": [
+              4
+            ]
           }
         },
         "type": "object",
@@ -16190,7 +20818,18 @@
           "export_sync_max_rows",
           "export_retention_days",
           "incident_auto_close_hours",
-          "agent_queue_retention_days"
+          "agent_queue_retention_days",
+          "attention_incident_unassigned_hours",
+          "attention_appeal_no_answer_hours",
+          "rollout_silent_days",
+          "password_reset_ttl_minutes",
+          "support_contact",
+          "provider_score_weight_below_contract",
+          "provider_score_weight_availability",
+          "provider_score_weight_reaction",
+          "provider_score_weight_incidents",
+          "provider_score_pass_pct",
+          "provider_score_reaction_norm_hours"
         ],
         "title": "SettingsDetail",
         "description": "System-wide values used by the agent configuration, statuses, reports and exports."
@@ -16267,6 +20906,66 @@
             "maximum": 365.0,
             "minimum": 1.0,
             "title": "Agent Queue Retention Days"
+          },
+          "attention_incident_unassigned_hours": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Attention Incident Unassigned Hours"
+          },
+          "attention_appeal_no_answer_hours": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Attention Appeal No Answer Hours"
+          },
+          "rollout_silent_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Rollout Silent Days"
+          },
+          "password_reset_ttl_minutes": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Password Reset Ttl Minutes"
+          },
+          "support_contact": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Support Contact"
+          },
+          "provider_score_weight_below_contract": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Below Contract"
+          },
+          "provider_score_weight_availability": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Availability"
+          },
+          "provider_score_weight_reaction": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Reaction"
+          },
+          "provider_score_weight_incidents": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Weight Incidents"
+          },
+          "provider_score_pass_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Provider Score Pass Pct"
+          },
+          "provider_score_reaction_norm_hours": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Provider Score Reaction Norm Hours"
           }
         },
         "type": "object",

@@ -6,7 +6,7 @@ A violation is a line measurement without Wi‑Fi whose metric is worse than the
 ``thresholds_snapshot`` (ADR-004, ADR-012): speeds below the minimum, ping, jitter and loss above
 the maximum; ``no_connection`` is an offline measurement or a missing heartbeat in working hours
 (ADR-014). A ``global`` rule applies to every line; a ``school`` rule applies to the lines of
-one school and replaces the global rule of the same metric for them (T-59). A rule is switched
+one school and replaces the global rule of the same metric for them (T-85). A rule is switched
 off with ``is_active``, never deleted, since incidents refer to it. Defaults of ADR-007
 (3, 30 min, 2) are examples only. In a PATCH body an absent field stays unchanged, ``null``
 clears a nullable field, and ``null`` for any other field is a 422.
@@ -20,7 +20,7 @@ from pydantic.json_schema import SkipJsonSchema
 from app.schemas.pagination import Page
 from app.schemas.statuses import IncidentMetric
 
-# Whose lines the rule watches: every line of the oblast, or the lines of one school (T-59).
+# Whose lines the rule watches: every line of the oblast, or the lines of one school (T-85).
 type IncidentRuleScope = Literal["global", "school"]
 
 NO_CONDITION = "задайте consecutive_violations или duration_min"

@@ -3,7 +3,7 @@
 A rule watches one metric: N violations in a row or T minutes of violation open an incident,
 M normal results in a row set ``restored_at`` (ТЗ п. 18). A ``global`` rule watches every
 line; a ``school`` rule watches the lines of one school and replaces the global rule of the
-same metric for them (T-59). The detection of T-40 reads the rules anew on every run, so an
+same metric for them (T-85). The detection of T-40 reads the rules anew on every run, so an
 edit in the admin panel applies to the next one. A rule is switched off with ``is_active``,
 never deleted: its incidents refer to it.
 """
@@ -47,7 +47,7 @@ class IncidentRule(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(Identity(), primary_key=True)
     name: Mapped[str]
     metric: Mapped[str]
-    # ``global`` — every line; ``school`` — the lines of ``school_id`` only (T-59).
+    # ``global`` — every line; ``school`` — the lines of ``school_id`` only (T-85).
     scope: Mapped[str] = mapped_column(server_default=text("'global'"))
     school_id: Mapped[int | None] = mapped_column(ForeignKey("schools.id"), index=True)
     # N: violations in a row that open an incident.

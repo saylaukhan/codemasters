@@ -1,4 +1,4 @@
-"""Request and report of the contract import (T-61; ТЗ п. 14; plan.md §10 «Админка»).
+"""Request and report of the contract import (T-87; ТЗ п. 14; plan.md §10 «Админка»).
 
 The registry of contracts is a CSV or XLSX table: one row per line of a school with the
 number, the date and the speeds of its contract. The file goes in the body as base64 — the

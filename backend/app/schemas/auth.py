@@ -6,10 +6,15 @@ user's own e-mail and full name.
 
 from pydantic import BaseModel, Field, SecretStr
 
-from app.schemas.statuses import UserRole
+from app.schemas.statuses import Locale, UserRole
 
 # Upper bound of a password: argon2 hashes whatever it gets, a cap keeps login cheap.
 PASSWORD_MAX_LENGTH = 128
+# Shortest password the API takes, wherever one is set: an administrator sets the first one
+# (``app/schemas/users.py``), the owner of a reset link sets his own.
+PASSWORD_MIN_LENGTH = 8
+# Token of a reset link: the id of its row, a dot and 32 random bytes in url-safe base64.
+RESET_TOKEN_MAX_LENGTH = 200
 
 
 class LoginRequest(BaseModel):
@@ -53,4 +58,49 @@ class CurrentUser(BaseModel):
     permissions: list[str] = Field(
         examples=[["schools:read", "incidents:read", "appeals:create"]],
         description="Коды прав роли для require(permission); матрица — T-20",
+    )
+    locale: Locale = Field(description="Язык панели пользователя (T-66); меняется PATCH /auth/me")
+
+
+class ProfileUpdate(BaseModel):
+    """What a user changes in his own account (T-66): so far only the language of the panel."""
+
+    locale: Locale = Field(description="Язык панели: ru или kk (DESIGN.md §5.1)")
+
+
+class PasswordResetRequest(BaseModel):
+    """Request of a reset link; the answer is the same for every address (T-65)."""
+
+    email: str = Field(
+        min_length=1,
+        max_length=254,
+        examples=["admin@example.kz"],
+        description="E-mail учётной записи; ответ не зависит от того, есть ли такая",
+    )
+
+
+class PasswordResetConfirm(BaseModel):
+    """New password by the link from the letter; the password never shows up in logs."""
+
+    token: str = Field(
+        min_length=1,
+        max_length=RESET_TOKEN_MAX_LENGTH,
+        description="Токен из ссылки письма (параметр token)",
+    )
+    password: SecretStr = Field(
+        min_length=PASSWORD_MIN_LENGTH,
+        max_length=PASSWORD_MAX_LENGTH,
+        description="Новый пароль; хранится только хэшем",
+    )
+
+
+class LoginInfo(BaseModel):
+    """What the sign-in screen needs before a sign-in: the reset link or the contact (T-65)."""
+
+    password_reset_available: bool = Field(
+        description="SMTP настроен — на входе показывается ссылка «Забыли пароль?»"
+    )
+    support_contact: str = Field(
+        examples=["admin@edu.vko.kz, +7 7232 00-00-00"],
+        description="Контакт администратора, когда сброс недоступен; пусто — не показывать",
     )

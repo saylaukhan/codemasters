@@ -44,3 +44,18 @@
 .skeleton {
   height: calc(var(--font-size-kpi) * 1.2);
 }
+
+/* DESIGN.md §9.3 «Полосы показателей»: on a phone the card is one row — the caption on the left,
+ * the number on the right. */
+@media (max-width: 768px) {
+  .card {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .label {
+    margin: 0;
+  }
+}

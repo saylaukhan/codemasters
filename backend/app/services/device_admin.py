@@ -17,6 +17,12 @@ only sets ``token_rotation_requested_at``; the agent sees ``token_rotation_requi
 answers a new one and makes the old one stop working at once. The server never keeps a token it
 has not handed out. An agent that loses the answer is left without a valid token and registers
 again with a new installation code of its school, keeping its history (``register_device``).
+
+A measurement asked for from the panel travels the same way (T-79): the row keeps
+``measure_requested_at``, the agent reads it in the answer of its heartbeat — the most frequent
+call it makes — measures once outside its schedule and sends the result, which clears the mark.
+A request the agent never took, because the computer was off, grows older than
+``MEASURE_REQUEST_TTL`` and stops being handed out.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -34,6 +40,7 @@ from app.core.security import (
     new_enrollment_secret,
 )
 from app.models import Device, EnrollmentCode, MonitoringPoint, School
+from app.schemas.agent import live_measure_request
 from app.schemas.devices import DeviceDetailPage, DeviceUpdate, EnrollmentCodeIssued
 from app.schemas.statuses import DeviceStatus
 from app.services.device_card import device_detail_rows, device_details, device_not_found
@@ -143,6 +150,23 @@ async def request_token_rotation(session: AsyncSession, device_id: int) -> Chang
     if device.token_rotation_requested_at is None:
         device.token_rotation_requested_at = datetime.now(UTC)
         changes["token_rotation"] = {"old": None, "new": "requested"}
+    await session.commit()
+    return changes
+
+
+async def request_measurement(session: AsyncSession, device_id: int) -> Changes:
+    """Ask the agent for one measurement outside its schedule (T-79).
+
+    A request that still waits keeps its first moment: pressing the button twice does not ask
+    for two measurements. A request the agent never took — the computer was off for an hour —
+    is replaced by a new one, so the button works again instead of doing nothing quietly.
+    """
+    device = await scoped_device(session, device_id)
+    now = datetime.now(UTC)
+    changes: Changes = {}
+    if live_measure_request(device.measure_requested_at, now) is None:
+        device.measure_requested_at = now
+        changes["measurement"] = {"old": None, "new": "requested"}
     await session.commit()
     return changes
 

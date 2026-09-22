@@ -4,6 +4,8 @@ Observed time is the working hours of the school inside the period (ADR-014). Do
 the agents reported in ``outages`` plus the gaps in their heartbeat: a heartbeat vouches for the
 next ``offline_after_s``, and silence longer than that is «Нет соединения» (T-16, ADR-004).
 Devices of one school vouch for each other: while any of them answers, the school is on line.
+Vacations and holidays of the calendar are taken out of the observed time, so they neither lower
+nor raise the percentage (T-70).
 
 Analytics asks for hundreds of schools over a month at once (T-27), so heartbeats never leave
 the database one by one: it folds them into the stretches they cover, a handful per school a day.
@@ -18,6 +20,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Device, Heartbeat, MonitoringPoint, Outage
+from app.services.calendar import quiet_periods, school_windows
 from app.services.settings import system_settings
 from app.services.working_hours import (
     Interval,
@@ -61,11 +64,13 @@ async def schools_availability(
     # Schools mostly share the default hours: the windows of each set of hours are built once.
     windows_of: dict[str, list[Interval]] = {}
     windows: dict[int, list[Interval]] = {}
+    quiet = await quiet_periods(session, school_ids, start=start, end=end)
     for school_id, hours in (await school_hours(session, school_ids, settings)).items():
         key = hours.model_dump_json()
         if key not in windows_of:
             windows_of[key] = merge(working_windows(hours, settings.timezone, start, end))
-        windows[school_id] = windows_of[key]
+        # A vacation is not observed time: a school closed for it is neither up nor down (T-70).
+        windows[school_id] = subtract(windows_of[key], school_windows(quiet[school_id]))
 
     # A stretch starts at a heartbeat that comes more than ``silence`` after the previous one of
     # the same school; it is covered from its first heartbeat to ``silence`` after its last.

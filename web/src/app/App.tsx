@@ -6,9 +6,11 @@ import { BrowserRouter, Outlet, Route, Routes } from 'react-router'
 import { APP_NAME } from '../lib/app-info'
 import { SECTION_LABELS } from '../lib/labels'
 import { LoginPage } from '../pages/login/LoginPage'
+import { PasswordResetPage } from '../pages/login/PasswordResetPage'
 import { LandingRoute } from '../pages/section/LandingRoute'
 import { NotFoundPage } from '../pages/section/NotFoundPage'
 import { SectionRoute } from '../pages/section/SectionRoute'
+import { WallPage } from '../pages/wall/WallPage'
 import { AppLayout } from './AppLayout'
 import { accessControlProvider, authProvider } from './authProvider'
 import { dataProvider } from './dataProvider'
@@ -54,6 +56,16 @@ export function App() {
               ))}
               <Route path="*" element={<NotFoundPage />} />
             </Route>
+            {/* The wall (T-71): inside the authenticated part, outside AppLayout — no header, no navigation. */}
+            <Route
+              element={
+                <Authenticated key="wall" fallback={<CatchAllNavigate to="/login" />}>
+                  <Outlet />
+                </Authenticated>
+              }
+            >
+              <Route path="/wall" element={<WallPage />} />
+            </Route>
             <Route
               element={
                 <Authenticated key="login" fallback={<Outlet />}>
@@ -63,6 +75,8 @@ export function App() {
             >
               <Route path="/login" element={<LoginPage />} />
             </Route>
+            {/* Ссылка из письма открывается и в браузере, где ещё жива старая сессия. */}
+            <Route path="/password-reset" element={<PasswordResetPage />} />
           </Routes>
           <DocumentTitleHandler handler={documentTitle} />
         </Refine>

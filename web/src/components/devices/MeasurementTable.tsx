@@ -1,9 +1,8 @@
-import { Table, type TableProps } from 'antd'
-
 import type { MeasurementListItem } from '../../api/types'
 import { NO_VALUE, formatDateTime, formatMs, formatNumber, formatSpeed } from '../../lib/format'
-import { IFACE_LABELS } from '../../lib/labels'
+import { IFACE_LABELS, IFACE_NOTE_LABELS, MEASUREMENT_SOURCE_LABELS } from '../../lib/labels'
 import styles from '../schools/SchoolCard.module.css'
+import { ResponsiveTable, type ResponsiveColumn } from '../ui/ResponsiveTable'
 import { ConnectionStatusBadge } from '../ui/StatusBadge'
 
 type Metric = number | null | undefined
@@ -14,12 +13,30 @@ const metric = (text: string, alert: boolean) => (
 const below = (value: Metric, min: Metric): boolean => value != null && min != null && value < min
 const above = (value: Metric, max: Metric): boolean => value != null && max != null && value > max
 
-const columns: TableProps<MeasurementListItem>['columns'] = [
+// The history of measurements is the case of DESIGN.md §3.12 where columns cannot be merged: at
+// 769–1024 it pages sideways with the time pinned, at ≤ 768 every measurement becomes a card.
+/** A measurement outside the slots is marked, a planned one is not: the schedule is the norm (T-79). */
+const askedFor = (m: MeasurementListItem): boolean => m.source === 'manual'
+
+/** Wi-Fi measurements do not rate the line (ADR-012): the note travels with the interface. */
+const ifaceCaption = (m: MeasurementListItem): string => {
+  if (!m.ifaceType) return NO_VALUE
+  const note = m.ifaceType === 'wifi' ? ` · ${IFACE_NOTE_LABELS.wifi}` : ''
+  return `${IFACE_LABELS[m.ifaceType]}${note}`
+}
+
+const columns: readonly ResponsiveColumn<MeasurementListItem>[] = [
   {
     key: 'measured',
     title: 'Дата и время',
+    priority: 'primary',
     fixed: 'left',
-    render: (_, m) => <span className={styles.number}>{formatDateTime(m.measuredAt)}</span>,
+    render: (_, m) => (
+      <div className={styles.stack}>
+        <span className={styles.number}>{formatDateTime(m.measuredAt)}</span>
+        {askedFor(m) && <span className={styles.muted}>{MEASUREMENT_SOURCE_LABELS.manual}</span>}
+      </div>
+    ),
   },
   {
     key: 'download',
@@ -42,6 +59,7 @@ const columns: TableProps<MeasurementListItem>['columns'] = [
   {
     key: 'jitter',
     title: 'Jitter',
+    priority: 'minor',
     align: 'right',
     render: (_, m) => metric(formatMs(m.jitterMs), above(m.jitterMs, m.thresholdsSnapshot?.jitterMaxMs)),
   },
@@ -58,12 +76,12 @@ const columns: TableProps<MeasurementListItem>['columns'] = [
   {
     key: 'iface',
     title: 'Подключение',
-    // Wi-Fi measurements do not rate the line (ADR-012): marked so they are not read as its quality.
+    priority: 'primary',
     render: (_, m) =>
       m.ifaceType === 'wifi' ? (
         <div className={styles.stack}>
           <span>{IFACE_LABELS.wifi}</span>
-          <span className={styles.muted}>Не оценивает линию</span>
+          <span className={styles.muted}>{IFACE_NOTE_LABELS.wifi}</span>
         </div>
       ) : m.ifaceType ? (
         IFACE_LABELS[m.ifaceType]
@@ -74,6 +92,7 @@ const columns: TableProps<MeasurementListItem>['columns'] = [
   {
     key: 'status',
     title: 'Статус',
+    priority: 'primary',
     render: (_, m) => (m.qualityStatus ? <ConnectionStatusBadge status={m.qualityStatus} /> : NO_VALUE),
   },
 ]
@@ -90,13 +109,19 @@ interface MeasurementTableProps {
 /** Measurement history of a computer (ТЗ п. 4), newest first, pages on the server. */
 export function MeasurementTable({ items, total, page, pageSize, loading, onPageChange }: MeasurementTableProps) {
   return (
-    <Table<MeasurementListItem>
+    <ResponsiveTable<MeasurementListItem>
       rowKey="measurementUuid"
       size="middle"
       columns={columns}
       dataSource={items}
       loading={loading}
       scroll={{ x: 'max-content' }}
+      card={{
+        title: (m) => formatDateTime(m.measuredAt),
+        status: (m) => (m.qualityStatus ? <ConnectionStatusBadge status={m.qualityStatus} /> : NO_VALUE),
+        description: (m) =>
+          askedFor(m) ? `${MEASUREMENT_SOURCE_LABELS.manual} · ${ifaceCaption(m)}` : ifaceCaption(m),
+      }}
       pagination={{ current: page, pageSize, total, showSizeChanger: true, onChange: onPageChange }}
     />
   )

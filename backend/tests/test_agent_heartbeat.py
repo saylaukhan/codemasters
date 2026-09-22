@@ -40,8 +40,9 @@ async def test_heartbeat_marks_the_device_alive_and_remembers_its_version(
     first = await api_client.post(HEARTBEAT, json=beat("0.2.0"), headers=as_device(token))
     repeated = await api_client.post(HEARTBEAT, json=beat("0.2.0"), headers=as_device(token))
 
-    assert (first.status_code, first.content) == (204, b"")
-    assert repeated.status_code == 204
+    # Nothing is asked of the agent besides its schedule, so the answer is empty (T-79).
+    assert (first.status_code, first.json()) == (200, {"measure_requested_at": None})
+    assert repeated.status_code == 200
     await session.refresh(device)
     assert device.agent_version == "0.2.0"
     assert device.last_seen_at is not None

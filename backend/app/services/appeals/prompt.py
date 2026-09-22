@@ -1,5 +1,5 @@
 """Prompt of the appeal: the facts of the context, the filled template and nothing else (T-47,
-T-60, ADR-011, plan.md §8).
+T-86, ADR-011, plan.md §8).
 
 Everything the model sees is built here out of ``AppealFacts`` and the template of the admin
 panel: School ID, the school, the provider, the contract, the period, the aggregates against
@@ -132,7 +132,7 @@ def excerpt_lines(facts: AppealFacts) -> list[str]:
 
 def build_prompt(facts: AppealFacts, *, letter: str, instructions: str | None = None) -> str:
     """The whole prompt: the task, the facts, the measurements, the filled letter of the
-    template and the instructions of the template (T-60)."""
+    template and the instructions of the template (T-86)."""
     return "\n".join(
         [
             TASK,

@@ -1,0 +1,71 @@
+/* Bar «fact against the threshold», DESIGN.md §3.10 (large tile) and §3.27. */
+.bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.track {
+  position: relative;
+  height: var(--fact-bar-height);
+  border-radius: var(--radius-pill);
+  background: var(--bg-subtle);
+}
+
+.fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--fact-main);
+}
+
+/* Tick 2×14 standing across the track: the norm is muted, the contract is the primary text. */
+.tick {
+  position: absolute;
+  top: calc((var(--fact-bar-height) - var(--fact-tick-height)) / 2);
+  width: var(--fact-tick-width);
+  height: var(--fact-tick-height);
+  margin-inline-start: calc(var(--fact-tick-width) / -2);
+  border-radius: var(--fact-tick-width);
+}
+
+.tick[data-kind='threshold'] {
+  background: var(--chart-threshold);
+}
+
+.tick[data-kind='contract'] {
+  background: var(--text-primary);
+}
+
+.captions {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.caption {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar[data-status='normal'] {
+  --fact-main: var(--status-normal-main);
+}
+.bar[data-status='unstable'] {
+  --fact-main: var(--status-unstable-main);
+}
+.bar[data-status='critical'] {
+  --fact-main: var(--status-critical-main);
+}
+.bar[data-status='offline'] {
+  --fact-main: var(--status-offline-main);
+}
+.bar[data-status='no_data'] {
+  --fact-main: var(--status-no-data-main);
+}

@@ -1,4 +1,4 @@
-"""T-61: a registry of contracts loaded from a CSV or XLSX file into the lines of schools.
+"""T-87: a registry of contracts loaded from a CSV or XLSX file into the lines of schools.
 
 ТЗ п. 14 keeps the contract on the line: the number, the date and the speeds it promises. Until
 now they were typed by hand on the school card (T-35); the registry of the oblast is a table,

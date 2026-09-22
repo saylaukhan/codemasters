@@ -1,4 +1,4 @@
-"""``appeal_templates``: the letters to providers the model writes by (T-60; ТЗ п. 17, п. 20).
+"""``appeal_templates``: the letters to providers the model writes by (T-86; ТЗ п. 17, п. 20).
 
 A template is the subject and the body of the letter with placeholders — ``{{school_name}}``,
 ``{{contract_number}}``, ``{{metrics}}`` — the server fills with the facts of the appeal

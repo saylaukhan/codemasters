@@ -58,12 +58,7 @@ export interface paths {
         put?: never;
         /**
          * Сигнал «агент жив»
-         * @description Record that the agent is alive and remember the version it runs (ТЗ п. 3, ADR-014).
-         *
-         *     The moment is the clock of the database, not ``sent_at`` of the computer: the status of a
-         *     school and its availability are counted against one clock, and a machine whose time is off
-         *     must not look silent or alive by mistake. ``sent_at`` stays in the contract as what the
-         *     agent believes the time is.
+         * @description Ответ несёт `measure_requested_at`, если администратор запросил замер (T-79): агент делает один внеплановый замер, запоминает момент запроса и по нему же отличает повтор того же запроса от нового. Запрос старше часа не выдаётся.
          */
         post: operations["send_heartbeat"];
         delete?: never;
@@ -274,6 +269,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/password-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Запросить ссылку на смену пароля
+         * @description Ответ одинаков для любого адреса: есть такая учётная запись или нет, заблокирована она или нет, настроен SMTP или нет — 204 и пустое тело, чтобы эндпоинт не выдавал чужие e-mail (T-65). Письмо со ссылкой уходит, только когда настроен SMTP и учётная запись активна; срок ссылки — password_reset_ttl_minutes из настроек.
+         */
+        post: operations["request_password_reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/password-reset/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Задать новый пароль по ссылке из письма
+         * @description Ссылка действует один раз и до истечения срока; после смены пароля остальные ссылки пользователя погашены, а его открытые сессии завершены. Недействительная, погашенная и истёкшая ссылка отвечают одинаково.
+         */
+        post: operations["confirm_password_reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Что показать на экране входа: ссылку сброса или контакт
+         * @description Без авторизации: настроен ли SMTP (иначе ссылка «Забыли пароль?» не показывается) и контакт администратора из настроек — пустая строка, если контакт не заполнен (T-65).
+         */
+        get: operations["get_login_info"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me": {
         parameters: {
             query?: never;
@@ -288,7 +343,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Изменить свой профиль: язык панели
+         * @description Пользователь меняет только свой язык интерфейса (T-66); роль, область видимости и пароль здесь не меняются. Панель выбирает словарь подписей один раз при загрузке, поэтому после ответа она перезагружает страницу. Смена языка пишется в журнал.
+         */
+        patch: operations["update_current_user"];
         trace?: never;
     };
     "/api/dashboard/summary": {
@@ -300,9 +359,29 @@ export interface paths {
         };
         /**
          * Сводка главного экрана: KPI
-         * @description Восемь KPI из ТЗ п. 4 по школам в области видимости, отобранным фильтрами; status — статус школы на момент period_to (ADR-004), как на карте. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Замеры, средние и проблемные устройства — за период, по основным линиям, без Wi-Fi (ADR-012).
+         * @description Показатели ТЗ п. 4 по школам в области видимости, отобранным фильтрами; status — статус школы на момент period_to (ADR-004), как на карте. Фильтры provider_id и connection_type_id отбирают школы, у которых есть такая линия. Замеры, средние и проблемные устройства — за период, по основным линиям, без Wi-Fi (ADR-012). status_counts считается до фильтра по статусу, поэтому сумма пяти чисел не меняется при клике по колонке полосы; schools_total_count включает отключённые школы. previous — те же показатели за предыдущий период такой же длины по тем же школам; null, если за тот период не было ни замеров, ни heartbeat.
          */
         get: operations["get_dashboard_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Требуют внимания: школы, инциденты и обращения, которые ждут человека
+         * @description Школы со статусом «Нет соединения» и «Критично» на момент period_to, инциденты без ответственного и обращения «Передан поставщику» без движения дольше окон из настроек (attention_incident_unassigned_hours, attention_appeal_no_answer_hours). Фильтры отбирают школы так же, как GET /api/dashboard/summary. Порядок: severity по возрастанию, затем since от старого к новому; total — число строк до ограничения limit, для подписи «Ещё N школ».
+         */
+        get: operations["get_attention"];
         put?: never;
         post?: never;
         delete?: never;
@@ -414,6 +493,26 @@ export interface paths {
          * @description working_hours заменяются целиком; простой и «Нет соединения» считаются только в них (ADR-014). Неизвестный region_id — 422.
          */
         patch: operations["update_school"];
+        trace?: never;
+    };
+    "/api/schools/{school_id}/days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Статус каждого из последних дней школы
+         * @description Полоса дней кабинета школы: по элементу на каждый локальный день Asia/Almaty, старые сверху, включая дни без замеров. День — «Нет соединения», если простой попал в рабочие часы школы (ADR-014); иначе худший замер дня по основным линиям без Wi‑Fi (ADR-012); иначе «Нет данных».
+         */
+        get: operations["list_school_days"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/schools/{school_id}/devices": {
@@ -705,6 +804,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/devices/{device_id}/measure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Запросить внеплановый замер
+         * @description Замер здесь не выполняется: агент видит measure_requested_at в ответе на POST /api/devices/heartbeat, делает один замер и присылает его как обычно, не дожидаясь слота. Расписание устройства не меняется (ТЗ п. 2). Пока замер не пришёл, measure_requested_at заполнен; запрос старше часа агенту не выдаётся, и повторное нажатие тогда создаёт новый.
+         */
+        post: operations["request_measurement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/analytics": {
         parameters: {
             query?: never;
@@ -910,6 +1029,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Доступен ли помощник по интерфейсу
+         * @description Панель показывает кнопку «Помощник» в шапке, только когда available=true: помощник включён (ASSISTANT_ENABLED) и модель ADR-011 настроена. Запроса к модели здесь нет.
+         */
+        get: operations["get_assistant_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Вопрос помощнику по интерфейсу
+         * @description Диалог целиком и код открытого экрана; последняя реплика — вопрос. Модель получает описание панели, профиль роли и открытый экран — и ничего из данных школ; ответ — текст с абзацами, списками и **жирным**. Ничего не сохраняется и в журнал не пишется. Помощник выключен, модель не настроена или не ответила — 503 problem+json.
+         */
+        post: operations["ask_assistant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/appeals/draft": {
         parameters: {
             query?: never;
@@ -921,7 +1080,7 @@ export interface paths {
         put?: never;
         /**
          * AI-черновик обращения поставщику
-         * @description Ничего не сохраняет и номер не присваивает. Письмо пишется по шаблону template_id (без него — по шаблону по умолчанию, T-60): сервер заполняет шаблон фактами, модель пишет по нему. Контекст собирает сервер, в модель не уходят ФИО, телефоны и e-mail (ADR-011). Модель недоступна или не настроена — не ошибка: ai_generated=false, текст — заполненный шаблон (T-47). Неизвестный incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый template_id — 422.
+         * @description Ничего не сохраняет и номер не присваивает. Письмо пишется по шаблону template_id (без него — по шаблону по умолчанию, T-86): сервер заполняет шаблон фактами, модель пишет по нему. Контекст собирает сервер, в модель не уходят ФИО, телефоны и e-mail (ADR-011). Модель недоступна или не настроена — не ошибка: ai_generated=false, текст — заполненный шаблон (T-47). Неизвестный incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый template_id — 422.
          */
         post: operations["generate_appeal_draft"];
         delete?: never;
@@ -939,7 +1098,7 @@ export interface paths {
         };
         /**
          * Шаблоны писем для выбора в редакторе черновика
-         * @description Только действующие шаблоны, по умолчанию — первым (T-60).
+         * @description Только действующие шаблоны, по умолчанию — первым (T-86).
          */
         get: operations["list_appeal_template_options"];
         put?: never;
@@ -965,7 +1124,7 @@ export interface paths {
         put?: never;
         /**
          * Отправить обращение: номер, письмо поставщику, PDF
-         * @description Номер присваивается здесь. Контекст сервер пересобирает за тот же период; вид письма — по template_id черновика; статус после отправки — sent_to_provider. SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый template_id — 422.
+         * @description Номер присваивается здесь. Контекст сервер пересобирает за тот же период; вид письма — по template_id черновика; статус после отправки — sent_to_provider. Обращение из инцидента в статусе new переводит его в sent_to_provider с записью в incident_events; инцидент в другом статусе не меняется (T-63). SMTP не настроен или у поставщика нет адреса — не ошибка: delivery_status=not_sent, PDF сохраняется (ADR-011). Неизвестный incident_id, school_id или line_id, линия другой школы, неизвестный или отключённый template_id — 422.
          */
         post: operations["create_appeal"];
         delete?: never;
@@ -1012,6 +1171,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/providers/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Оценка поставщиков за период
+         * @description Строка на каждого поставщика, доступного пользователю (ADR-008), по имени. Замеры, доступность и доля ниже договора — из агрегатов через аналитику T-27; инциденты — T-45; реакция — время до первой смены статуса инцидента. Оценка — 100 минус штрафы частей; веса, порог «ниже нормы» и норма реакции — настройки (ТЗ п. 11, п. 20). Окна плановых работ пока не исключаются: календарь появится в T-70.
+         */
+        get: operations["get_provider_score"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/providers/{provider_id}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Карточка поставщика: оценка, школы, договор ниже норматива
+         * @description Те же числа по одному поставщику плюс его школы со статусом и линии, у которых договорная скорость ниже порога применимого профиля («не претензия»: нужен новый договор, а не обращение). Поставщик, ни одной линии которого пользователь не видит, — 404.
+         */
+        get: operations["get_provider_card"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/providers/{provider_id}/act": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Акт о несоответствии: PDF по поставщику за период
+         * @description Замеры ниже договорной скорости с порогами и договорными значениями из thresholds_snapshot каждого замера, а не из профиля и договора на сегодня (ТЗ п. 11). Генератор — тот же, что у обращения (T-48).
+         */
+        get: operations["get_provider_act"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/exports": {
         parameters: {
             query?: never;
@@ -1036,6 +1255,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/exports/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Сколько строк будет в файле: оценка до формирования
+         * @description Сводка конструктора «Будет выгружено ≈ N строк» (DESIGN.md §3.24) с теми же фильтрами, что POST /api/exports: режим, период, school_ids и — только для raw — device_ids и statuses; для aggregates они, как и в POST, 422. Режим school_report не оценивается: PDF-отчёт строится по одной школе из её карточки (T-32). Неизвестные или вне области видимости school_ids и device_ids — 422 (ADR-008). Считается по дневным агрегатам m_daily, а не по measurements: для aggregates это число школ в файле и оно точное (exact=true), для raw — оценка (exact=false), потому что Wi‑Fi в агрегаты не входит (ADR-012), а задетые периодом сутки считаются целиком.
+         */
+        get: operations["estimate_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/exports/{export_id}": {
         parameters: {
             query?: never;
@@ -1050,6 +1289,66 @@ export interface paths {
         get: operations["get_export"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rollout/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ход внедрения: подключённые школы, компьютеры на связи, районы
+         * @description «Подключена» — у школы есть хотя бы один активный компьютер, как считает GET /api/dashboard/summary: schools_count и devices_count совпадают с его числами по тем же фильтрам. «На связи» — сигнал не старше offline_after_s, «молчит» — тишина дольше rollout_silent_days, «старая версия» — версия, которой нет среди действующих релизов канала stable и новее (T-50). Все окна берутся из настроек (ТЗ п. 20). schools_total_count включает отключённые школы, lists — размеры четырёх списков.
+         */
+        get: operations["get_rollout_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rollout/schools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Школы одного из четырёх списков внедрения
+         * @description filter выбирает критерий (docs/design/README.md §6.4): not_connected — нет ни одного активного компьютера; silent — компьютер есть, но последний heartbeat старше rollout_silent_days; code_unused — код установки выдан и не использован, с его возрастом; old_version — есть компьютер не на действующем релизе агента. Порядок — худшие сверху: самая долгая тишина, самый старый код, больше всего устаревших компьютеров. total считается до ограничения limit, для подписи «Ещё N школ».
+         */
+        get: operations["get_rollout_schools"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rollout/devices/agent-update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Назначить обновление: перевести компьютеры в канал целевой версии
+         * @description Целевая версия у устройства не хранится: агент ставит последний релиз своего канала (T-50), поэтому назначение переводит выбранные компьютеры — или все компьютеры района — в канал, который выдаёт эту версию. Версия, не являющаяся последней в своём канале, — 409 release_not_latest: доставить её нечем. Новую версию агенты возьмут при следующем GET /api/agent/config.
+         */
+        post: operations["assign_update"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1355,7 +1654,7 @@ export interface paths {
         };
         /**
          * Правила формирования инцидентов
-         * @description Порядок: правила области, затем правила школ по названию школы. Правило школы заменяет для её линий правило области по тому же показателю (T-59).
+         * @description Порядок: правила области, затем правила школ по названию школы. Правило школы заменяет для её линий правило области по тому же показателю (T-85).
          */
         get: operations["list_incident_rules"];
         put?: never;
@@ -1494,6 +1793,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/digests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Рассылки сводки для руководителя */
+        get: operations["list_digests"];
+        put?: never;
+        /**
+         * Создать рассылку сводки
+         * @description scope=oblast — выпуск по всей области, scope=region — по одному району, и тогда обязателен region_id. weekday (1 — понедельник) и hour — в settings.timezone (Asia/Almaty): расписание хранится в таблице, а не в коде (ТЗ п. 11, п. 20). Без адресов и без чата Telegram — 422: отправлять некуда.
+         */
+        post: operations["create_digest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/digests/{digest_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Удалить рассылку сводки
+         * @description Рассылка — настройка, а не история: удаление ничего не теряет.
+         */
+        delete: operations["delete_digest"];
+        options?: never;
+        head?: never;
+        /**
+         * Изменить или отключить рассылку сводки
+         * @description Охват рассылки не меняется: для другого района создайте новую рассылку.
+         */
+        patch: operations["update_digest"];
+        trace?: never;
+    };
+    "/api/admin/digests/{digest_id}/send-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отправить сводку сейчас
+         * @description Тот же выпуск, что уходит по расписанию, вне расписания. Каждая попытка каждого канала пишется в notification_log (ТЗ п. 18): установка без SMTP или без бота Telegram даёт skipped с причиной, а не ошибку запроса.
+         */
+        post: operations["send_digest_now"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/digests/{digest_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Предпросмотр сводки одной страницей PDF
+         * @description Страница A4 выпуска за неделю, которая заканчивается сейчас. Тот же генератор, что письмо рассылки, поэтому предпросмотр совпадает с PDF.
+         */
+        get: operations["preview_digest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/agent-releases": {
         parameters: {
             query?: never;
@@ -1546,6 +1930,74 @@ export interface paths {
         get: operations["list_audit_log"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * События календаря: каникулы, праздники, плановые работы
+         * @description Ближайшие сверху. В каникулы и праздники доступность не считается и инциденты не создаются, окно плановых работ не входит в оценку поставщика (ТЗ п. 14).
+         */
+        get: operations["list_calendar_events"];
+        put?: never;
+        /**
+         * Добавить событие календаря
+         * @description scope=oblast — вся область, scope=district — район (обязателен region_id), scope=school — школа (обязателен school_id). provider_id указывается только при kind=planned_works. Границы каникул и праздника — целые местные сутки.
+         */
+        post: operations["create_calendar_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/calendar/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Удалить событие календаря
+         * @description Событие — настройка, а не история: удаление ничего не теряет.
+         */
+        delete: operations["delete_calendar_event"];
+        options?: never;
+        head?: never;
+        /**
+         * Изменить событие календаря
+         * @description Тип и цель события не меняются: для другой цели заведите новое событие.
+         */
+        patch: operations["update_calendar_event"];
+        trace?: never;
+    };
+    "/api/admin/calendar/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Импорт календаря из таблицы
+         * @description Содержимое файла CSV с заголовком kind,title,start,end и необязательными school_code, region_code и comment. Дата YYYY-MM-DD — целые местные сутки, последний день входит целиком. Строка с ошибкой не останавливает импорт: она возвращается в errors.
+         */
+        post: operations["import_calendar"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1724,6 +2176,51 @@ export interface components {
             channel?: components["schemas"]["AgentChannel"];
             /** Is Active */
             is_active?: boolean;
+        };
+        /**
+         * AgentUpdateAssign
+         * @description «Назначить обновление»: which computers take ``version`` on their next configuration.
+         *
+         *     Either ``device_ids`` or ``region_id`` — the chosen computers or every computer of a district;
+         *     without both the whole scope of the user is meant.
+         */
+        AgentUpdateAssign: {
+            /**
+             * Version
+             * @description Версия релиза T-50, которую должны поставить агенты
+             * @example 0.2.0
+             */
+            version: string;
+            /**
+             * Device Ids
+             * @description Выбранные компьютеры; null — по району
+             */
+            device_ids?: number[] | null;
+            /**
+             * Region Id
+             * @description Все компьютеры района или города; null — вся область видимости
+             */
+            region_id?: number | null;
+        };
+        /**
+         * AgentUpdateAssigned
+         * @description What the assignment changed: the channel that delivers ``version`` and how many moved.
+         */
+        AgentUpdateAssigned: {
+            /** Version */
+            version: string;
+            /** @description Канал обновления, который выдаёт эту версию (T-50) */
+            channel: components["schemas"]["AgentChannel"];
+            /**
+             * Devices Count
+             * @description Компьютеры выборки
+             */
+            devices_count: number;
+            /**
+             * Devices Changed Count
+             * @description Из них переведены в канал; остальные уже получают эту версию
+             */
+            devices_changed_count: number;
         };
         /** @enum {string} */
         AnalyticsGranularity: "hour" | "day";
@@ -1974,7 +2471,7 @@ export interface components {
             period_to: string;
             /**
              * Template Id
-             * @description Шаблон письма (обращение или претензия, T-60); пусто — шаблон по умолчанию. Неизвестный или отключённый — 422
+             * @description Шаблон письма (обращение или претензия, T-86); пусто — шаблон по умолчанию. Неизвестный или отключённый — 422
              */
             template_id?: number | null;
             /** Subject */
@@ -2006,7 +2503,7 @@ export interface components {
              */
             number: string;
             status: components["schemas"]["IncidentStatus"];
-            /** @description Обращение или претензия (T-60) */
+            /** @description Обращение или претензия (T-86) */
             kind: components["schemas"]["AppealKind"];
             /**
              * Template Id
@@ -2065,7 +2562,7 @@ export interface components {
             recipient_email: string | null;
             /**
              * Template Id
-             * @description Шаблон, по которому написано письмо (T-60)
+             * @description Шаблон, по которому написано письмо (T-86)
              */
             template_id: number;
             /** Template Name */
@@ -2110,7 +2607,7 @@ export interface components {
             period_to: string;
             /**
              * Template Id
-             * @description Шаблон письма (обращение или претензия, T-60); пусто — шаблон по умолчанию. Неизвестный или отключённый — 422
+             * @description Шаблон письма (обращение или претензия, T-86); пусто — шаблон по умолчанию. Неизвестный или отключённый — 422
              */
             template_id?: number | null;
         };
@@ -2150,7 +2647,7 @@ export interface components {
              */
             number: string;
             status: components["schemas"]["IncidentStatus"];
-            /** @description Обращение или претензия (T-60) */
+            /** @description Обращение или претензия (T-86) */
             kind: components["schemas"]["AppealKind"];
             /** Subject */
             subject: string;
@@ -2365,6 +2862,124 @@ export interface components {
              */
             comment?: string | null;
         };
+        /**
+         * AssistantAnswer
+         * @description Answer of the model; nothing is stored (T-84).
+         */
+        AssistantAnswer: {
+            /**
+             * Text
+             * @description Ответ помощника: абзацы, списки и **жирный**, как в черновике обращения
+             */
+            text: string;
+        };
+        /** @enum {string} */
+        AssistantAuthor: "user" | "assistant";
+        /**
+         * AssistantMessage
+         * @description One line of the dialog.
+         */
+        AssistantMessage: {
+            author: components["schemas"]["AssistantAuthor"];
+            /** Text */
+            text: string;
+        };
+        /**
+         * AssistantQuestion
+         * @description The open screen and the dialog so far; the last line is the question.
+         */
+        AssistantQuestion: {
+            /** @description Открытый экран панели: помощник отвечает с учётом него */
+            screen: components["schemas"]["AssistantScreen"];
+            /**
+             * Messages
+             * @description Диалог целиком, последняя реплика — вопрос пользователя
+             */
+            messages: components["schemas"]["AssistantMessage"][];
+        };
+        /** @enum {string} */
+        AssistantScreen: "overview" | "map" | "schools" | "school_card" | "school_cabinet" | "device_card" | "incidents" | "incident_card" | "appeals" | "appeal_draft" | "appeal_card" | "providers" | "rollout" | "analytics" | "exports" | "admin" | "other";
+        /**
+         * AssistantStatus
+         * @description Whether the panel shows the button of the assistant (T-84).
+         */
+        AssistantStatus: {
+            /**
+             * Available
+             * @description Помощник включён и модель настроена: панель показывает кнопку в шапке
+             */
+            available: boolean;
+            /** @description Почему недоступен; null — доступен */
+            reason?: components["schemas"]["AssistantUnavailableReason"] | null;
+        };
+        /** @enum {string} */
+        AssistantUnavailableReason: "disabled" | "llm_not_configured";
+        /**
+         * AttentionItem
+         * @description One row of «Требуют внимания»: what is wrong, where, and since when (§4.1).
+         */
+        AttentionItem: {
+            kind: components["schemas"]["AttentionKind"];
+            reason: components["schemas"]["AttentionReason"];
+            /**
+             * Severity
+             * @description Ключ сортировки, меньше — хуже: 1 «Нет соединения», 2 «Критично», 3 инцидент без ответственного, 4 обращение без ответа
+             */
+            severity: number;
+            /** School Id */
+            school_id: number;
+            /** School Code */
+            school_code: string;
+            /** School Name */
+            school_name: string;
+            /** Region Name */
+            region_name: string;
+            /**
+             * Provider Name
+             * @description Поставщик: у школы — основной линии, у инцидента и обращения — их линии
+             */
+            provider_name: string | null;
+            /** @description Статус школы; null у строки инцидента и обращения */
+            status: components["schemas"]["SchoolStatus"] | null;
+            /** Incident Id */
+            incident_id: number | null;
+            /** Incident Number */
+            incident_number: string | null;
+            /** Appeal Id */
+            appeal_id: number | null;
+            /** Appeal Number */
+            appeal_number: string | null;
+            /** @description Первое основание инцидента: из него строится причина словами (§4.1) */
+            metric: components["schemas"]["IncidentMetric"] | null;
+            /**
+             * Since
+             * Format: date-time
+             * @description Школа — когда её в последний раз слышали или мерили, иначе period_to; инцидент — started_at; обращение — sent_at
+             */
+            since: string;
+        };
+        /** @enum {string} */
+        AttentionKind: "school" | "incident" | "appeal";
+        /**
+         * AttentionPage
+         * @description Rows that ask for a person at ``period_to``, the worst first (§4.1).
+         */
+        AttentionPage: {
+            /**
+             * Period To
+             * Format: date-time
+             */
+            period_to: string;
+            /**
+             * Total
+             * @description Сколько строк до ограничения limit: подпись «Ещё N школ»
+             */
+            total: number;
+            /** Items */
+            items: components["schemas"]["AttentionItem"][];
+        };
+        /** @enum {string} */
+        AttentionReason: "offline" | "critical" | "incident_unassigned" | "appeal_unanswered";
         /** @enum {string} */
         AuditAction: "login_success" | "login_failure" | "create" | "update" | "block" | "unblock" | "password_reset" | "status_change" | "export" | "import" | "transfer_error";
         /** @enum {string} */
@@ -2439,6 +3054,163 @@ export interface components {
             /** Page Size */
             page_size: number;
         };
+        /** @description Комментарий, например приказ */
+        CalendarComment: string | null;
+        /**
+         * CalendarEventCreate
+         * @description Новое событие календаря; поставщик указывается только у плановых работ.
+         */
+        CalendarEventCreate: {
+            /**
+             * Starts At
+             * Format: date-time
+             * @description Начало периода, со смещением часового пояса
+             */
+            starts_at: string;
+            /**
+             * Ends At
+             * Format: date-time
+             * @description Конец периода, не включается
+             */
+            ends_at: string;
+            kind: components["schemas"]["CalendarKind"];
+            scope: components["schemas"]["CalendarScope"];
+            /**
+             * Region Id
+             * @description Только и обязательно при scope=district
+             */
+            region_id?: number | null;
+            /**
+             * School Id
+             * @description Только и обязательно при scope=school
+             */
+            school_id?: number | null;
+            /**
+             * Provider Id
+             * @description Только при kind=planned_works: окно линий этого поставщика
+             */
+            provider_id?: number | null;
+            title: components["schemas"]["CalendarTitle"];
+            comment?: components["schemas"]["CalendarComment"];
+        };
+        /**
+         * CalendarEventDetail
+         * @description Событие календаря с наименованиями его цели.
+         */
+        CalendarEventDetail: {
+            /**
+             * Starts At
+             * Format: date-time
+             * @description Начало периода, со смещением часового пояса
+             */
+            starts_at: string;
+            /**
+             * Ends At
+             * Format: date-time
+             * @description Конец периода, не включается
+             */
+            ends_at: string;
+            /** Id */
+            id: number;
+            kind: components["schemas"]["CalendarKind"];
+            scope: components["schemas"]["CalendarScope"];
+            /**
+             * Region Id
+             * @description Только при scope=district
+             */
+            region_id: number | null;
+            /** Region Name */
+            region_name: string | null;
+            /**
+             * School Id
+             * @description Только при scope=school
+             */
+            school_id: number | null;
+            /** School Name */
+            school_name: string | null;
+            /**
+             * Provider Id
+             * @description Только при kind=planned_works
+             */
+            provider_id: number | null;
+            /** Provider Name */
+            provider_name: string | null;
+            /** Title */
+            title: string;
+            /** Comment */
+            comment: string | null;
+        };
+        /**
+         * CalendarEventDetailPage
+         * @description Страница событий календаря.
+         */
+        CalendarEventDetailPage: {
+            /** Items */
+            items: components["schemas"]["CalendarEventDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * CalendarEventUpdate
+         * @description Изменения события: период, название и комментарий; тип и цель не меняются.
+         */
+        CalendarEventUpdate: {
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at?: string;
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at?: string;
+            /** Title */
+            title?: components["schemas"]["CalendarTitle"];
+            /** Comment */
+            comment?: string | null;
+        };
+        /**
+         * CalendarImportRequest
+         * @description Импорт календаря из таблицы: содержимое файла CSV одной строкой (T-70).
+         *
+         *     Колонки: ``kind``, ``title``, ``start``, ``end`` обязательны, ``school_code``,
+         *     ``region_code`` и ``comment`` — нет. Дата ``YYYY-MM-DD`` — целые местные сутки
+         *     ``settings.timezone``, ``YYYY-MM-DDTHH:MM`` — момент этих суток.
+         */
+        CalendarImportRequest: {
+            /**
+             * Text
+             * @description Содержимое файла CSV с заголовком kind,title,start,end
+             */
+            text: string;
+        };
+        /**
+         * CalendarImportResult
+         * @description Итог импорта: сколько событий заведено и что не удалось прочитать.
+         */
+        CalendarImportResult: {
+            /**
+             * Created
+             * @description Сколько событий добавлено
+             */
+            created: number;
+            /**
+             * Errors
+             * @description Строки файла, которые не удалось прочитать
+             */
+            errors: string[];
+        };
+        /** @enum {string} */
+        CalendarKind: "vacation" | "holiday" | "planned_works";
+        /** @enum {string} */
+        CalendarScope: "oblast" | "district" | "school";
+        /** @description Название события в календаре */
+        CalendarTitle: string;
         /** @enum {string} */
         ConnectionStatus: "online" | "offline";
         /**
@@ -2649,34 +3421,16 @@ export interface components {
              *     ]
              */
             permissions: string[];
+            /** @description Язык панели пользователя (T-66); меняется PATCH /auth/me */
+            locale: components["schemas"]["Locale"];
         };
         /**
-         * DashboardSummary
-         * @description KPIs in the order of ТЗ п. 4 for the applied period.
+         * DashboardPeriodKpis
+         * @description KPIs that depend on the period, so the previous period of equal length also answers them.
          *
          *     Measurement values cover main lines only, without Wi-Fi (ADR-012).
          */
-        DashboardSummary: {
-            /**
-             * Period From
-             * Format: date-time
-             */
-            period_from: string;
-            /**
-             * Period To
-             * Format: date-time
-             */
-            period_to: string;
-            /**
-             * Schools Count
-             * @description Подключённые школы: активные школы по фильтрам
-             */
-            schools_count: number;
-            /**
-             * Devices Count
-             * @description Зарегистрированные компьютеры, кроме заблокированных
-             */
-            devices_count: number;
+        DashboardPeriodKpis: {
             /**
              * Active Devices Count
              * @description Устройства, выходившие на связь за период: heartbeat или замер
@@ -2707,6 +3461,76 @@ export interface components {
              * @description Устройства, чей последний замер за период — unstable, critical или offline
              */
             problem_devices_count: number;
+        };
+        /**
+         * DashboardSummary
+         * @description The KPIs of ТЗ п. 4 for the applied period, with the status strip and the previous period.
+         *
+         *     The period-dependent half is inherited, so the very same six numbers describe ``previous``:
+         *     the period of equal length that ends at ``period_from``, counted over the same schools. It is
+         *     null while that period holds neither a measurement nor a heartbeat, and the panel says
+         *     «первые данные» instead of a delta (docs/design/README.md §4.1).
+         */
+        DashboardSummary: {
+            /**
+             * Active Devices Count
+             * @description Устройства, выходившие на связь за период: heartbeat или замер
+             */
+            active_devices_count: number;
+            /**
+             * Measurements Count
+             * @description Замеры за период
+             */
+            measurements_count: number;
+            /**
+             * Avg Download Mbps
+             * @description null — замеров за период нет
+             */
+            avg_download_mbps: number | null;
+            /**
+             * Avg Upload Mbps
+             * @description null — замеров за период нет
+             */
+            avg_upload_mbps: number | null;
+            /**
+             * Avg Ping Ms
+             * @description null — замеров за период нет
+             */
+            avg_ping_ms: number | null;
+            /**
+             * Problem Devices Count
+             * @description Устройства, чей последний замер за период — unstable, critical или offline
+             */
+            problem_devices_count: number;
+            /**
+             * Period From
+             * Format: date-time
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             */
+            period_to: string;
+            /**
+             * Schools Count
+             * @description Подключённые школы: активные школы по фильтрам
+             */
+            schools_count: number;
+            /**
+             * Schools Total Count
+             * @description Школы тех же фильтров вместе с отключёнными: подпись «350 из 366 в реестре»
+             */
+            schools_total_count: number;
+            /**
+             * Devices Count
+             * @description Зарегистрированные компьютеры, кроме заблокированных
+             */
+            devices_count: number;
+            /** @description Школы по статусам на period_to, до применения фильтра по статусу */
+            status_counts: components["schemas"]["SchoolStatusCounts"];
+            /** @description Те же показатели за предыдущий период той же длины; null — данных за него нет */
+            previous: components["schemas"]["DashboardPeriodKpis"] | null;
         };
         /**
          * DeviceDetail
@@ -2749,6 +3573,8 @@ export interface components {
             update_channel: components["schemas"]["AgentChannel"];
             /** @description По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data */
             current_status: components["schemas"]["SchoolStatus"];
+            /** @description Почему нет данных: событие календаря школы на этот момент; null — обычный */
+            quiet_reason?: components["schemas"]["CalendarKind"] | null;
             latest_measurement: components["schemas"]["LatestMeasurement"] | null;
             /** Os */
             os: string | null;
@@ -2771,6 +3597,11 @@ export interface components {
              * @description Запрошена замена токена; пусто — агент уже получил новый или замены не было
              */
             token_rotation_requested_at: string | null;
+            /**
+             * Measure Requested At
+             * @description Запрошен внеплановый замер и запрос ещё ждёт агента; пусто — замер уже пришёл, запроса не было или он старше часа
+             */
+            measure_requested_at: string | null;
         };
         /**
          * DeviceDetailPage
@@ -2827,6 +3658,8 @@ export interface components {
             update_channel: components["schemas"]["AgentChannel"];
             /** @description По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data */
             current_status: components["schemas"]["SchoolStatus"];
+            /** @description Почему нет данных: событие календаря школы на этот момент; null — обычный */
+            quiet_reason?: components["schemas"]["CalendarKind"] | null;
             latest_measurement: components["schemas"]["LatestMeasurement"] | null;
         };
         /**
@@ -2899,6 +3732,130 @@ export interface components {
             update_channel?: components["schemas"]["AgentChannel"];
         };
         /**
+         * DigestDelivery
+         * @description Одна попытка доставки сводки: канал, адресат и что из этого вышло (ТЗ п. 18).
+         */
+        DigestDelivery: {
+            channel: components["schemas"]["NotificationChannel"];
+            /** @description skipped — канал не настроен на сервере */
+            result: components["schemas"]["NotificationResult"];
+            /** Target */
+            target: string | null;
+            /**
+             * Error
+             * @description Причина skipped или failed; null у доставленной
+             */
+            error: string | null;
+        };
+        /** @description Час отправки в settings.timezone */
+        DigestHour: number;
+        /** @description Адреса рассылки; пустой список — сводка уходит только в Telegram */
+        DigestRecipients: string[];
+        /** @enum {string} */
+        DigestScope: "oblast" | "region";
+        /**
+         * DigestSendResult
+         * @description Итог «Отправить сейчас»: каждая попытка записана в notification_log (ТЗ п. 18).
+         */
+        DigestSendResult: {
+            /**
+             * Sent At
+             * Format: date-time
+             */
+            sent_at: string;
+            /** Deliveries */
+            deliveries: components["schemas"]["DigestDelivery"][];
+        };
+        /**
+         * DigestSettingsCreate
+         * @description Новая рассылка сводки; охват «region» требует region_id, «oblast» — запрещает.
+         */
+        DigestSettingsCreate: {
+            scope: components["schemas"]["DigestScope"];
+            /**
+             * Region Id
+             * @description Только и обязательно при scope=region
+             */
+            region_id?: number | null;
+            weekday: components["schemas"]["DigestWeekday"];
+            hour: components["schemas"]["DigestHour"];
+            /** @default [] */
+            recipients: components["schemas"]["DigestRecipients"];
+            /**
+             * Telegram Chat Id
+             * @description Чат Telegram; null — канал не используется
+             */
+            telegram_chat_id?: string | null;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+        };
+        /**
+         * DigestSettingsDetail
+         * @description Рассылка сводки с наименованием района и временем последней отправки.
+         */
+        DigestSettingsDetail: {
+            /** Id */
+            id: number;
+            scope: components["schemas"]["DigestScope"];
+            /**
+             * Region Id
+             * @description Только при scope=region
+             */
+            region_id: number | null;
+            /** Region Name */
+            region_name: string | null;
+            weekday: components["schemas"]["DigestWeekday"];
+            hour: components["schemas"]["DigestHour"];
+            recipients: components["schemas"]["DigestRecipients"];
+            /** Telegram Chat Id */
+            telegram_chat_id: string | null;
+            /**
+             * Is Active
+             * @description Отключённая рассылка не уходит по расписанию
+             */
+            is_active: boolean;
+            /**
+             * Last Sent At
+             * @description null — сводка ещё не уходила
+             */
+            last_sent_at: string | null;
+        };
+        /**
+         * DigestSettingsDetailPage
+         * @description Страница рассылок сводки.
+         */
+        DigestSettingsDetailPage: {
+            /** Items */
+            items: components["schemas"]["DigestSettingsDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * DigestSettingsUpdate
+         * @description Изменения рассылки; охват и его цель не меняются.
+         */
+        DigestSettingsUpdate: {
+            /** Weekday */
+            weekday?: components["schemas"]["DigestWeekday"];
+            /** Hour */
+            hour?: components["schemas"]["DigestHour"];
+            /** Recipients */
+            recipients?: components["schemas"]["DigestRecipients"];
+            /** Telegram Chat Id */
+            telegram_chat_id?: string | null;
+            /** Is Active */
+            is_active?: boolean;
+        };
+        /** @description 1 — понедельник, 7 — воскресенье */
+        DigestWeekday: number;
+        /**
          * EnrollmentCodeCreate
          * @description Request for a one-time agent installation code for a school (plan.md §4.1).
          */
@@ -2928,7 +3885,7 @@ export interface components {
             expires_at: string;
         };
         /** @enum {string} */
-        ExportColumn: "school_name" | "hostname" | "room" | "date" | "time" | "download_mbps" | "upload_mbps" | "ping_ms" | "jitter_ms" | "packet_loss_pct" | "quality_status" | "school_code" | "device_id" | "line_status" | "connection_status" | "iface_type" | "duration_s" | "external_ip" | "server" | "agent_version";
+        ExportColumn: "school_name" | "hostname" | "room" | "date" | "time" | "download_mbps" | "upload_mbps" | "ping_ms" | "jitter_ms" | "packet_loss_pct" | "quality_status" | "school_code" | "device_id" | "line_status" | "connection_status" | "iface_type" | "duration_s" | "external_ip" | "server" | "agent_version" | "source";
         /**
          * ExportCreate
          * @description Export request: mode, format, period, filters and columns (ТЗ п. 9, DESIGN.md §3.24).
@@ -2983,6 +3940,37 @@ export interface components {
              */
             columns: components["schemas"]["ExportColumn"][];
         };
+        /**
+         * ExportEstimate
+         * @description How many rows the file of the selection would have, before it is built (T-64).
+         */
+        ExportEstimate: {
+            mode: components["schemas"]["ExportEstimateMode"];
+            /**
+             * Period From
+             * Format: date-time
+             * @description Начало периода запроса, включительно
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец периода запроса, не включается
+             */
+            period_to: string;
+            /**
+             * Rows Count
+             * @description Строк в файле: замеров (raw) или школ (aggregates)
+             */
+            rows_count: number;
+            /**
+             * Exact
+             * @description true — число точное (aggregates); false — оценка по дневным агрегатам: Wi-Fi в них не учитывается, а задетые периодом сутки считаются целиком (raw)
+             */
+            exact: boolean;
+        };
+        /** @enum {string} */
+        ExportEstimateMode: "raw" | "aggregates";
         /** @enum {string} */
         ExportFormat: "xlsx" | "csv" | "json" | "pdf";
         /**
@@ -3163,6 +4151,17 @@ export interface components {
             sent_at: string;
             /** Agent Version */
             agent_version: string;
+        };
+        /**
+         * HeartbeatResponse
+         * @description Answer of a heartbeat: what the server asks of the agent besides its schedule (T-79).
+         */
+        HeartbeatResponse: {
+            /**
+             * Measure Requested At
+             * @description Администратор запросил замер: агент делает один внеплановый замер и запоминает этот момент, чтобы не повторить запрос после перезапуска службы. Пусто — запроса нет или он старше часа
+             */
+            measure_requested_at?: string | null;
         };
         /** @enum {string} */
         IfaceType: "ethernet" | "wifi" | "other";
@@ -3801,6 +4800,25 @@ export interface components {
             /** Ip Ranges */
             ip_ranges?: string[];
         };
+        /** @enum {string} */
+        Locale: "ru" | "kk";
+        /**
+         * LoginInfo
+         * @description What the sign-in screen needs before a sign-in: the reset link or the contact (T-65).
+         */
+        LoginInfo: {
+            /**
+             * Password Reset Available
+             * @description SMTP настроен — на входе показывается ссылка «Забыли пароль?»
+             */
+            password_reset_available: boolean;
+            /**
+             * Support Contact
+             * @description Контакт администратора, когда сброс недоступен; пусто — не показывать
+             * @example admin@edu.vko.kz, +7 7232 00-00-00
+             */
+            support_contact: string;
+        };
         /**
          * LoginRequest
          * @description Panel sign-in; the password never shows up in logs or reprs (``SecretStr``).
@@ -3937,6 +4955,11 @@ export interface components {
             iface_type?: components["schemas"]["IfaceType"] | null;
             /** Agent Version */
             agent_version: string;
+            /**
+             * @description Что запустило замер: расписание агента или запрос из панели (T-79). Агент старой версии поля не шлёт, и замер считается плановым
+             * @default schedule
+             */
+            source: components["schemas"]["MeasurementSource"];
         };
         /**
          * MeasurementListItem
@@ -3991,6 +5014,8 @@ export interface components {
             server: string | null;
             /** Agent Version */
             agent_version: string | null;
+            /** @description Замер по расписанию агента или по запросу «Замерить сейчас» из панели */
+            source: components["schemas"]["MeasurementSource"];
             /**
              * Contract Ok
              * @description Факт не ниже договорной скорости линии; пусто — договорных значений нет
@@ -4011,6 +5036,8 @@ export interface components {
             /** Page Size */
             page_size: number;
         };
+        /** @enum {string} */
+        MeasurementSource: "schedule" | "manual";
         /**
          * MetricStats
          * @description Average, minimum and maximum of one metric over the period (ТЗ п. 5).
@@ -4112,6 +5139,8 @@ export interface components {
             is_primary?: boolean;
         };
         /** @enum {string} */
+        NotificationChannel: "panel" | "telegram" | "email";
+        /** @enum {string} */
         NotificationKind: "incident_opened" | "incident_status_changed" | "incident_restored";
         /**
          * NotificationListItem
@@ -4168,6 +5197,8 @@ export interface components {
             /** Page Size */
             page_size: number;
         };
+        /** @enum {string} */
+        NotificationResult: "sent" | "failed" | "skipped";
         /**
          * NotificationUnreadCount
          * @description Counter on the bell of the header (DESIGN.md §3.5).
@@ -4204,6 +5235,35 @@ export interface components {
             ended_at: string;
         };
         /**
+         * PasswordResetConfirm
+         * @description New password by the link from the letter; the password never shows up in logs.
+         */
+        PasswordResetConfirm: {
+            /**
+             * Token
+             * @description Токен из ссылки письма (параметр token)
+             */
+            token: string;
+            /**
+             * Password
+             * Format: password
+             * @description Новый пароль; хранится только хэшем
+             */
+            password: string;
+        };
+        /**
+         * PasswordResetRequest
+         * @description Request of a reset link; the answer is the same for every address (T-65).
+         */
+        PasswordResetRequest: {
+            /**
+             * Email
+             * @description E-mail учётной записи; ответ не зависит от того, есть ли такая
+             * @example admin@example.kz
+             */
+            email: string;
+        };
+        /**
          * Problem
          * @description Error of any endpoint; clients branch on ``type``, ``detail`` is for a human.
          */
@@ -4235,6 +5295,14 @@ export interface components {
              * @description Путь запроса
              */
             instance?: string | null;
+        };
+        /**
+         * ProfileUpdate
+         * @description What a user changes in his own account (T-66): so far only the language of the panel.
+         */
+        ProfileUpdate: {
+            /** @description Язык панели: ru или kk (DESIGN.md §5.1) */
+            locale: components["schemas"]["Locale"];
         };
         /**
          * ProviderCreate
@@ -4281,6 +5349,228 @@ export interface components {
             page: number;
             /** Page Size */
             page_size: number;
+        };
+        /**
+         * ProviderLineBelowNorm
+         * @description Line whose contract itself is below the thresholds it is judged by — «не претензия».
+         *
+         *     Nothing here is the fault of the provider: the contract promises less than ТЗ п. 11 asks,
+         *     so the school needs a new contract, not an appeal (docs/design/README.md §6.3).
+         */
+        ProviderLineBelowNorm: {
+            /** Line Id */
+            line_id: number;
+            /** School Id */
+            school_id: number;
+            /** School Name */
+            school_name: string;
+            /** Region Name */
+            region_name: string | null;
+            /** Contract Down Mbps */
+            contract_down_mbps: number | null;
+            /** Contract Up Mbps */
+            contract_up_mbps: number | null;
+            /**
+             * Download Min Mbps
+             * @description Порог профиля, применимого к линии
+             */
+            download_min_mbps: number;
+            /** Upload Min Mbps */
+            upload_min_mbps: number;
+        };
+        /**
+         * ProviderSchoolRow
+         * @description School on a main line of the provider: its status now and its numbers of the period.
+         */
+        ProviderSchoolRow: {
+            /** School Id */
+            school_id: number;
+            /** Name */
+            name: string;
+            /** Region Name */
+            region_name: string | null;
+            /** @description Статус школы сейчас (ADR-004) */
+            status: components["schemas"]["SchoolStatus"];
+            /** Measurements Count */
+            measurements_count: number;
+            /** Below Contract Pct */
+            below_contract_pct: number | null;
+            /** Availability Pct */
+            availability_pct: number | null;
+            /**
+             * Sustained Mismatch
+             * @description Устойчиво ниже договора по пересчёту T-29; null — ещё не рассчитано
+             */
+            sustained_mismatch: boolean | null;
+        };
+        /**
+         * ProviderScoreDetail
+         * @description Card of one provider: its row, its schools and the lines whose contract is below the norm.
+         */
+        ProviderScoreDetail: {
+            /**
+             * Period From
+             * Format: date-time
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             */
+            period_to: string;
+            weights: components["schemas"]["ProviderScoreWeights"];
+            /** Availability Min Pct */
+            availability_min_pct: number;
+            provider: components["schemas"]["ProviderScoreRow"];
+            /**
+             * Appeals Email
+             * @description Адрес поставщика для обращений и акта (T-48)
+             */
+            appeals_email: string | null;
+            /** Schools */
+            schools: components["schemas"]["ProviderSchoolRow"][];
+            /** Lines Below Norm */
+            lines_below_norm: components["schemas"]["ProviderLineBelowNorm"][];
+        };
+        /**
+         * ProviderScoreReport
+         * @description Rows of every provider the user may see, ordered by name (ADR-008).
+         */
+        ProviderScoreReport: {
+            /**
+             * Period From
+             * Format: date-time
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             */
+            period_to: string;
+            weights: components["schemas"]["ProviderScoreWeights"];
+            /**
+             * Availability Min Pct
+             * @description Порог доступности (п. 11)
+             */
+            availability_min_pct: number;
+            /** Rows */
+            rows: components["schemas"]["ProviderScoreRow"][];
+        };
+        /**
+         * ProviderScoreRow
+         * @description One provider over the period: what is counted and the score it adds up to.
+         */
+        ProviderScoreRow: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Schools Count
+             * @description Школ на основных линиях поставщика
+             */
+            schools_count: number;
+            /** Lines Count */
+            lines_count: number;
+            /** Measurements Count */
+            measurements_count: number;
+            /** Problem Count */
+            problem_count: number;
+            /**
+             * Problem Pct
+             * @description Доля проблемных замеров, %
+             */
+            problem_pct: number | null;
+            /**
+             * Availability Pct
+             * @description Доступность школ поставщика в рабочие часы (T-16, ADR-014)
+             */
+            availability_pct: number | null;
+            /**
+             * Below Contract Pct
+             * @description Доля замеров ниже договорной скорости, %; null без договорных значений
+             */
+            below_contract_pct: number | null;
+            /**
+             * Incidents Opened
+             * @description Инцидентов начато за период (по started_at)
+             */
+            incidents_opened: number;
+            /**
+             * Incidents Closed
+             * @description Из них с восстановлением линии (restored_at)
+             */
+            incidents_closed: number;
+            /**
+             * Reaction Median S
+             * @description Медиана времени до первой смены статуса инцидента, с; null без таких
+             */
+            reaction_median_s: number | null;
+            /**
+             * Reaction Worst S
+             * @description Худшее время до смены статуса, с
+             */
+            reaction_worst_s: number | null;
+            /**
+             * Restore Avg S
+             * @description Среднее устранение: restored_at − started_at, с (T-45)
+             */
+            restore_avg_s: number | null;
+            /**
+             * Restore Worst S
+             * @description Худшее устранение, с
+             */
+            restore_worst_s: number | null;
+            /**
+             * Lines Below Norm Count
+             * @description Линий, у которых договорная скорость ниже порога профиля — «не претензия»
+             */
+            lines_below_norm_count: number;
+            /**
+             * Score
+             * @description Оценка 0–100; null — за период нет ни одного замера
+             */
+            score: number | null;
+            /** @description below_norm — оценка ниже порога настроек; null вместе с пустой оценкой */
+            verdict: components["schemas"]["ProviderScoreVerdict"] | null;
+        };
+        /** @enum {string} */
+        ProviderScoreVerdict: "pass" | "below_norm";
+        /**
+         * ProviderScoreWeights
+         * @description Weights of the parts and the passing threshold, as the admin panel holds them (T-37).
+         */
+        ProviderScoreWeights: {
+            /**
+             * Below Contract
+             * @description Вес доли замеров ниже договора
+             */
+            below_contract: number;
+            /**
+             * Availability
+             * @description Вес нехватки доступности
+             */
+            availability: number;
+            /**
+             * Reaction
+             * @description Вес просрочки реакции на инцидент
+             */
+            reaction: number;
+            /**
+             * Incidents
+             * @description Вес числа инцидентов на школу
+             */
+            incidents: number;
+            /**
+             * Pass Pct
+             * @description Оценка ниже этой — «ниже нормы»
+             */
+            pass_pct: number;
+            /**
+             * Reaction Norm Hours
+             * @description Норма реакции на инцидент, ч
+             */
+            reaction_norm_hours: number;
         };
         /**
          * ProviderUpdate
@@ -4443,6 +5733,237 @@ export interface components {
             page: number;
             /** Page Size */
             page_size: number;
+        };
+        /** @enum {string} */
+        RolloutFilter: "not_connected" | "silent" | "code_unused" | "old_version";
+        /**
+         * RolloutListCounts
+         * @description How many schools each of the four lists holds, for the tabs of the screen (§6.4).
+         */
+        RolloutListCounts: {
+            /**
+             * Not Connected
+             * @description Нет ни одного активного компьютера
+             */
+            not_connected: number;
+            /**
+             * Silent
+             * @description Агент установлен, но молчит дольше rollout_silent_days
+             */
+            silent: number;
+            /**
+             * Code Unused
+             * @description Код установки выдан и не использован
+             */
+            code_unused: number;
+            /**
+             * Old Version
+             * @description Есть компьютер с версией ниже текущего релиза
+             */
+            old_version: number;
+        };
+        /**
+         * RolloutRegionRow
+         * @description Row of «По районам и городам»: the same numbers for one district or city.
+         */
+        RolloutRegionRow: {
+            /**
+             * Schools Count
+             * @description Активные школы выборки, как schools_count у GET /api/dashboard/summary
+             */
+            schools_count: number;
+            /**
+             * Schools Connected Count
+             * @description Школы, у которых есть хотя бы один активный компьютер
+             */
+            schools_connected_count: number;
+            /**
+             * Connected Pct
+             * @description Доля подключённых школ; 0 при пустой выборке
+             */
+            connected_pct: number;
+            /**
+             * Devices Count
+             * @description Зарегистрированные компьютеры, кроме заблокированных, как devices_count у GET /api/dashboard/summary
+             */
+            devices_count: number;
+            /**
+             * Devices Alive Count
+             * @description Компьютеры на связи: сигнал не старше offline_after_s
+             */
+            devices_alive_count: number;
+            /**
+             * Devices Silent Count
+             * @description Компьютеры, молчащие дольше rollout_silent_days
+             */
+            devices_silent_count: number;
+            /**
+             * Devices Old Version Count
+             * @description Компьютеры не на текущем релизе агента (T-50)
+             */
+            devices_old_version_count: number;
+            /** Region Id */
+            region_id: number;
+            /** Region Name */
+            region_name: string;
+        };
+        /**
+         * RolloutSchoolItem
+         * @description School of one of the four lists, with the fact that put it there (§6.4).
+         */
+        RolloutSchoolItem: {
+            /** School Id */
+            school_id: number;
+            /** School Code */
+            school_code: string;
+            /** School Name */
+            school_name: string;
+            /** Region Id */
+            region_id: number;
+            /** Region Name */
+            region_name: string;
+            /**
+             * Devices Count
+             * @description Активные компьютеры школы
+             */
+            devices_count: number;
+            /**
+             * Devices Alive Count
+             * @description Из них на связи
+             */
+            devices_alive_count: number;
+            /**
+             * Last Seen At
+             * @description Последний сигнал любого компьютера школы; null — школу ни разу не слышали
+             */
+            last_seen_at: string | null;
+            /**
+             * Silent Days
+             * @description Сколько полных суток школа молчит; null — школа на связи или не подключена
+             */
+            silent_days: number | null;
+            /**
+             * Code Issued At
+             * @description Когда выдан последний неиспользованный код установки (T-36)
+             */
+            code_issued_at: string | null;
+            /**
+             * Code Age Days
+             * @description Сколько полных суток коду: «не использован N дней»
+             */
+            code_age_days: number | null;
+            /**
+             * Agent Versions
+             * @description Версии агента компьютеров школы; версия ниже текущего релиза попадает в список «старая версия»
+             */
+            agent_versions: string[];
+            /**
+             * Has Contact
+             * @description Есть ответственный за интернет (ТЗ п. 15)
+             */
+            has_contact: boolean;
+        };
+        /**
+         * RolloutSchoolPage
+         * @description Schools of one list, the worst first; ``total`` counts them before ``limit`` (§6.4).
+         */
+        RolloutSchoolPage: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            filter: components["schemas"]["RolloutFilter"];
+            /**
+             * Target Version
+             * @description Текущий stable-релиз агента (T-50)
+             */
+            target_version: string | null;
+            /**
+             * Silent Days
+             * @description Окно «молчит» из настроек
+             */
+            silent_days: number;
+            /**
+             * Total
+             * @description Сколько школ подходит критерию: подпись «Ещё N школ»
+             */
+            total: number;
+            /** Items */
+            items: components["schemas"]["RolloutSchoolItem"][];
+        };
+        /**
+         * RolloutSummary
+         * @description Numbers of the rollout screen: the oblast, its districts and the four lists (§6.4).
+         */
+        RolloutSummary: {
+            /**
+             * Schools Count
+             * @description Активные школы выборки, как schools_count у GET /api/dashboard/summary
+             */
+            schools_count: number;
+            /**
+             * Schools Connected Count
+             * @description Школы, у которых есть хотя бы один активный компьютер
+             */
+            schools_connected_count: number;
+            /**
+             * Connected Pct
+             * @description Доля подключённых школ; 0 при пустой выборке
+             */
+            connected_pct: number;
+            /**
+             * Devices Count
+             * @description Зарегистрированные компьютеры, кроме заблокированных, как devices_count у GET /api/dashboard/summary
+             */
+            devices_count: number;
+            /**
+             * Devices Alive Count
+             * @description Компьютеры на связи: сигнал не старше offline_after_s
+             */
+            devices_alive_count: number;
+            /**
+             * Devices Silent Count
+             * @description Компьютеры, молчащие дольше rollout_silent_days
+             */
+            devices_silent_count: number;
+            /**
+             * Devices Old Version Count
+             * @description Компьютеры не на текущем релизе агента (T-50)
+             */
+            devices_old_version_count: number;
+            /**
+             * As Of
+             * Format: date-time
+             * @description Момент, на который собраны числа
+             */
+            as_of: string;
+            /**
+             * Schools Total Count
+             * @description Школы тех же фильтров вместе с отключёнными: «350 из 366 в реестре»
+             */
+            schools_total_count: number;
+            /**
+             * Target Version
+             * @description Версия текущего активного stable-релиза агента; null — релизов нет (T-50)
+             */
+            target_version: string | null;
+            /**
+             * Silent Days
+             * @description Окно «молчит» из настроек: rollout_silent_days (ТЗ п. 20)
+             */
+            silent_days: number;
+            /**
+             * Alive After S
+             * @description Окно «на связи» из настроек: offline_after_s (ADR-014)
+             */
+            alive_after_s: number;
+            lists: components["schemas"]["RolloutListCounts"];
+            /**
+             * Regions
+             * @description Районы и города выборки, по названию
+             */
+            regions: components["schemas"]["RolloutRegionRow"][];
         };
         /**
          * ScheduleCreate
@@ -4707,6 +6228,60 @@ export interface components {
             location?: components["schemas"]["GeoPoint"] | null;
         };
         /**
+         * SchoolDay
+         * @description One local day of the school in the day strip of the cabinet (DESIGN.md §3.27, T-61).
+         */
+        SchoolDay: {
+            /**
+             * Date
+             * Format: date
+             * @description Локальный день Asia/Almaty
+             */
+            date: string;
+            /** @description «Нет соединения» — простой в рабочие часы дня; иначе худший замер дня, иначе «Нет данных» */
+            status: components["schemas"]["SchoolStatus"];
+            /**
+             * Measurements Count
+             * @description Замеры основных линий без Wi‑Fi за день
+             */
+            measurements_count: number;
+            /**
+             * Problem Count
+             * @description Из них со статусом unstable, critical или offline
+             */
+            problem_count: number;
+            /**
+             * Downtime S
+             * @description Простой в рабочие часы этого дня, секунды
+             */
+            downtime_s: number;
+        };
+        /**
+         * SchoolDays
+         * @description Day strip of the school cabinet: every local day of the window, oldest first (T-61).
+         */
+        SchoolDays: {
+            /** School Id */
+            school_id: number;
+            /**
+             * Period From
+             * Format: date-time
+             * @description Начало первого дня окна, включительно
+             */
+            period_from: string;
+            /**
+             * Period To
+             * Format: date-time
+             * @description Конец окна, не включая
+             */
+            period_to: string;
+            /**
+             * Days
+             * @description По одному элементу на каждый день окна, включая дни без замеров
+             */
+            days: components["schemas"]["SchoolDay"][];
+        };
+        /**
          * SchoolDetail
          * @description School card (ТЗ п. 13, DESIGN.md §3.15): identity, place, working hours, current state.
          */
@@ -4890,6 +6465,29 @@ export interface components {
         /** @enum {string} */
         SchoolStatus: "normal" | "unstable" | "critical" | "offline" | "no_data";
         /**
+         * SchoolStatusCounts
+         * @description Schools per status at ``period_to`` (ТЗ п. 13, ADR-004).
+         *
+         *     Counted over the schools the district, provider and connection-type filters select, before
+         *     the status filter narrows them: the five numbers always sum to the same selection, so a
+         *     click on a column of the status strip does not rewrite the strip (docs/design/README.md §4.1).
+         */
+        SchoolStatusCounts: {
+            /** Normal */
+            normal: number;
+            /** Unstable */
+            unstable: number;
+            /** Critical */
+            critical: number;
+            /** Offline */
+            offline: number;
+            /**
+             * No Data
+             * @description Показ, а не статус качества (ТЗ п. 13, ADR-004)
+             */
+            no_data: number;
+        };
+        /**
          * SchoolUpdate
          * @description Changes of a school; ``is_active = false`` deactivates it and keeps its history.
          */
@@ -4986,6 +6584,72 @@ export interface components {
              * @example 30
              */
             agent_queue_retention_days: number;
+            /**
+             * Attention Incident Unassigned Hours
+             * @description Инцидент без ответственного дольше стольких часов попадает в «Требуют внимания» главного экрана (T-60)
+             * @example 24
+             */
+            attention_incident_unassigned_hours: number;
+            /**
+             * Attention Appeal No Answer Hours
+             * @description Обращение «Передан поставщику» без движения дольше стольких часов считается оставшимся без ответа (T-60)
+             * @example 48
+             */
+            attention_appeal_no_answer_hours: number;
+            /**
+             * Rollout Silent Days
+             * @description Установленный агент без heartbeat дольше стольких суток — школа «молчит» в разделе «Внедрение» (T-69)
+             * @example 7
+             */
+            rollout_silent_days: number;
+            /**
+             * Password Reset Ttl Minutes
+             * @description Срок действия ссылки «Забыли пароль?» в минутах (T-65)
+             * @example 30
+             */
+            password_reset_ttl_minutes: number;
+            /**
+             * Support Contact
+             * @description Контакт администратора на экране входа, когда SMTP не настроен; пусто — контакт не показывается (T-65)
+             * @example admin@edu.vko.kz, +7 7232 00-00-00
+             */
+            support_contact: string;
+            /**
+             * Provider Score Weight Below Contract
+             * @description Вес доли замеров ниже договора в оценке поставщика (T-68, §6.3)
+             * @example 40
+             */
+            provider_score_weight_below_contract: number;
+            /**
+             * Provider Score Weight Availability
+             * @description Вес нехватки доступности в оценке поставщика
+             * @example 20
+             */
+            provider_score_weight_availability: number;
+            /**
+             * Provider Score Weight Reaction
+             * @description Вес просрочки реакции на инцидент в оценке
+             * @example 25
+             */
+            provider_score_weight_reaction: number;
+            /**
+             * Provider Score Weight Incidents
+             * @description Вес числа инцидентов на школу в оценке
+             * @example 15
+             */
+            provider_score_weight_incidents: number;
+            /**
+             * Provider Score Pass Pct
+             * @description Оценка ниже этой — «ниже нормы» (§6.3)
+             * @example 70
+             */
+            provider_score_pass_pct: number;
+            /**
+             * Provider Score Reaction Norm Hours
+             * @description Норма реакции на инцидент, ч: медиана вдвое больше нормы — полный штраф
+             * @example 4
+             */
+            provider_score_reaction_norm_hours: number;
         };
         /**
          * SettingsUpdate
@@ -5020,6 +6684,28 @@ export interface components {
             incident_auto_close_hours?: number;
             /** Agent Queue Retention Days */
             agent_queue_retention_days?: number;
+            /** Attention Incident Unassigned Hours */
+            attention_incident_unassigned_hours?: number;
+            /** Attention Appeal No Answer Hours */
+            attention_appeal_no_answer_hours?: number;
+            /** Rollout Silent Days */
+            rollout_silent_days?: number;
+            /** Password Reset Ttl Minutes */
+            password_reset_ttl_minutes?: number;
+            /** Support Contact */
+            support_contact?: string;
+            /** Provider Score Weight Below Contract */
+            provider_score_weight_below_contract?: number;
+            /** Provider Score Weight Availability */
+            provider_score_weight_availability?: number;
+            /** Provider Score Weight Reaction */
+            provider_score_weight_reaction?: number;
+            /** Provider Score Weight Incidents */
+            provider_score_weight_incidents?: number;
+            /** Provider Score Pass Pct */
+            provider_score_pass_pct?: number;
+            /** Provider Score Reaction Norm Hours */
+            provider_score_reaction_norm_hours?: number;
         };
         /**
          * SpeedtestServers
@@ -5537,11 +7223,13 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            204: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HeartbeatResponse"];
+                };
             };
             /** @description Токен устройства отсутствует или недействителен */
             401: {
@@ -6236,6 +7924,124 @@ export interface operations {
             };
         };
     };
+    request_password_reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    confirm_password_reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ссылка недействительна или устарела (type invalid_reset_token) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_login_info: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginInfo"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_current_user: {
         parameters: {
             query?: never;
@@ -6252,6 +8058,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurrentUser"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_current_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentUser"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
                 };
             };
             /** @description Ошибка (RFC 9457) */
@@ -6291,6 +8139,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardSummary"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_attention: {
+        parameters: {
+            query?: {
+                region_id?: number | null;
+                provider_id?: number | null;
+                connection_type_id?: number | null;
+                /** @description Момент, на который собирается список; по умолчанию — текущий */
+                period_to?: string | null;
+                /** @description Сколько строк вернуть */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttentionPage"];
                 };
             };
             /** @description Ошибка валидации запроса */
@@ -6611,6 +8505,60 @@ export interface operations {
             };
             /** @description School ID уже занят другой школой (type school_code_taken) */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_school_days: {
+        parameters: {
+            query?: {
+                /** @description Сколько последних локальных дней вернуть */
+                days?: number;
+                /** @description Конец окна, не включая; по умолчанию — текущий момент */
+                period_to?: string | null;
+            };
+            header?: never;
+            path: {
+                school_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolDays"];
+                };
+            };
+            /** @description Школа не найдена */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7642,6 +9590,55 @@ export interface operations {
             };
         };
     };
+    request_measurement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceDetail"];
+                };
+            };
+            /** @description Устройство не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_analytics: {
         parameters: {
             query: {
@@ -8195,6 +10192,86 @@ export interface operations {
             };
         };
     };
+    get_assistant_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantStatus"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    ask_assistant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantQuestion"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantAnswer"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Помощник выключен, модель не настроена или не ответила (type assistant_disabled, llm_not_configured, llm_unavailable) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     generate_appeal_draft: {
         parameters: {
             query?: never;
@@ -8536,6 +10613,165 @@ export interface operations {
             };
         };
     };
+    get_provider_score: {
+        parameters: {
+            query: {
+                /** @description today, 7 или 30 суток с текущими, custom — period_from и period_to */
+                period: components["schemas"]["AnalyticsPeriod"];
+                /** @description Начало, включительно; только и обязательно при period=custom */
+                period_from?: string | null;
+                /** @description Конец, не включительно; только и обязательно при period=custom */
+                period_to?: string | null;
+                /** @description Район или город (regions) */
+                region_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderScoreReport"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_provider_card: {
+        parameters: {
+            query: {
+                /** @description today, 7 или 30 суток с текущими, custom — period_from и period_to */
+                period: components["schemas"]["AnalyticsPeriod"];
+                /** @description Начало, включительно; только и обязательно при period=custom */
+                period_from?: string | null;
+                /** @description Конец, не включительно; только и обязательно при period=custom */
+                period_to?: string | null;
+            };
+            header?: never;
+            path: {
+                provider_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderScoreDetail"];
+                };
+            };
+            /** @description Поставщик не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_provider_act: {
+        parameters: {
+            query: {
+                /** @description today, 7 или 30 суток с текущими, custom — period_from и period_to */
+                period: components["schemas"]["AnalyticsPeriod"];
+                /** @description Начало, включительно; только и обязательно при period=custom */
+                period_from?: string | null;
+                /** @description Конец, не включительно; только и обязательно при period=custom */
+                period_to?: string | null;
+            };
+            header?: never;
+            path: {
+                provider_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PDF-файл акта */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Поставщик не найден */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_exports: {
         parameters: {
             query?: {
@@ -8621,6 +10857,56 @@ export interface operations {
             };
         };
     };
+    estimate_export: {
+        parameters: {
+            query: {
+                mode: components["schemas"]["ExportEstimateMode"];
+                /** @description Начало периода по measured_at, включительно */
+                period_from: string;
+                /** @description Конец периода, не включается */
+                period_to: string;
+                /** @description Пусто — все школы в области видимости */
+                school_ids?: number[];
+                /** @description Только raw: ПК выбранных школ; пусто — все */
+                device_ids?: number[];
+                /** @description Только raw: статусы замера; пусто — все */
+                statuses?: components["schemas"]["QualityStatus"][];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportEstimate"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_export: {
         parameters: {
             query?: never;
@@ -8665,6 +10951,154 @@ export interface operations {
                 };
             };
             /** @description Файл не сформирован (type export_failed), причина — в detail */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_rollout_summary: {
+        parameters: {
+            query?: {
+                region_id?: number | null;
+                /** @description Момент, на который собираются числа; по умолчанию — текущий */
+                as_of?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RolloutSummary"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_rollout_schools: {
+        parameters: {
+            query?: {
+                /** @description Критерий списка */
+                filter?: components["schemas"]["RolloutFilter"];
+                region_id?: number | null;
+                /** @description Момент, на который собирается список; по умолчанию — текущий */
+                as_of?: string | null;
+                /** @description Сколько строк вернуть */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RolloutSchoolPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    assign_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentUpdateAssign"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentUpdateAssigned"];
+                };
+            };
+            /** @description Релиз или устройство не найдены */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Версия не последняя в своём канале (type release_not_latest) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -10165,6 +12599,289 @@ export interface operations {
             };
         };
     };
+    list_digests: {
+        parameters: {
+            query?: {
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DigestSettingsDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_digest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DigestSettingsCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DigestSettingsDetail"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_digest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                digest_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Рассылка сводки не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_digest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                digest_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DigestSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DigestSettingsDetail"];
+                };
+            };
+            /** @description Рассылка сводки не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    send_digest_now: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                digest_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DigestSendResult"];
+                };
+            };
+            /** @description Рассылка сводки не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_digest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                digest_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Рассылка сводки не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_agent_releases: {
         parameters: {
             query?: {
@@ -10343,6 +13060,238 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLogListItemPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_calendar_events: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["CalendarKind"] | null;
+                /** @description Конец события позже этого */
+                period_from?: string | null;
+                /** @description Начало события не позже этого */
+                period_to?: string | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_calendar_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventDetail"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_calendar_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Событие календаря не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_calendar_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarEventUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventDetail"];
+                };
+            };
+            /** @description Событие календаря не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    import_calendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarImportResult"];
                 };
             };
             /** @description Ошибка валидации запроса */

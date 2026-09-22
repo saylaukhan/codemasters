@@ -1,4 +1,4 @@
-"""T-60: templates of the letters to providers — the admin panel, the filled letter, the draft.
+"""T-86: templates of the letters to providers — the admin panel, the filled letter, the draft.
 
 The rule the first tests are for is ТЗ п. 20 read with ADR-011: the structure of the letter is
 not a constant of the code but a template Область and Администратор edit, and the model writes
@@ -296,7 +296,7 @@ async def test_only_oblast_and_administrator_manage_templates(
 async def test_the_draft_of_a_claim_is_written_by_the_filled_claim_template(
     session: AsyncSession, api_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """ТЗ п. 17 with T-60: the model gets the filled template and its instructions; without
+    """ТЗ п. 17 with T-86: the model gets the filled template and its instructions; without
     the model the editor opens with the filled template itself."""
     await create_settings(session)
     school, line, period = await appealed_school(session)

@@ -70,6 +70,7 @@ def raw_query(body: ExportCreate) -> Select[Any]:
             Measurement.external_ip,
             Measurement.server,
             Measurement.agent_version,
+            Measurement.source,
         )
         .select_from(Measurement)
         .join(Line, Line.id == Measurement.line_id)
@@ -127,6 +128,7 @@ async def raw_records(
                 "external_ip": None if row.external_ip is None else str(row.external_ip),
                 "server": row.server,
                 "agent_version": row.agent_version,
+                "source": row.source,
             }
         )
     return records

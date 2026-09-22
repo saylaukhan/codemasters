@@ -6,8 +6,10 @@ from app.api.admin import (
     agent_releases,
     appeal_templates,
     audit_log,
+    calendar,
     connection_types,
     contracts,
+    digests,
     incident_rules,
     providers,
     regions,
@@ -31,7 +33,9 @@ for resource in (
     incident_rules,
     appeal_templates,
     contracts,
+    digests,
     agent_releases,
     audit_log,
+    calendar,
 ):
     router.include_router(resource.router)

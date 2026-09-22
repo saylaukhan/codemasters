@@ -1,10 +1,16 @@
-import { Table, type TableProps } from 'antd'
 import { Link } from 'react-router'
 
 import type { DeviceListItem } from '../../api/types'
 import { deviceCardPath } from '../../app/sections'
 import { NO_VALUE, formatDateTime, formatMs, formatRelative, formatSpeed } from '../../lib/format'
-import { DEVICE_STATUS_LABELS, IFACE_LABELS, LINE_STATUS_LABELS } from '../../lib/labels'
+import {
+  CALENDAR_NO_DATA_HINTS,
+  IFACE_LABELS,
+  LINE_STATUS_LABELS,
+  NO_DATA_BLOCKED_HINT,
+  NO_DATA_HINT,
+} from '../../lib/labels'
+import { ResponsiveTable, type ResponsiveColumn } from '../ui/ResponsiveTable'
 import { ConnectionStatusBadge } from '../ui/StatusBadge'
 import styles from './SchoolCard.module.css'
 
@@ -16,10 +22,35 @@ const metric = (text: string, alert: boolean) => (
 const below = (value: Metric, min: Metric): boolean => value != null && min != null && value < min
 const above = (value: Metric, max: Metric): boolean => value != null && max != null && value > max
 
-const columns: TableProps<DeviceListItem>['columns'] = [
+/**
+ * The column says the quality of the connection, not whether the computer is allowed to send:
+ * blocking lives in the administration («Активно» / «Заблокировано»), here it is only the reason
+ * there is nothing to judge by. «Нет данных» never stands without that reason (DESIGN.md §4.1).
+ */
+const noDataHint = (item: DeviceListItem): string | null => {
+  if (item.currentStatus !== 'no_data') return null
+  if (item.status === 'blocked') return NO_DATA_BLOCKED_HINT
+  // A day of the calendar is the reason before the switched-off computer is (T-70).
+  return item.quietReason ? CALENDAR_NO_DATA_HINTS[item.quietReason] : NO_DATA_HINT
+}
+
+const quality = (item: DeviceListItem) => {
+  const hint = noDataHint(item)
+  return (
+    <div className={styles.stack}>
+      <ConnectionStatusBadge status={item.currentStatus} />
+      {hint && <span className={styles.hint}>{hint}</span>}
+    </div>
+  )
+}
+
+// The widest table of the panel (DESIGN.md §3.12): the place and the line read from the card
+// description on a phone, the last contact and the agent version go first when the width runs out.
+const columns: readonly ResponsiveColumn<DeviceListItem>[] = [
   {
     key: 'device',
     title: 'Компьютер',
+    priority: 'primary',
     fixed: 'left',
     render: (_, item) => (
       <div className={styles.stack}>
@@ -31,6 +62,7 @@ const columns: TableProps<DeviceListItem>['columns'] = [
   {
     key: 'room',
     title: 'Кабинет',
+    priority: 'primary',
     render: (_, item) => (
       <div className={styles.stack}>
         <span>{item.room ?? NO_VALUE}</span>
@@ -38,7 +70,7 @@ const columns: TableProps<DeviceListItem>['columns'] = [
       </div>
     ),
   },
-  { key: 'line', title: 'Линия', render: (_, item) => LINE_STATUS_LABELS[item.lineStatus] },
+  { key: 'line', title: 'Линия', priority: 'primary', render: (_, item) => LINE_STATUS_LABELS[item.lineStatus] },
   {
     key: 'download',
     title: 'Download',
@@ -73,29 +105,30 @@ const columns: TableProps<DeviceListItem>['columns'] = [
         NO_VALUE
       ),
   },
-  { key: 'seen', title: 'Последняя связь', render: (_, item) => formatRelative(item.lastSeenAt) },
-  { key: 'version', title: 'Версия агента', render: (_, item) => item.agentVersion ?? NO_VALUE },
-  {
-    key: 'status',
-    title: 'Статус',
-    render: (_, item) =>
-      item.status === 'blocked' ? (
-        <span className={styles.muted}>{DEVICE_STATUS_LABELS.blocked}</span>
-      ) : (
-        <ConnectionStatusBadge status={item.currentStatus} />
-      ),
-  },
+  { key: 'seen', title: 'Последняя связь', priority: 'minor', render: (_, item) => formatRelative(item.lastSeenAt) },
+  { key: 'version', title: 'Версия агента', priority: 'minor', render: (_, item) => item.agentVersion ?? NO_VALUE },
+  { key: 'quality', title: 'Качество', priority: 'primary', render: (_, item) => quality(item) },
 ]
 
-/** Computers of the school (ТЗ п. 4): place, last measurement, last contact and status. */
+/** Computers of the school (ТЗ п. 4): place, last measurement, last contact and quality. */
 export function DeviceTable({ items }: { items: DeviceListItem[] }) {
   return (
-    <Table<DeviceListItem>
+    <ResponsiveTable<DeviceListItem>
       rowKey="id"
       size="middle"
       columns={columns}
       dataSource={items}
       scroll={{ x: 'max-content' }}
+      card={{
+        title: (item) => <Link to={deviceCardPath(item.id)}>{item.hostname ?? item.deviceUid}</Link>,
+        // The head of a card holds a pill, so on a phone the reason for «Нет данных» goes to the
+        // line under the title instead of a second line next to the pill.
+        status: (item) => <ConnectionStatusBadge status={item.currentStatus} />,
+        description: (item) =>
+          [item.room, item.monitoringPointName, LINE_STATUS_LABELS[item.lineStatus], noDataHint(item)]
+            .filter(Boolean)
+            .join(' · '),
+      }}
       pagination={items.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
     />
   )

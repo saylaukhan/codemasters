@@ -6,7 +6,8 @@ profile never rewrites history and a dispute with a provider is settled by the r
 (ТЗ п. 11, plan.md §6). The second folds the last measurements of the main line into the status
 of a school, where a silent agent overrides them: no heartbeat for longer than
 ``offline_after_s`` in working hours means «Нет соединения», outside them «Нет данных» — a
-computer switched off for the night is not a broken line (ADR-014). The third, run
+computer switched off for the night is not a broken line (ADR-014), and neither is one silent on
+a holiday or in the vacations of the calendar (T-70). The third, run
 periodically, folds the ``contract_ok`` of the main line over a window into the sustained
 mismatch of ТЗ п. 14 (T-29).
 """
@@ -17,7 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, cast
 
-from sqlalchemy import CursorResult, case, func, select, true, update
+from sqlalchemy import ColumnElement, CursorResult, case, func, select, true, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
@@ -33,6 +34,7 @@ from app.models import (
 from app.schemas.agent import MeasurementCreate
 from app.schemas.statuses import ProfileScope, QualityStatus, SchoolStatus
 from app.schemas.thresholds import MetricBreach, ThresholdsSnapshot
+from app.services.calendar import quiet_schools
 from app.services.settings import NOT_CONFIGURED, NOT_CONFIGURED_DETAIL, system_settings
 from app.services.thresholds import threshold_profile
 from app.services.working_hours import is_working_time, school_hours
@@ -204,6 +206,21 @@ def worst_of_the_majority(statuses: Sequence[str]) -> SchoolStatus:
     return SEVERITY[ranked[len(ranked) // 2]]
 
 
+def last_signal(now: datetime) -> ColumnElement[datetime]:
+    """Moment a device was last heard at ``now``, for a query that has ``devices`` in it.
+
+    ``last_seen_at`` while it is not later than ``now``; a moment in the past is answered by the
+    heartbeats, which remember it. «Требуют внимания» of the main screen asks the same question
+    of a school, so the rule of «Нет соединения» is written once (T-16, T-60; ADR-014).
+    """
+    heard = (
+        select(func.max(Heartbeat.ts))
+        .where(Heartbeat.device_id == Device.id, Heartbeat.ts <= now)
+        .scalar_subquery()
+    )
+    return func.coalesce(case((Device.last_seen_at <= now, Device.last_seen_at)), heard)
+
+
 async def school_statuses(
     session: AsyncSession, school_ids: Collection[int], *, now: datetime
 ) -> dict[int, SchoolStatus]:
@@ -218,13 +235,10 @@ async def school_statuses(
         return {}
     settings = await system_settings(session)
     hours = await school_hours(session, school_ids, settings)
+    # Vacations, holidays and the works of the calendar: silence inside one says nothing (T-70).
+    quiet = await quiet_schools(session, school_ids, now=now)
 
-    heard = (
-        select(func.max(Heartbeat.ts))
-        .where(Heartbeat.device_id == Device.id, Heartbeat.ts <= now)
-        .scalar_subquery()
-    )
-    seen = func.coalesce(case((Device.last_seen_at <= now, Device.last_seen_at)), heard)
+    seen = last_signal(now)
     last_seen: dict[int, datetime | None] = {
         school_id: moment
         for school_id, moment in await session.execute(
@@ -269,7 +283,7 @@ async def school_statuses(
         moment = last_seen[school_id]
         if moment is None or now - moment > timedelta(seconds=settings.offline_after_s):
             working = is_working_time(hours[school_id], settings.timezone, now)
-            statuses[school_id] = "offline" if working else "no_data"
+            statuses[school_id] = "offline" if working and school_id not in quiet else "no_data"
             continue
         # Several main lines of one school: the last ``count`` of all of them together.
         newest = sorted(series[school_id], reverse=True)[:count]

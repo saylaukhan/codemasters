@@ -1,21 +1,24 @@
-import { Table, type TableProps } from 'antd'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import type { IncidentListItem } from '../../api/types'
 import { incidentCardPath, schoolCardPath } from '../../app/sections'
 import { formatDateTime, NO_VALUE } from '../../lib/format'
-import { LINE_STATUS_LABELS } from '../../lib/labels'
+import { INCIDENT_COLUMN_LABELS, LINE_STATUS_LABELS, TABLE_PAGINATION_LABELS } from '../../lib/labels'
 import { PAGE_SIZES } from '../schools/useSchoolListView'
+import { ResponsiveTable, type ResponsiveColumn } from '../ui/ResponsiveTable'
 import { IncidentStatusBadge } from '../ui/StatusBadge'
 import styles from './Incident.module.css'
 import { basisCaption, durationCaption } from './incidents'
 
-type Column = NonNullable<TableProps<IncidentListItem>['columns']>[number]
+type Column = ResponsiveColumn<IncidentListItem>
 
+// Priorities of DESIGN.md §3.12: the number, the school and the status head the phone card, the
+// rest become its pairs — the responsible is the first column to go when the width runs out.
 const NUMBER: Column = {
   key: 'number',
-  title: 'Номер',
+  title: INCIDENT_COLUMN_LABELS.number,
+  priority: 'primary',
   fixed: 'left',
   render: (_, item) => (
     <Link className={styles.code} to={incidentCardPath(item.id)}>
@@ -26,7 +29,8 @@ const NUMBER: Column = {
 
 const SCHOOL: Column = {
   key: 'school',
-  title: 'Школа',
+  title: INCIDENT_COLUMN_LABELS.school,
+  priority: 'primary',
   render: (_, item) => (
     <span className={styles.stack}>
       <Link to={schoolCardPath(item.schoolId)}>{item.schoolName}</Link>
@@ -36,10 +40,15 @@ const SCHOOL: Column = {
 }
 
 const REST: Column[] = [
-  { key: 'status', title: 'Статус', render: (_, item) => <IncidentStatusBadge status={item.status} /> },
+  {
+    key: 'status',
+    title: INCIDENT_COLUMN_LABELS.status,
+    priority: 'primary',
+    render: (_, item) => <IncidentStatusBadge status={item.status} />,
+  },
   {
     key: 'line',
-    title: 'Линия и поставщик',
+    title: INCIDENT_COLUMN_LABELS.line,
     render: (_, item) => (
       <span className={styles.stack}>
         <span>{LINE_STATUS_LABELS[item.lineStatus]}</span>
@@ -47,15 +56,15 @@ const REST: Column[] = [
       </span>
     ),
   },
-  { key: 'basis', title: 'Основания', render: (_, item) => basisCaption(item.basisMetrics) },
+  { key: 'basis', title: INCIDENT_COLUMN_LABELS.basis, priority: 'minor', render: (_, item) => basisCaption(item.basisMetrics) },
   {
     key: 'started',
-    title: 'Начало',
+    title: INCIDENT_COLUMN_LABELS.startedAt,
     render: (_, item) => <span className={styles.number}>{formatDateTime(item.startedAt)}</span>,
   },
   {
     key: 'duration',
-    title: 'Длительность',
+    title: INCIDENT_COLUMN_LABELS.duration,
     align: 'right',
     render: (_, item) => (
       <span className={item.durationS === null ? `${styles.number} ${styles.muted}` : styles.number}>
@@ -63,7 +72,12 @@ const REST: Column[] = [
       </span>
     ),
   },
-  { key: 'responsible', title: 'Ответственный', render: (_, item) => item.responsibleUserName ?? NO_VALUE },
+  {
+    key: 'responsible',
+    title: INCIDENT_COLUMN_LABELS.responsible,
+    priority: 'minor',
+    render: (_, item) => item.responsibleUserName ?? NO_VALUE,
+  },
 ]
 
 interface IncidentTableProps {
@@ -73,9 +87,12 @@ interface IncidentTableProps {
   pageSize: number
   loading: boolean
   empty: ReactNode
-  onPageChange: (page: number, pageSize: number) => void
+  /** Required while the footer is there: a cut list of five rows turns it off instead (T-60). */
+  onPageChange?: (page: number, pageSize: number) => void
   /** The school card leaves its own school out. */
   showSchool?: boolean
+  /** The main screen shows the five newest incidents and pages them nowhere (DESIGN.md §3.28). */
+  pagination?: boolean
 }
 
 /** Incidents of ТЗ п. 19, newest first; pages are on the server (T-41). */
@@ -88,9 +105,10 @@ export function IncidentTable({
   empty,
   onPageChange,
   showSchool = true,
+  pagination = true,
 }: IncidentTableProps) {
   return (
-    <Table<IncidentListItem>
+    <ResponsiveTable<IncidentListItem>
       rowKey="id"
       size="middle"
       columns={showSchool ? [NUMBER, SCHOOL, ...REST] : [NUMBER, ...REST]}
@@ -98,17 +116,29 @@ export function IncidentTable({
       loading={loading}
       scroll={{ x: 'max-content' }}
       locale={{ emptyText: empty }}
-      pagination={{
-        current: page,
-        pageSize,
-        total,
-        pageSizeOptions: PAGE_SIZES.map(String),
-        showSizeChanger: true,
-        showTotal: (count, [from, to]) => `${from}–${to} из ${count}`,
+      card={{
+        title: (item) => (
+          <Link className={styles.code} to={incidentCardPath(item.id)}>
+            {item.number}
+          </Link>
+        ),
+        status: (item) => <IncidentStatusBadge status={item.status} />,
+        description: (item) =>
+          showSchool ? `${item.schoolName} · ${item.schoolCode}` : `${LINE_STATUS_LABELS[item.lineStatus]} · ${item.providerName}`,
       }}
-      onChange={(pagination) => {
-        const size = pagination.pageSize ?? pageSize
-        onPageChange(size === pageSize ? (pagination.current ?? 1) : 1, size)
+      pagination={
+        pagination && {
+          current: page,
+          pageSize,
+          total,
+          pageSizeOptions: PAGE_SIZES.map(String),
+          showSizeChanger: true,
+          showTotal: (count, [from, to]) => TABLE_PAGINATION_LABELS.total(from, to, count),
+        }
+      }
+      onChange={(next) => {
+        const size = next.pageSize ?? pageSize
+        onPageChange?.(size === pageSize ? (next.current ?? 1) : 1, size)
       }}
     />
   )

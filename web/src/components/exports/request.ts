@@ -5,6 +5,7 @@ import type {
   ExportAggregateColumn,
   ExportColumn,
   ExportCreate,
+  ExportEstimateQuery,
   ExportFormat,
   ExportMode,
   QualityStatus,
@@ -39,23 +40,29 @@ export interface ExportDraft {
 export const orderedColumns = (chosen: readonly ExportColumn[]): ExportColumn[] =>
   ALL_COLUMNS.filter((column) => MIN_COLUMNS.includes(column) || chosen.includes(column))
 
-/**
- * Body of POST /api/exports: whole days, the end of the period exclusive. Computers, statuses and
- * columns are raw only: the API refuses them with the aggregates.
- */
+/** Period and school of both requests: whole days, the end of the period exclusive. */
+const selection = (draft: ExportDraft) => ({
+  periodFrom: draft.days[0].startOf('day').toISOString(),
+  periodTo: draft.days[1].add(1, 'day').startOf('day').toISOString(),
+  schoolIds: draft.schoolId === undefined ? [] : [draft.schoolId],
+})
+
+/** Computers and statuses: raw only, the API refuses them with the aggregates. Computers without a school are dropped. */
+const rawFilters = (draft: ExportDraft) => ({
+  deviceIds: draft.schoolId === undefined ? [] : draft.deviceIds,
+  statuses: draft.statuses,
+})
+
+/** Body of POST /api/exports: the selection, the format and the columns of the file. */
 export const exportBody = (draft: ExportDraft): ExportCreate => {
-  const common = {
-    format: draft.format,
-    periodFrom: draft.days[0].startOf('day').toISOString(),
-    periodTo: draft.days[1].add(1, 'day').startOf('day').toISOString(),
-    schoolIds: draft.schoolId === undefined ? [] : [draft.schoolId],
-  }
+  const common = { format: draft.format, ...selection(draft) }
   if (draft.mode === 'aggregates') return { mode: 'aggregates', ...common }
-  return {
-    mode: 'raw',
-    ...common,
-    deviceIds: draft.schoolId === undefined ? [] : draft.deviceIds,
-    statuses: draft.statuses,
-    columns: orderedColumns(draft.columns),
-  }
+  return { mode: 'raw', ...common, ...rawFilters(draft), columns: orderedColumns(draft.columns) }
+}
+
+/** Query of GET /api/exports/estimate (T-64): the same selection, without the format and the columns. */
+export const estimateQuery = (draft: ExportDraft): ExportEstimateQuery => {
+  const common = selection(draft)
+  if (draft.mode === 'aggregates') return { mode: 'aggregates', ...common }
+  return { mode: 'raw', ...common, ...rawFilters(draft) }
 }

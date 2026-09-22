@@ -302,6 +302,9 @@ async def test_settings_and_thresholds_reach_the_agent_with_a_new_etag(
 
     assert settings["availability_min_pct"] == 98.5
     assert settings["incident_auto_close_hours"] == 24
+    # Windows of «Требуют внимания» keep the defaults of their migration (T-60).
+    assert settings["attention_incident_unassigned_hours"] == 24
+    assert settings["attention_appeal_no_answer_hours"] == 48
     assert changed.status_code == 200, changed.text
     assert changed.headers["etag"] != etag
     assert changed.json()["speedtest"] == {

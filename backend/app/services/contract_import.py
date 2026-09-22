@@ -1,4 +1,4 @@
-"""Import of a contract registry from a CSV or XLSX file into the lines of schools (T-61;
+"""Import of a contract registry from a CSV or XLSX file into the lines of schools (T-87;
 ТЗ п. 14, п. 20).
 
 The registry of the oblast is a table: School ID, the provider, the number and the date of the

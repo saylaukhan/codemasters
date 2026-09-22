@@ -316,3 +316,41 @@ func TestSetScheduleCatchesUpAddedSlot(t *testing.T) {
 		})
 	}
 }
+
+func TestManualMeasurementRunsAtOnceAndLeavesTheScheduleAlone(t *testing.T) {
+	sched := testSchedule(t)
+	start := almaty(t, sched, "2026-09-17 07:00:00")
+	d := startDevice(sched, "device-a", start.AddDate(0, 0, -1), start)
+
+	// Two presses of the button while the first request waits are one measurement.
+	d.s.Trigger()
+	d.s.Trigger()
+	select {
+	case <-d.s.manual:
+		d.s.measureNow(context.Background()) // what Run does with the request
+	default:
+		t.Fatal("Trigger не поставил запрос: канал пуст")
+	}
+	select {
+	case <-d.s.manual:
+		t.Fatal("два нажатия подряд дали два запроса замера")
+	default:
+	}
+
+	if len(d.runs) != 1 || !d.runs[0].Manual || !d.runs[0].At.Equal(start) {
+		t.Fatalf("runs = %+v, want one manual run at %s", d.runs, start)
+	}
+
+	// The measurements of the day stay the ones of the schedule (ТЗ п. 2).
+	d.runUntil(start.AddDate(0, 0, 1))
+	planned := d.runs[1:]
+	if len(planned) != len(sched.Slots) {
+		t.Fatalf("плановых замеров = %d, want %d: %+v", len(planned), len(sched.Slots), d.runs)
+	}
+	for i, run := range planned {
+		want := sched.Moment("device-a", start, i)
+		if !run.At.Equal(want) || run.Manual {
+			t.Errorf("замер %d = %s manual %v, want плановый %s", i, run.At, run.Manual, want)
+		}
+	}
+}

@@ -1,4 +1,4 @@
-// Incident rules of the administration (T-40, T-59, ADR-007): the conditions of a rule in words, whose lines it
+// Incident rules of the administration (T-40, T-85, ADR-007): the conditions of a rule in words, whose lines it
 // watches, and the bodies of its form.
 import type { IncidentMetric, IncidentRuleCreate, IncidentRuleDetail, IncidentRuleScope, IncidentRuleUpdate } from '../../api/types'
 import { INCIDENT_RULE_GLOBAL_TARGET_LABEL } from '../../lib/labels'
@@ -27,7 +27,7 @@ export interface IncidentRuleFormValues {
   name: string
   /** Only of a new rule: another metric is another rule. */
   metric?: IncidentMetric
-  /** Only of a new rule: the oblast, or one school in place of the oblast for its lines (T-59). */
+  /** Only of a new rule: the oblast, or one school in place of the oblast for its lines (T-85). */
   scope: IncidentRuleScope
   /** With its label: a school picked from one search stays named when the search changes. */
   school?: { value: number; label: string }

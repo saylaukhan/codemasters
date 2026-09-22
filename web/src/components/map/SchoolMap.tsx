@@ -1,5 +1,6 @@
 import 'maplibre-gl/dist/maplibre-gl.css'
 
+import { Drawer } from 'antd'
 import { Map as MapLibre, Popup, setWorkerUrl, type GeoJSONSource, type LngLatBoundsLike } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { Minus, Plus, Scan } from 'lucide-react'
@@ -8,8 +9,10 @@ import { createPortal } from 'react-dom'
 
 import type { RegionMapCollection, SchoolMapCollection, SchoolStatus } from '../../api/types'
 import { useThemeMode } from '../../app/themeMode'
-import { SIZES } from '../../styles/theme'
+import { useMediaQuery } from '../../app/useMediaQuery'
+import { PHONE_SCREEN, SIZES } from '../../styles/theme'
 import { Button } from '../ui/Button'
+import { SHEET_HEIGHT } from './FilterSheet'
 import { MapLegend } from './MapLegend'
 import {
   LAYERS,
@@ -71,6 +74,7 @@ export function SchoolMap({ schools, regions, regionId, className }: SchoolMapPr
     ),
   )
   const { mode } = useThemeMode()
+  const phone = useMediaQuery(PHONE_SCREEN)
   // Values the map starts with; later changes reach it through the effects below.
   const initial = useRef({ schools, regions, regionId, mode })
 
@@ -166,15 +170,17 @@ export function SchoolMap({ schools, regions, regionId, className }: SchoolMapPr
   const coordinates = selected?.geometry?.coordinates
   const [lng, lat] = coordinates ?? []
 
+  // DESIGN.md §9.3, row «Поповер карты»: a phone shows the popover in a bottom sheet, so the
+  // MapLibre popup is not attached at all there.
   useEffect(() => {
     if (!map) return
-    if (lng === undefined || lat === undefined) {
+    if (phone || lng === undefined || lat === undefined) {
       popup.remove()
       return
     }
     popup.setLngLat([lng, lat])
     if (!popup.isOpen()) popup.addTo(map)
-  }, [map, popup, lng, lat])
+  }, [map, phone, popup, lng, lat])
 
   // Ring of the selected marker; the previous one is cleared on the next change, not on unmount.
   const marked = useRef<number | undefined>(undefined)
@@ -188,7 +194,7 @@ export function SchoolMap({ schools, regions, regionId, className }: SchoolMapPr
 
   // A popover that does not fit into the map on opening pans the map until it does.
   useEffect(() => {
-    if (!map || selectedMarker === undefined) return
+    if (!map || phone || selectedMarker === undefined) return
     const frame = requestAnimationFrame(() => {
       const box = popup.getElement()?.getBoundingClientRect()
       if (!box) return
@@ -198,11 +204,11 @@ export function SchoolMap({ schools, regions, regionId, className }: SchoolMapPr
       if (dx || dy) map.panBy([dx, dy])
     })
     return () => cancelAnimationFrame(frame)
-  }, [map, popup, selectedMarker])
+  }, [map, phone, popup, selectedMarker])
 
   // Esc or a click outside the map closes the popover (DESIGN.md §3.14).
   useEffect(() => {
-    if (selectedMarker === undefined) return
+    if (phone || selectedMarker === undefined) return
     const close = () => setSelectedId(undefined)
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') close()
@@ -216,7 +222,7 @@ export function SchoolMap({ schools, regions, regionId, className }: SchoolMapPr
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('pointerdown', onPointer)
     }
-  }, [selectedMarker])
+  }, [phone, selectedMarker])
 
   const fit = () => {
     const bounds: LngLatBoundsLike | undefined = boundsOf(schoolPoints(schools, hidden), regionShapes(regions))
@@ -235,7 +241,15 @@ export function SchoolMap({ schools, regions, regionId, className }: SchoolMapPr
         <Button kind="outlined" tooltip="Вписать область" icon={<Scan {...icon} />} onClick={fit} />
       </div>
       <MapLegend schools={schools} hidden={hidden} onToggle={toggle} />
-      {selected && createPortal(<SchoolPopover school={selected} />, popoverNode)}
+      {selected && !phone && createPortal(<SchoolPopover school={selected} />, popoverNode)}
+      <Drawer
+        placement="bottom"
+        height={SHEET_HEIGHT}
+        open={phone && selected !== undefined}
+        onClose={() => setSelectedId(undefined)}
+      >
+        {selected && <SchoolPopover school={selected} />}
+      </Drawer>
     </div>
   )
 }

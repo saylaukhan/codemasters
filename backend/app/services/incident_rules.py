@@ -1,4 +1,4 @@
-"""Incident rules of the admin panel (T-40, T-59; ТЗ п. 18, п. 20; ADR-007): list, create, change.
+"""Incident rules of the admin panel (T-40, T-85; ТЗ п. 18, п. 20; ADR-007): list, create, change.
 
 A rule is never deleted: it is switched off with ``is_active`` and its incidents keep the
 reference. The detection reads the rules anew on every run, so a change applies to the next one

@@ -41,7 +41,7 @@ interface IncidentRuleDrawerProps {
 /**
  * Incident rule (ТЗ п. 18, ADR-007): N violations in a row or T minutes open an incident, M normal results in a row
  * restore it; the next detection takes the new values. A rule of one school replaces the rule of the oblast for
- * its lines by the same metric (T-59).
+ * its lines by the same metric (T-85).
  */
 export function IncidentRuleDrawer({ open, rule, onClose }: IncidentRuleDrawerProps) {
   const [form] = Form.useForm<IncidentRuleFormValues>()

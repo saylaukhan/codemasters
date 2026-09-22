@@ -24,12 +24,15 @@ class Settings(BaseSettings):
     ndt7_url: str = ""
     tz: str = "Asia/Almaty"
 
-    # Who writes the draft of an appeal (T-46, ADR-011): claude or ollama. The key lives
-    # only here, in the environment — never in the database and never in the panel.
+    # Who writes the draft of an appeal (T-46, ADR-011): claude, deepseek or ollama. The key
+    # lives only here, in the environment — never in the database and never in the panel.
     llm_provider: str = "claude"
     llm_api_key: str = ""
     llm_model: str = ""
     llm_url: str = ""
+    # Помощник по интерфейсу (T-84, ADR-017): the panel asks the same model how to use the
+    # panel. ``false`` takes the button out of the header; so does a model without a key.
+    assistant_enabled: bool = True
     telegram_bot_token: str = ""
 
     # Rate limit of the agent API (T-51): requests one device, and one address without a token

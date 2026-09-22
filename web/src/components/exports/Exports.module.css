@@ -31,6 +31,13 @@ aside.card {
   top: var(--space-4);
 }
 
+/* Once the layout is one column the summary sits under the steps, where sticky only shifts it. */
+@media (max-width: 1024px) {
+  aside.card {
+    position: static;
+  }
+}
+
 .title {
   display: flex;
   align-items: center;
@@ -111,6 +118,24 @@ aside.card {
   overflow-wrap: anywhere;
 }
 
+/* «Будет выгружено ≈ N строк» over the Action of the summary (T-64). */
+.estimate {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.estimate strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .error {
   margin-bottom: var(--space-3);
 }
@@ -136,4 +161,27 @@ aside.card {
   max-width: calc(var(--sider-width) * 1.5);
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
+}
+
+/* Вкладка «Сводки» (T-67, DESIGN.md §3.32): пояснение и Action над списком рассылок. */
+.digestHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.digestHeader p {
+  margin: 0;
+  max-width: calc(var(--sider-width) * 3);
+  color: var(--text-secondary);
+}
+
+/* Действия строки рассылки: в ряд, с переносом на узком экране (DESIGN.md §3.12). */
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  justify-content: flex-end;
 }

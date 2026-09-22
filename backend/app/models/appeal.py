@@ -10,7 +10,7 @@ incident copies them: a later rebinding of the line must not move the history.
 ``delivery_status`` is the fate of the letter, not of the appeal: an installation without SMTP
 or a provider without ``appeals_email`` still gets an appeal with a number and a PDF, marked
 ``not_sent`` («Решения по умолчанию», ADR-011). ``kind`` and ``template_id`` say what kind of
-letter it was and which template it was written by (T-60). Rows are never deleted; every
+letter it was and which template it was written by (T-86). Rows are never deleted; every
 change of status is an ``appeal_events`` row.
 """
 
@@ -45,7 +45,7 @@ class Appeal(TimestampMixin, Base):
     # ``ОБР-<year>-<six digits>`` from the sequence ``appeal_number_seq``.
     number: Mapped[str] = mapped_column(unique=True)
     status: Mapped[str]
-    # An ordinary appeal or a formal claim; the template it was written by (T-60).
+    # An ordinary appeal or a formal claim; the template it was written by (T-86).
     kind: Mapped[str] = mapped_column(server_default=text("'appeal'"))
     template_id: Mapped[int | None] = mapped_column(ForeignKey("appeal_templates.id"), index=True)
     incident_id: Mapped[int | None] = mapped_column(ForeignKey("incidents.id"), index=True)

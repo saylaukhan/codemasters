@@ -22,7 +22,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.schemas.statuses import ConnectionStatus, IfaceType
+from app.schemas.statuses import ConnectionStatus, IfaceType, MeasurementSource
 from app.schemas.thresholds import ThresholdValues
 
 MAX_BATCH_SIZE = 100
@@ -43,6 +43,25 @@ MAX_CLOCK_SKEW = timedelta(minutes=10)
 # record that sat at the very border of the queue: the agent still had the right to send it,
 # and while a long resend is running the border moves on.
 QUEUE_WINDOW_MARGIN = timedelta(days=1)
+
+
+# How long a measurement asked for in the panel waits for its agent (T-79). The agent hears
+# about it in the answer of its heartbeat, so a computer that is on takes the request within one
+# heartbeat interval; a computer that is off must not measure at night, when the administrator
+# who pressed the button has long left the page. This is about the waiting of a person, not
+# about policy, so it stays a constant of the contract like ``MAX_CLOCK_SKEW``.
+MEASURE_REQUEST_TTL = timedelta(hours=1)
+
+
+def live_measure_request(requested_at: datetime | None, now: datetime) -> datetime | None:
+    """Moment of a measurement request while it still waits; ``None`` for none and for a stale one.
+
+    The agent and the panel judge a request by the same rule: an agent is never handed one it
+    should no longer perform, and the card of a device never marks one as pending.
+    """
+    if requested_at is None or now - requested_at > MEASURE_REQUEST_TTL:
+        return None
+    return requested_at
 
 
 def queue_window(retention_days: int) -> timedelta:
@@ -105,6 +124,17 @@ class HeartbeatRequest(BaseModel):
     agent_version: str = Field(max_length=32)
 
 
+class HeartbeatResponse(BaseModel):
+    """Answer of a heartbeat: what the server asks of the agent besides its schedule (T-79)."""
+
+    measure_requested_at: datetime | None = Field(
+        default=None,
+        description="Администратор запросил замер: агент делает один внеплановый замер и "
+        "запоминает этот момент, чтобы не повторить запрос после перезапуска службы. Пусто — "
+        "запроса нет или он старше часа",
+    )
+
+
 class ScheduleSlot(BaseModel):
     """Measurement window; the agent picks a random moment inside it (plan.md §4.2)."""
 
@@ -165,6 +195,11 @@ class MeasurementCreate(BaseModel):
     server: str | None = Field(default=None, description="Сервер и метод замера")
     iface_type: IfaceType | None = None
     agent_version: str = Field(max_length=32)
+    source: MeasurementSource = Field(
+        default="schedule",
+        description="Что запустило замер: расписание агента или запрос из панели (T-79). "
+        "Агент старой версии поля не шлёт, и замер считается плановым",
+    )
 
 
 class MeasurementAccepted(BaseModel):

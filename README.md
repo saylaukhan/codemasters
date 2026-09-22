@@ -1,9 +1,9 @@
-# Мониторинг интернета ВКО
+# Jyldam · мониторинг интернета ВКО
 
 > `main` — стабильная, обновляет только лид перед демо или поставкой; `developing` — интеграционная, в неё вливаются задачи (ADR-001).
 > Как включиться в работу — [CONTRIBUTING.md](CONTRIBUTING.md); задачи — [docs/tasks/README.md](docs/tasks/README.md).
 > Архитектурные решения — [docs/architecture/decisions/README.md](docs/architecture/decisions/README.md); правила для ИИ-агентов — [AGENTS.md](AGENTS.md).
-> Интерфейс панели — [DESIGN.md](DESIGN.md).
+> Интерфейс панели — [DESIGN.md](DESIGN.md); поведение экранов, адаптивность и сценарии сверх ТЗ — [docs/design/README.md](docs/design/README.md), макеты — `docs/design/mockups/`.
 
 ## Что это
 
@@ -25,7 +25,8 @@ HTTPS/TLS отправляет результаты в API, а тот сохра
 | [docs/tasks/README.md](docs/tasks/README.md) | задачи T-01…T-58 со статусами, порядок внутри MVP, решения по умолчанию |
 | [docs/architecture/decisions/README.md](docs/architecture/decisions/README.md) | ADR-001…014 — принятые решения и как добавить новое |
 | [AGENTS.md](AGENTS.md) | правила для ИИ-агентов: что можно, что нельзя, инварианты из ТЗ |
-| [DESIGN.md](DESIGN.md) | дизайн-код панели: токены, компоненты, состояния экранов |
+| [DESIGN.md](DESIGN.md) | дизайн-код панели Jyldam v2: токены, компоненты, адаптивность |
+| [docs/design/README.md](docs/design/README.md) | что, где и как работает в дизайне v2; макеты всех экранов в `docs/design/mockups/` |
 | [LOCAL-CHECKS.md](LOCAL-CHECKS.md) | что осталось прогнать на живой машине: прогоны, которых не было |
 | [docs/checklist.md](docs/checklist.md) | чек-лист — гейт перед слиянием в `developing` |
 | [docs/worklog.md](docs/worklog.md) | отчёт по каждой слитой задаче |
@@ -48,7 +49,7 @@ HTTPS/TLS отправляет результаты в API, а тот сохра
 | БД | PostgreSQL 16 + TimescaleDB + PostGIS |
 | Панель | React 18 + TypeScript + Vite, Refine + Ant Design, TanStack Query |
 | Карта и графики | MapLibre GL JS + GeoJSON районов ВКО; Apache ECharts |
-| Экспорт и AI | openpyxl (XLSX), csv, WeasyPrint + Jinja2 (PDF); LLM через адаптер `LLMProvider` |
+| Экспорт и AI | openpyxl (XLSX), csv, WeasyPrint + Jinja2 (PDF); LLM через адаптер `LLMProvider` — Claude API, DeepSeek или Ollama |
 | Инфраструктура | Docker Compose, Caddy (TLS), GitHub Actions |
 | Эксплуатация | pgBackRest (бэкап БД), Sentry, Prometheus + Grafana |
 
@@ -112,7 +113,7 @@ Windows и systemd — регистрируется по коду установ
 провайдера и админку. Есть MSI-установщик, пакеты `.deb` и `.rpm`, самообновление агента, ролевая
 модель с RLS и аудитом, экспорт в XLSX, CSV, JSON и PDF, резервное копирование БД, наблюдаемость
 сервера, симулятор на 350 школ и 1000 ПК и документация поставки. В ветке
-`feature/t-59-school-rules-letter-templates-contract-import` (T-59…T-61, ADR-015) — правила
+`feature/t-59-school-rules-letter-templates-contract-import` (T-85…T-87, ADR-018) — правила
 инцидентов для отдельной школы, редактируемые шаблоны обращений и претензий для AI-черновика и
 импорт реестра договоров в линии школ.
 
@@ -135,7 +136,7 @@ Windows. Пошагово, с командами и ожидаемым резу�
 | **Симулятор против живого сервера (T-55)** — гонялся только `--dry-run` | карта, аналитика и инциденты на его данных не открывались; подъём и возврат настройки срока очереди проверен только тестами | `make api` + `make simulate`, затем открыть панель |
 | **Перехэш токенов устройств (T-56)** — через настоящую базу не выполнялся | старый argon2-хэш должен приниматься и переписываться в новый формат; проверено тестами на подменной сессии | `make check-backend` на машине с Docker |
 | **Дашборд Grafana (T-54)** — не открывался | панели могут не совпасть с именами метрик `vko_*` | `docker compose up -d`, открыть http://127.0.0.1:3000 |
-| **Вкладки «Правила инцидентов», «Шаблоны писем», «Договоры» и выбор шаблона в редакторе (T-59–T-61)** — в браузере не открывались | экраны проверены только `tsc`, eslint, vitest и сборкой; темы и 1024px не смотрели | `make web`, пройти DESIGN.md §8, отметить в worklog |
+| **Вкладки «Правила инцидентов», «Шаблоны писем», «Договоры» и выбор шаблона в редакторе (T-85–T-87)** — в браузере не открывались | экраны проверены только `tsc`, eslint, vitest и сборкой; темы и 1024px не смотрели | `make web`, пройти DESIGN.md §8, отметить в worklog |
 
 Отдельно про проверки: `make check-agent` и `make check-web` проходят целиком. В `make check-backend`
 зелены `ruff`, `ruff format --check`, `mypy app` и 113 тестов, а 259 тестов с базой не запускались —

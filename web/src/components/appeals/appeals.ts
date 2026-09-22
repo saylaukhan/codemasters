@@ -77,12 +77,12 @@ export function appealTargetQuery(target: AppealDraftRequest): URLSearchParams {
   if (target.lineId != null) params.set('line_id', String(target.lineId))
   params.set('period_from', target.periodFrom)
   params.set('period_to', target.periodTo)
-  // The template of the letter (T-60): absent, the server takes the default one.
+  // The template of the letter (T-86): absent, the server takes the default one.
   if (target.templateId != null) params.set('template_id', String(target.templateId))
   return params
 }
 
-/** The same target written by another template: the editor asks the model again (T-60). */
+/** The same target written by another template: the editor asks the model again (T-86). */
 export const withTemplate = (target: AppealDraftRequest, templateId: number): AppealDraftRequest => ({
   ...target,
   templateId,

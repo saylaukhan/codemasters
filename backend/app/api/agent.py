@@ -47,6 +47,7 @@ from app.schemas.agent import (
     DeviceRegisterRequest,
     DeviceRegisterResponse,
     HeartbeatRequest,
+    HeartbeatResponse,
     MeasurementAccepted,
     MeasurementBatchRequest,
     MeasurementBatchResponse,
@@ -55,6 +56,7 @@ from app.schemas.agent import (
     OutageAccepted,
     OutageCreate,
     WhoAmIResponse,
+    live_measure_request,
     queue_window,
     too_old_message,
 )
@@ -290,20 +292,28 @@ async def device_to_register(
 
 @device_router.post(
     "/devices/heartbeat",
-    status_code=status.HTTP_204_NO_CONTENT,
     summary="Сигнал «агент жив»",
+    description=(
+        "Ответ несёт `measure_requested_at`, если администратор запросил замер (T-79): агент "
+        "делает один внеплановый замер, запоминает момент запроса и по нему же отличает "
+        "повтор того же запроса от нового. Запрос старше часа не выдаётся."
+    ),
 )
 async def send_heartbeat(
     body: HeartbeatRequest,
     device: Annotated[Device, Depends(current_device)],
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> None:
+) -> HeartbeatResponse:
     """Record that the agent is alive and remember the version it runs (ТЗ п. 3, ADR-014).
 
     The moment is the clock of the database, not ``sent_at`` of the computer: the status of a
     school and its availability are counted against one clock, and a machine whose time is off
     must not look silent or alive by mistake. ``sent_at`` stays in the contract as what the
     agent believes the time is.
+
+    The heartbeat is the most frequent call of an agent, so a measurement asked for in the panel
+    travels with its answer (T-79): the request waits at most one heartbeat interval instead of
+    a whole configuration refresh.
     """
     now = func.now()
     await session.execute(
@@ -318,6 +328,9 @@ async def send_heartbeat(
         .values(last_seen_at=now, agent_version=body.agent_version)
     )
     await session.commit()
+    return HeartbeatResponse(
+        measure_requested_at=live_measure_request(device.measure_requested_at, datetime.now(UTC))
+    )
 
 
 @device_router.get(
@@ -518,7 +531,22 @@ async def store_measurements(
         .on_conflict_do_nothing(index_elements=["measurement_uuid", "measured_at"])
         .returning(Measurement.measurement_uuid, Measurement.received_at)
     )
+    answer_measure_request(device, fresh)
     return {measurement_uuid: received_at for measurement_uuid, received_at in rows.all()}
+
+
+def answer_measure_request(device: Device, stored: Sequence[MeasurementCreate]) -> None:
+    """Clear the mark of a measurement asked for in the panel once one answers it (T-79).
+
+    A record that waited in the queue since before the request answers nothing: the panel asked
+    for the line as it is now, so only a measurement taken after the request counts. The mark is
+    cleared with the transaction that stores it, so the card of the device stops showing the
+    request exactly when its result appears.
+    """
+    if device.measure_requested_at is None:
+        return
+    if any(item.measured_at >= device.measure_requested_at for item in stored):
+        device.measure_requested_at = None
 
 
 def enqueue_detection(line_id: int) -> None:
@@ -571,6 +599,7 @@ def measurement_row(
         "server": item.server,
         "iface_type": item.iface_type,
         "agent_version": item.agent_version,
+        "source": item.source,
         "quality_status": verdict.quality_status,
         "thresholds_snapshot": verdict.thresholds_snapshot,
         "contract_ok": verdict.contract_ok,

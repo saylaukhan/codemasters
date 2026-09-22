@@ -7,8 +7,9 @@ type code, School ID), lines and points are created only for a school that has n
 repeated run changes nothing. The row of ``settings`` gets the measurement server addresses from
 the environment (T-05) only when it does not exist: after that they change in the admin panel.
 Dev users of the five roles (T-20) are created with the password ``Password1`` — the seed loads
-test data and is for local databases only; an existing user is left as is. Data files and their
-sources: ``app/seed_data/README.md``.
+test data and is for local databases only; an existing user is left as is. The fixed public
+holidays of Kazakhstan for this year and the next go into the calendar of T-70 as events of the
+whole oblast. Data files and their sources: ``app/seed_data/README.md``.
 """
 
 import asyncio
@@ -16,8 +17,10 @@ import csv
 import json
 import sys
 from dataclasses import dataclass
+from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from geoalchemy2 import WKTElement
 from sqlalchemy import exists, func, select, tuple_
@@ -28,6 +31,7 @@ from app.core.config import get_settings
 from app.core.db import get_engine, get_session_factory
 from app.core.security import hash_password_async
 from app.models import (
+    CalendarEvent,
     ConnectionType,
     Line,
     MonitoringPoint,
@@ -64,6 +68,23 @@ DEV_USERS = {
     "school@example.kz": ("school", "Ответственный школы VKO-UK-001"),
     "provider@example.kz": ("provider", "Служба поддержки провайдера"),
 }
+
+
+# Праздничные дни РК с постоянной датой (Закон «О праздниках в Республике Казахстан»):
+# (месяц, день, сколько дней, название). Курбан айт и Рождество считаются по лунному и
+# юлианскому календарям и переносы объявляются постановлением — их заводят руками в админке.
+KZ_HOLIDAYS = (
+    (1, 1, 2, "Новый год"),
+    (3, 8, 1, "Международный женский день"),
+    (3, 21, 3, "Наурыз мейрамы"),
+    (5, 1, 1, "Праздник единства народа Казахстана"),
+    (5, 7, 1, "День защитника Отечества"),
+    (5, 9, 1, "День Победы"),
+    (7, 6, 1, "День столицы"),
+    (8, 30, 1, "День Конституции"),
+    (10, 25, 1, "День Республики"),
+    (12, 16, 1, "День Независимости"),
+)
 
 
 @dataclass(frozen=True)
@@ -198,6 +219,47 @@ async def seed_settings(session: AsyncSession, librespeed_url: str, ndt7_url: st
     return result.scalar_one_or_none() is not None
 
 
+async def seed_holidays(session: AsyncSession, today: datetime) -> int:
+    """Праздники РК этого и следующего года как события календаря всей области (T-70).
+
+    Границы — целые местные сутки ``settings.timezone``: праздник кончается, когда кончается
+    местный день. Уже заведённый праздник не дублируется, изменённый руками не трогается.
+    """
+    settings = await session.get(SystemSettings, 1)
+    zone = ZoneInfo(settings.timezone if settings is not None else "Asia/Almaty")
+    wanted = {
+        (
+            title,
+            datetime.combine(datetime(year, month, day).date(), time(), tzinfo=zone),
+        ): days
+        for year in (today.year, today.year + 1)
+        for month, day, days, title in KZ_HOLIDAYS
+    }
+    existing = set(
+        await session.execute(
+            select(CalendarEvent.title, CalendarEvent.starts_at).where(
+                CalendarEvent.kind == "holiday",
+                CalendarEvent.scope == "oblast",
+                tuple_(CalendarEvent.title, CalendarEvent.starts_at).in_(list(wanted)),
+            )
+        )
+    )
+    rows = [
+        {
+            "kind": "holiday",
+            "scope": "oblast",
+            "title": title,
+            "starts_at": starts_at,
+            "ends_at": starts_at + timedelta(days=days),
+        }
+        for (title, starts_at), days in wanted.items()
+        if (title, starts_at) not in existing
+    ]
+    if rows:
+        await session.execute(insert(CalendarEvent).values(rows))
+    return len(rows)
+
+
 async def seed_users(session: AsyncSession) -> int:
     """Create the missing dev users with their scopes (no commit); returns how many were new.
 
@@ -236,27 +298,29 @@ async def seed_users(session: AsyncSession) -> int:
     return created
 
 
-async def run() -> tuple[SeedResult, bool, int]:
+async def run() -> tuple[SeedResult, bool, int, int]:
     """Seed the database from ``Settings.database_url`` in one transaction."""
     settings = get_settings()
     async with get_session_factory()() as session:
         result = await seed(session)
         settings_created = await seed_settings(session, settings.speedtest_url, settings.ndt7_url)
         users_created = await seed_users(session)
+        holidays_created = await seed_holidays(session, datetime.now(UTC))
         await session.commit()
     await get_engine().dispose()
-    return result, settings_created, users_created
+    return result, settings_created, users_created, holidays_created
 
 
 def main() -> int:
     """Run the seed and report what was loaded."""
-    result, settings_created, users_created = asyncio.run(run())
+    result, settings_created, users_created, holidays_created = asyncio.run(run())
     sys.stdout.write(
         f"seed: районов и городов — {result.regions}, провайдеров — {result.providers}, "
         f"типов подключения — {result.connection_types}, тестовых школ — {result.schools}; "
         f"создано линий — {result.lines_created}, точек мониторинга — {result.points_created}; "
         f"системные настройки — {'созданы' if settings_created else 'уже есть, не изменены'}; "
-        f"создано dev-пользователей — {users_created}\n"
+        f"создано dev-пользователей — {users_created}; "
+        f"праздников РК в календаре — {holidays_created}\n"
     )
     return 0
 

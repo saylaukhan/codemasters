@@ -10,6 +10,7 @@ import { SECTION_LABELS, type AdminTabKey } from '../../lib/labels'
 import { NotFoundPage } from '../section/NotFoundPage'
 import { AppealTemplatesPage } from './AppealTemplatesPage'
 import { AuditLogPage, EventLogPage } from './AuditLogPage'
+import { CalendarPage } from './CalendarPage'
 import { ConnectionTypesPage } from './ConnectionTypesPage'
 import { ContractsPage } from './ContractsPage'
 import { DevicesAdminPage } from './DevicesAdminPage'
@@ -32,6 +33,7 @@ const PAGES: Record<AdminTabKey, ComponentType> = {
   'connection-types': ConnectionTypesPage,
   thresholds: ThresholdsPage,
   schedules: SchedulesPage,
+  calendar: CalendarPage,
   'incident-rules': IncidentRulesPage,
   'appeal-templates': AppealTemplatesPage,
   settings: SettingsPage,

@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest'
 
 import type { CurrentUser, UserRole } from '../api/types'
 import { SECTION_LABELS, type SectionKey } from '../lib/labels'
-import { canOpenSection, landingPath, navigationSections, PROVIDER_SECTIONS, SECTIONS } from './sections'
+import {
+  canOpenSection,
+  landingPath,
+  navigationSections,
+  PROVIDER_SECTIONS,
+  SCHOOL_SECTIONS,
+  SECTIONS,
+  sectionPath,
+} from './sections'
 
 // Rights of backend/app/auth/permissions.py: what GET /api/auth/me answers for a role.
 const VIEW = [
@@ -15,6 +23,7 @@ const VIEW = [
   'appeals:read',
   'exports:create',
   'notifications:read',
+  'assistant:ask',
 ]
 const MONITORING_SETUP = [
   'schools:write',
@@ -34,9 +43,19 @@ const PERMISSIONS: Record<UserRole, string[]> = {
   admin: [...VIEW, 'contacts:phone', ...MONITORING_SETUP, ...ADMINISTRATION, 'incidents:create', 'incidents:update'],
 }
 
-const user = (role: UserRole): Pick<CurrentUser, 'role' | 'permissions'> => ({
+// The scope of GET /api/auth/me: only the school role carries a school of its own (ADR-008).
+const SCOPES: Record<UserRole, CurrentUser['scope']> = {
+  school: { regionId: 7, regionName: 'Усть-Каменогорск', providerId: null, schoolId: 12 },
+  district: { regionId: 7, regionName: 'Усть-Каменогорск', providerId: null, schoolId: null },
+  provider: { regionId: null, regionName: null, providerId: 3, schoolId: null },
+  oblast: { regionId: null, regionName: null, providerId: null, schoolId: null },
+  admin: { regionId: null, regionName: null, providerId: null, schoolId: null },
+}
+
+const user = (role: UserRole): Pick<CurrentUser, 'role' | 'permissions' | 'scope'> => ({
   role,
   permissions: PERMISSIONS[role],
+  scope: SCOPES[role],
 })
 
 const keys = (role: UserRole): SectionKey[] => navigationSections(user(role)).map((section) => section.key)
@@ -47,12 +66,38 @@ describe('navigation of a role', () => {
     expect(keys('provider')).not.toContain('admin')
   })
 
+  it('leaves the school its own card and its letters to the provider (DESIGN.md §3.27)', () => {
+    expect(keys('school')).toEqual([...SCHOOL_SECTIONS])
+  })
+
   it('keeps the whole panel for the roles of the oblast', () => {
-    expect(keys('oblast')).toEqual(['overview', 'map', 'schools', 'devices', 'analytics', 'incidents', 'appeals', 'exports', 'admin'])
+    expect(keys('oblast')).toEqual([
+      'overview',
+      'map',
+      'schools',
+      'devices',
+      'incidents',
+      'appeals',
+      'providers',
+      'rollout',
+      'analytics',
+      'exports',
+      'admin',
+    ])
     expect(keys('admin')).toContain('admin')
-    // Школа and Район/город see everything but «Администрирование»: they have none of its rights.
-    expect(keys('school')).not.toContain('admin')
-    expect(keys('district')).not.toContain('admin')
+    // Район/город sees everything but «Администрирование»: it has none of its rights.
+    expect(keys('district')).toEqual([
+      'overview',
+      'map',
+      'schools',
+      'devices',
+      'incidents',
+      'appeals',
+      'providers',
+      'rollout',
+      'analytics',
+      'exports',
+    ])
   })
 
   it('opens nothing without permissions', () => {
@@ -74,17 +119,44 @@ describe('landing of «/»', () => {
   it('sends every role to the first section of its navigation', () => {
     expect(landingPath(user('provider'))).toBe('/schools')
     expect(landingPath(user('oblast'))).toBe('/overview')
-    expect(landingPath(user('school'))).toBe('/overview')
   })
 
-  it('falls back to the first section while the user is unknown', () => {
+  it('sends the school role to its own card, which renders the cabinet (T-61)', () => {
+    expect(landingPath(user('school'))).toBe('/schools/12')
+  })
+
+  it('falls back to the first section while the user is unknown or has no school of his own', () => {
     expect(landingPath(undefined)).toBe(SECTIONS[0].path)
+    const homeless = { ...user('school'), scope: { ...SCOPES.school, schoolId: null } }
+    expect(landingPath(homeless)).toBe('/schools')
   })
 })
 
 describe('sections themselves', () => {
+  it('keeps the order of DESIGN.md §3.6, with «Администрирование» last', () => {
+    expect(SECTIONS.map((section) => section.key)).toEqual([
+      'overview',
+      'map',
+      'schools',
+      'devices',
+      'incidents',
+      'appeals',
+      'providers',
+      'rollout',
+      'analytics',
+      'exports',
+      'admin',
+    ])
+  })
+
+  it('gives the address of a section to a link that crosses sections', () => {
+    expect(sectionPath('appeals')).toBe('/appeals')
+    expect(sectionPath('schools')).toBe('/schools')
+  })
+
   it('names every section of the dictionary exactly once (ADR-013)', () => {
     expect(SECTIONS.map((section) => section.key).sort()).toEqual(Object.keys(SECTION_LABELS).sort())
     expect(PROVIDER_SECTIONS.every((key) => key in SECTION_LABELS)).toBe(true)
+    expect(SCHOOL_SECTIONS.every((key) => key in SECTION_LABELS)).toBe(true)
   })
 })

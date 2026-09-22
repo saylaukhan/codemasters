@@ -8,6 +8,7 @@ the HTTP server of the metrics (``app/core/observability.py``, T-54).
 """
 
 from celery import Celery
+from celery.schedules import crontab
 
 from app.core.config import get_settings
 from app.core.observability import install_worker_metrics
@@ -22,6 +23,7 @@ celery_app = Celery(
     backend=settings.redis_url,
     include=[
         "app.workers.tasks.contracts",
+        "app.workers.tasks.digest",
         "app.workers.tasks.exports",
         "app.workers.tasks.incidents",
     ],
@@ -46,6 +48,13 @@ celery_app.conf.update(
         "close-resolved-incidents": {
             "task": "incidents.close_resolved",
             "schedule": 15 * 60,
+        },
+        # Сводка для руководителя (T-67): раз в час задача берёт рассылки, чей день недели и
+        # час совпали с текущим моментом в settings.timezone; час — самая мелкая единица
+        # расписания рассылки, поэтому чаще спрашивать нечего.
+        "send-due-digests": {
+            "task": "digest.send_due",
+            "schedule": crontab(minute=0),
         },
         # Files of exports live for days (T-33): an hour late is as good as on time.
         "purge-expired-exports": {

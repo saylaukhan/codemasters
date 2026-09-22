@@ -15,12 +15,19 @@ import (
 const stateFileName = "state.json"
 
 // State is what the running agent reports about itself to `vko-agent status`.
-// The scheduler (T-08) sets LastMeasurementAt, the queue (T-11) sets QueueSize.
+// The scheduler (T-08) sets LastMeasurementAt, the queue (T-11) sets QueueSize,
+// the heartbeat (T-79) sets LastMeasureRequestAt.
 type State struct {
 	Version           string     `json:"version"`
 	StartedAt         time.Time  `json:"started_at"`
 	LastMeasurementAt *time.Time `json:"last_measurement_at,omitempty"`
 	QueueSize         int        `json:"queue_size"`
+	// LastMeasureRequestAt is the measurement request of the panel the agent
+	// has already performed (T-79). The server repeats the request in every
+	// heartbeat until the measurement reaches it, so without this a restart of
+	// the service — or a queue that waits out a long outage — would measure
+	// again and again by one press of the button.
+	LastMeasureRequestAt *time.Time `json:"last_measure_request_at,omitempty"`
 }
 
 // StatePath returns the state file location inside dataDir.

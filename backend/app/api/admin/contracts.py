@@ -1,4 +1,4 @@
-"""Import of a contract registry into the lines of schools (T-61; ТЗ п. 14, п. 20).
+"""Import of a contract registry into the lines of schools (T-87; ТЗ п. 14, п. 20).
 
 Two calls with the same file: the preview reports what the file would change and writes
 nothing, the import applies it. The lines get what the panel edits by hand on the school card

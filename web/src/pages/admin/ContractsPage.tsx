@@ -91,7 +91,7 @@ interface ChosenFile {
 }
 
 /**
- * Import of a contract registry (ТЗ п. 14, п. 20; T-61): a CSV or XLSX file is checked first — every row gets its
+ * Import of a contract registry (ТЗ п. 14, п. 20; T-87): a CSV or XLSX file is checked first — every row gets its
  * verdict without writing — and applied with the single Action of the screen. The lines get what the school card
  * edits by hand: the number, the date and the speeds of the contract, the identifier and the technology of the line.
  */

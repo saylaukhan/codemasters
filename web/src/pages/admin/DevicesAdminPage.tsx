@@ -1,6 +1,6 @@
 import { useNotification } from '@refinedev/core'
 import { App, Dropdown, Segmented, Tooltip, type TableColumnsType } from 'antd'
-import { Ellipsis, KeyRound } from 'lucide-react'
+import { Ellipsis, Gauge, KeyRound } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { ApiError } from '../../api/client'
@@ -18,7 +18,7 @@ import { Button } from '../../components/ui/Button'
 import { SearchInput } from '../../components/ui/SearchInput'
 import { DeviceStatusBadge } from '../../components/ui/StatusBadge'
 import { NO_VALUE, formatDateTime, formatRelative } from '../../lib/format'
-import { DEVICE_STATUS_FILTER_LABELS, TOKEN_ROTATION_PENDING_LABEL } from '../../lib/labels'
+import { DEVICE_STATUS_FILTER_LABELS, MEASURE_PENDING_LABEL, TOKEN_ROTATION_PENDING_LABEL } from '../../lib/labels'
 import { SIZES } from '../../styles/theme'
 
 type StatusFilter = keyof typeof DEVICE_STATUS_FILTER_LABELS
@@ -52,6 +52,14 @@ const CONFIRMS: Record<DeviceAction, { title: string; content: string; ok: strin
       'Участие пользователя на ПК не нужно.',
     ok: 'Заменить токен',
     done: 'Замена токена запрошена',
+  },
+  measure: {
+    title: 'Замерить сейчас на компьютере',
+    content:
+      'Агент получит запрос со следующим сигналом «жив» — обычно в течение пяти минут — и сделает один замер ' +
+      'вне расписания. Если компьютер выключен дольше часа, запрос сгорает. Расписание замеров не меняется.',
+    ok: 'Замерить',
+    done: 'Замер запрошен',
   },
 }
 
@@ -103,6 +111,14 @@ const COLUMNS: TableColumnsType<DeviceDetail> = [
     render: (_, device) => (
       <span className={styles.stack}>
         <DeviceStatusBadge status={device.status} />
+        {device.measureRequestedAt && (
+          <Tooltip title={`Запрошен ${formatDateTime(device.measureRequestedAt)}`}>
+            <span className={styles.mark}>
+              <Gauge size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} aria-hidden />
+              {MEASURE_PENDING_LABEL}
+            </span>
+          </Tooltip>
+        )}
         {device.tokenRotationRequestedAt && (
           <Tooltip title={`Запрошена ${formatDateTime(device.tokenRotationRequestedAt)}`}>
             <span className={styles.mark}>
@@ -151,6 +167,7 @@ export function DevicesAdminPage() {
       trigger={['click']}
       menu={{
         items: [
+          { key: 'measure', label: 'Замерить сейчас' },
           { key: 'rebind', label: 'Перепривязать' },
           { key: 'rotate', label: 'Заменить токен' },
           device.status === 'active'

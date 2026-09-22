@@ -2,7 +2,7 @@
 
 There is no DELETE: a rule is switched off with ``is_active`` and its incidents keep the
 reference (ADR-007). The detection of T-40 applies a change from its next run. A rule of the
-oblast watches every line; a rule of a school replaces it for the lines of that school (T-59).
+oblast watches every line; a rule of a school replaces it for the lines of that school (T-85).
 Rules are edited by the Oblast and Administrator roles (ADR-008 «Открыто»); every change goes
 to the audit log.
 """
@@ -38,7 +38,7 @@ router = APIRouter(
     summary="Правила формирования инцидентов",
     description=(
         "Порядок: правила области, затем правила школ по названию школы. Правило школы "
-        "заменяет для её линий правило области по тому же показателю (T-59)."
+        "заменяет для её линий правило области по тому же показателю (T-85)."
     ),
 )
 async def list_incident_rules(

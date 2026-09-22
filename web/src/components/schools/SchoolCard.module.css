@@ -6,9 +6,22 @@
   margin-bottom: var(--space-4);
 }
 
-@media (max-width: 1280px) {
+/* DESIGN.md §9.3 «Полосы показателей»: 6 columns, then 4, then 2, then one row per card. */
+@media (max-width: 1279px) {
   .kpis {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .kpis {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -57,6 +70,15 @@
   margin: 0;
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
+}
+
+/* Why «Нет данных» (DESIGN.md §4.1): two narrow lines under the pill instead of one long line
+ * that widens the widest table of the panel. */
+.hint {
+  max-width: 20ch;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  white-space: normal;
 }
 
 .contacts {
@@ -122,7 +144,8 @@
   margin-top: var(--space-4);
 }
 
-@media (max-width: 1280px) {
+/* DESIGN.md §9.3 «Графики»: in a row down to 1025, in a column from 1024. */
+@media (max-width: 1024px) {
   .charts {
     grid-template-columns: minmax(0, 1fr);
   }

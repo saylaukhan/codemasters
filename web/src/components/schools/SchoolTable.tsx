@@ -1,10 +1,12 @@
-import { Table, type TableColumnType, type TableProps } from 'antd'
+import { type TableColumnType } from 'antd'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import type { SchoolListItem, SchoolSort } from '../../api/types'
 import { schoolCardPath } from '../../app/sections'
 import { formatDateTime, formatMs, formatSpeed, NO_VALUE } from '../../lib/format'
+import { ResponsiveTable, type ResponsiveColumn } from '../ui/ResponsiveTable'
+import type { ColumnPriority } from '../ui/responsive-table'
 import { ConnectionStatusBadge } from '../ui/StatusBadge'
 import { PAGE_SIZES } from './useSchoolListView'
 import type { SchoolListView } from './queries'
@@ -36,24 +38,34 @@ export function SchoolTable({ items, total, view, loading, empty, onChange }: Sc
     title: string,
     render: (item: SchoolListItem) => ReactNode,
     numeric = false,
-  ): TableColumnType<SchoolListItem> => ({
+    priority: ColumnPriority = 'secondary',
+  ): ResponsiveColumn<SchoolListItem> => ({
     key: field,
     title,
+    priority,
     sorter: true,
     sortOrder: orderOf(view.sort, field),
     align: numeric ? 'right' : undefined,
     render: (_: unknown, item: SchoolListItem) => render(item),
   })
 
-  const columns: TableProps<SchoolListItem>['columns'] = [
+  // Priorities of DESIGN.md §3.12: the district, the School ID and the count of computers read
+  // from the card description on a phone, so they stay on the table only.
+  const columns: readonly ResponsiveColumn<SchoolListItem>[] = [
     {
-      ...column('full_name', 'Школа', (item) => <Link to={schoolCardPath(item.id)}>{item.fullName}</Link>),
+      ...column('full_name', 'Школа', (item) => <Link to={schoolCardPath(item.id)}>{item.fullName}</Link>, false, 'primary'),
       fixed: 'left',
       width: 280,
     },
-    column('school_code', 'School ID', (item) => <span className={styles.code}>{item.schoolCode}</span>),
-    column('region_name', 'Район', (item) => item.regionName),
-    column('devices_count', 'ПК', (item) => <span className={styles.number}>{item.devicesCount}</span>, true),
+    column('school_code', 'School ID', (item) => <span className={styles.code}>{item.schoolCode}</span>, false, 'primary'),
+    column('region_name', 'Район', (item) => item.regionName, false, 'primary'),
+    column(
+      'devices_count',
+      'ПК',
+      (item) => <span className={styles.number}>{item.devicesCount}</span>,
+      true,
+      'primary',
+    ),
     column(
       'avg_download_mbps',
       'Download',
@@ -86,14 +98,18 @@ export function SchoolTable({ items, total, view, loading, empty, onChange }: Sc
         ),
       true,
     ),
-    column('last_measured_at', 'Последний замер', (item) =>
-      item.lastMeasuredAt ? formatDateTime(item.lastMeasuredAt) : NO_VALUE,
+    column(
+      'last_measured_at',
+      'Последний замер',
+      (item) => (item.lastMeasuredAt ? formatDateTime(item.lastMeasuredAt) : NO_VALUE),
+      false,
+      'minor',
     ),
-    column('status', 'Статус', (item) => <ConnectionStatusBadge status={item.status} />),
+    column('status', 'Статус', (item) => <ConnectionStatusBadge status={item.status} />, false, 'primary'),
   ]
 
   return (
-    <Table<SchoolListItem>
+    <ResponsiveTable<SchoolListItem>
       rowKey="id"
       size="middle"
       columns={columns}
@@ -102,6 +118,11 @@ export function SchoolTable({ items, total, view, loading, empty, onChange }: Sc
       scroll={{ x: 'max-content' }}
       locale={{ emptyText: empty }}
       showSorterTooltip={false}
+      card={{
+        title: (item) => <Link to={schoolCardPath(item.id)}>{item.fullName}</Link>,
+        status: (item) => <ConnectionStatusBadge status={item.status} />,
+        description: (item) => `${item.regionName} · ${item.schoolCode}`,
+      }}
       pagination={{
         current: view.page,
         pageSize: view.pageSize,

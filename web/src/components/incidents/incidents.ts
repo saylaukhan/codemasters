@@ -35,6 +35,14 @@ export interface IncidentListView {
   pageSize: number
 }
 
+/** Incidents that still wait for a person: every status of ТЗ п. 19 but «Устранён» and «Закрыт». */
+export const OPEN_INCIDENT_STATUSES: readonly IncidentStatus[] = [
+  'new',
+  'sent_to_provider',
+  'in_progress',
+  'awaiting_info',
+]
+
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 const readPositive = (value: string | null, fallback: number): number => {

@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import PageParams
 from app.core.errors import ApiError
 from app.models import Device, Measurement, MonitoringPoint, School
+from app.schemas.agent import live_measure_request
 from app.schemas.devices import DeviceDetail, MeasurementListItem, MeasurementListItemPage
 from app.services.school_card import device_items, device_rows
 
@@ -55,6 +56,8 @@ async def device_details(
                 "school_name": row.school_name,
                 "registered_at": row.Device.registered_at,
                 "token_rotation_requested_at": row.Device.token_rotation_requested_at,
+                # A request the agent will no longer be given is not shown as pending (T-79).
+                "measure_requested_at": live_measure_request(row.Device.measure_requested_at, now),
             }
         )
         for item, row in zip(items, rows, strict=True)

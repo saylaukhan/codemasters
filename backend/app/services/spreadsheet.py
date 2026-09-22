@@ -1,4 +1,4 @@
-"""Rows of a CSV or XLSX file as strings (T-61): the table an import reads.
+"""Rows of a CSV or XLSX file as strings (T-87): the table an import reads.
 
 CSV is read as Excel of the Russian locale writes it and as ``app/services/exports/files.py``
 writes it: UTF-8 with or without a BOM, else cp1251; the delimiter is the one of «;», «,» and

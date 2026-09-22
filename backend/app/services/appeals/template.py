@@ -1,4 +1,4 @@
-"""The letter of a template filled with the facts of an appeal (T-60, ТЗ п. 17, ADR-011).
+"""The letter of a template filled with the facts of an appeal (T-86, ТЗ п. 17, ADR-011).
 
 A placeholder ``{{name}}`` of ``PLACEHOLDERS`` (``app/schemas/appeal_templates.py``) becomes
 the value the facts hold for it, written as the panel writes it: dates and times in the zone

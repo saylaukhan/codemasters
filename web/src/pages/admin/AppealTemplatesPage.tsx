@@ -55,7 +55,7 @@ const COLUMNS: TableColumnsType<AppealTemplateDetail> = [
 
 /**
  * Templates of the letters to providers (ТЗ п. 17, п. 20; ADR-011): the appeal and the claim the model writes by;
- * the default one is taken without a choice, the others are offered in the editor of a draft (T-60).
+ * the default one is taken without a choice, the others are offered in the editor of a draft (T-86).
  */
 export function AppealTemplatesPage() {
   const [view, setView] = useAdminListView()

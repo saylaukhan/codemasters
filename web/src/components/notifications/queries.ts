@@ -18,12 +18,17 @@ const UNREAD_KEY = [...NOTIFICATIONS_KEY, 'unread']
 // Pause before the stream is opened again: a proxy or a restart of the API ends it from time to time.
 const RECONNECT_MS = 10_000
 
-/** A page of the chosen tab; the panel is mounted only once the bell has been unfolded. */
-export const useNotifications = (tab: NotificationTabKey) =>
+/**
+ * A page of the chosen tab; the panel is mounted only once the bell has been unfolded, and the
+ * stream keeps it fresh, so it asks for nothing on a timer. A screen without a bell — the wall of
+ * T-71 — passes `refetchInterval` and gets the page again on its own clock.
+ */
+export const useNotifications = (tab: NotificationTabKey, refetchInterval?: number) =>
   useQuery({
     queryKey: [...LIST_KEY, tab],
     queryFn: ({ signal }) => getNotifications(notificationListQuery(tab), signal),
     placeholderData: keepPreviousData,
+    refetchInterval,
   })
 
 /** Counter of the bell: the stream keeps it exact, the interval covers a stream that was cut. */

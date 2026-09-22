@@ -7,6 +7,7 @@ measurement on receipt (T-18), so it is written once here. ``most_specific`` ord
 chain — schedules are looked up by it too.
 """
 
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import Select, case, or_, select
@@ -50,3 +51,30 @@ async def threshold_profile(
             ThresholdProfile.scope,
         )
     )
+
+
+async def active_threshold_profiles(session: AsyncSession) -> list[ThresholdProfile]:
+    """Every active profile at once, for a list of lines judged together (T-68).
+
+    A screen that compares the contract of hundreds of lines with the thresholds that apply to
+    them would otherwise ask ``threshold_profile`` once per line. There are few profiles — the
+    global one, the districts and the exceptions — so they are read once and matched in memory
+    by ``profile_of``, which repeats the chain of ``threshold_profile`` exactly.
+    """
+    return list(await session.scalars(select(ThresholdProfile).where(ThresholdProfile.is_active)))
+
+
+def profile_of(
+    profiles: Sequence[ThresholdProfile], *, line_id: int | None, region_id: int | None
+) -> ThresholdProfile | None:
+    """The profile of the line among ``profiles``: its own, else its district's, else global."""
+    matching = [
+        profile
+        for profile in profiles
+        if (profile.scope == "global")
+        or (profile.scope == "district" and profile.region_id == region_id)
+        or (profile.scope == "line" and profile.line_id == line_id)
+    ]
+    if not matching:
+        return None
+    return min(matching, key=lambda profile: PROFILE_SCOPES.index(profile.scope))

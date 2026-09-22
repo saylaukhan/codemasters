@@ -36,7 +36,7 @@ BULLET_INDENT = 12.0
 
 NO_ADDRESS = "адрес поставщика не указан"
 
-# Heading of the PDF by the kind of the letter (T-60): ``APPEAL_KIND_LABELS`` of the panel.
+# Heading of the PDF by the kind of the letter (T-86): ``APPEAL_KIND_LABELS`` of the panel.
 KIND_TITLES = {
     "appeal": "Обращение к поставщику услуги",
     "claim": "Претензия поставщику услуги",

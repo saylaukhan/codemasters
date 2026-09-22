@@ -180,6 +180,14 @@ def parse_device_token(token: str) -> tuple[int, str] | None:
     return device_id, match[2]
 
 
+# A password reset link (T-65) carries a secret of the same family as a device token: 256 random
+# bits with the id of its own row in front, stored as sha256 by ``hash_token`` and checked by
+# ``verify_token``. These are those functions under the words of that use, not a second scheme.
+new_reset_secret = new_device_secret
+format_reset_token = format_device_token
+parse_reset_token = parse_device_token
+
+
 # Marks the algorithm of ``devices.token_hash``: what does not start with it is an argon2 hash
 # handed out before the two families were split apart.
 TOKEN_HASH_PREFIX = "sha256$"

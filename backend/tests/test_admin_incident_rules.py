@@ -1,8 +1,8 @@
-"""T-40, T-59: incident rules in the admin panel (ТЗ п. 18, п. 20; ADR-007).
+"""T-40, T-85: incident rules in the admin panel (ТЗ п. 18, п. 20; ADR-007).
 
 N in a row, T minutes and M normal results are not in the code: Область and Администратор
 change them, the next detection applies them, and the audit log keeps what was changed. A rule
-of a school (T-59) names its school and is listed after the rules of the oblast.
+of a school (T-85) names its school and is listed after the rules of the oblast.
 """
 
 from typing import Any
@@ -164,7 +164,7 @@ async def test_rule_without_an_opening_condition_is_rejected(
 async def test_a_school_rule_names_its_school_and_is_listed_after_the_oblast(
     session: AsyncSession, api_client: AsyncClient
 ) -> None:
-    """T-59: a rule of one school replaces the global rule of its metric for that school."""
+    """T-85: a rule of one school replaces the global rule of its metric for that school."""
     school = await create_school(session, school_code="VKO-R-001")
     other = await create_school(session, school_code="VKO-R-002")
     oblast = bearer(await create_user(session, "oblast"))

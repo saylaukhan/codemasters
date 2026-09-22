@@ -1,8 +1,8 @@
 import { theme, type ThemeConfig } from 'antd'
 
-// Ant Design theme from the DESIGN.md tokens (front matter `antd-theme`). AntD derives its
+// Ant Design theme from the DESIGN.md v2 tokens (front matter `antd-theme`). AntD derives its
 // shades from these literals, so the values repeat tokens.css: the second and last place in
-// web/ where hex is allowed. Keep both files in step.
+// web/ where hex is allowed. Keep both files in step (ADR-015).
 
 interface Palette {
   accent: string
@@ -20,42 +20,54 @@ interface Palette {
   textSecondary: string
   textMuted: string
   textLink: string
+  error: string
+  warning: string
+  success: string
+  shadowDropdown: string
 }
 
 const lightPalette: Palette = {
-  accent: '#1DB866',
-  accentHover: '#17A35A',
-  accentPressed: '#128C4C',
-  accentSoft: '#E6F7EE',
+  accent: '#2E6BE6',
+  accentHover: '#2559C9',
+  accentPressed: '#1F4FB8',
+  accentSoft: '#EAF0FE',
   textOnAccent: '#FFFFFF',
-  bgPage: '#F5F6F7',
+  bgPage: '#F5F7FA',
   bgSurface: '#FFFFFF',
-  bgSubtle: '#EFF1F3',
-  bgSelected: '#E6F7EE',
-  border: '#E3E5E8',
-  borderStrong: '#C9CDD2',
-  textPrimary: '#1F2328',
-  textSecondary: '#5F6670',
-  textMuted: '#9AA0A8',
-  textLink: '#1F6FD1',
+  bgSubtle: '#F0F3F7',
+  bgSelected: '#EAF0FE',
+  border: 'rgba(23, 29, 38, 0.06)',
+  borderStrong: 'rgba(23, 29, 38, 0.14)',
+  textPrimary: '#171D26',
+  textSecondary: '#5B6472',
+  textMuted: '#8B94A1',
+  textLink: '#2E6BE6',
+  error: '#DC3F44',
+  warning: '#E0900F',
+  success: '#1A9E5C',
+  shadowDropdown: '0 8px 24px rgba(23, 29, 38, 0.12)',
 }
 
 const darkPalette: Palette = {
-  accent: '#2BC775',
-  accentHover: '#4AD68B',
-  accentPressed: '#5FE09B',
-  accentSoft: '#173A28',
-  textOnAccent: '#141619',
-  bgPage: '#141619',
-  bgSurface: '#1E2125',
-  bgSubtle: '#272B30',
-  bgSelected: '#173A28',
-  border: '#33383E',
-  borderStrong: '#4A5057',
-  textPrimary: '#EDEFF2',
-  textSecondary: '#A4ABB3',
-  textMuted: '#6F767E',
-  textLink: '#4C9AFF',
+  accent: '#5B8DFF',
+  accentHover: '#7AA3FF',
+  accentPressed: '#9DBBFF',
+  accentSoft: 'rgba(91, 141, 255, 0.16)',
+  textOnAccent: '#0F1115',
+  bgPage: '#0F1115',
+  bgSurface: '#171A20',
+  bgSubtle: '#262B33',
+  bgSelected: 'rgba(91, 141, 255, 0.16)',
+  border: 'rgba(255, 255, 255, 0.08)',
+  borderStrong: 'rgba(255, 255, 255, 0.14)',
+  textPrimary: '#E8ECF1',
+  textSecondary: '#A3ABB8',
+  textMuted: '#8A93A1',
+  textLink: '#5B8DFF',
+  error: '#F0555A',
+  warning: '#F0A62A',
+  success: '#2FBF72',
+  shadowDropdown: '0 8px 24px rgba(0, 0, 0, 0.45)',
 }
 
 function buildTheme(palette: Palette, algorithm: ThemeConfig['algorithm']): ThemeConfig {
@@ -69,14 +81,14 @@ function buildTheme(palette: Palette, algorithm: ThemeConfig['algorithm']): Them
       colorPrimaryActive: palette.accentPressed,
       colorPrimaryBg: palette.accentSoft,
       colorTextLightSolid: palette.textOnAccent,
-      borderRadius: 6,
-      borderRadiusLG: 8,
-      borderRadiusSM: 4,
-      fontFamily: 'Inter, Onest, Manrope, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      borderRadius: 10,
+      borderRadiusLG: 12,
+      borderRadiusSM: 6,
+      fontFamily: 'Manrope, Onest, Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
       fontFamilyCode: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
       fontSize: 14,
-      controlHeight: 36,
-      controlHeightSM: 28,
+      controlHeight: 38,
+      controlHeightSM: 32,
       controlHeightLG: 44,
       colorBgLayout: palette.bgPage,
       colorBgContainer: palette.bgSurface,
@@ -86,41 +98,53 @@ function buildTheme(palette: Palette, algorithm: ThemeConfig['algorithm']): Them
       colorTextSecondary: palette.textSecondary,
       colorTextTertiary: palette.textMuted,
       colorLink: palette.textLink,
-      colorError: '#E5484D',
-      colorWarning: '#F5A300',
-      colorSuccess: '#1DB866',
-      boxShadowSecondary: '0 4px 16px rgba(0, 0, 0, 0.08)',
+      colorError: palette.error,
+      colorWarning: palette.warning,
+      colorSuccess: palette.success,
+      boxShadowSecondary: palette.shadowDropdown,
       motionDurationFast: '0.12s',
       motionDurationMid: '0.15s',
       motionDurationSlow: '0.15s',
       motionEaseOut: 'ease-out',
     },
     components: {
-      Card: { borderRadiusLG: 12 },
+      Card: { borderRadiusLG: 16 },
       Modal: { borderRadiusLG: 16 },
+      // Header and side navigation sit on the page background, without lines (DESIGN.md §2.2).
       Layout: {
-        headerHeight: 56,
+        headerHeight: 64,
         headerPadding: '0 24px',
-        headerBg: palette.bgSurface,
+        headerBg: palette.bgPage,
         siderBg: palette.bgPage,
         bodyBg: palette.bgPage,
         triggerBg: palette.bgPage,
         triggerColor: palette.textSecondary,
       },
-      // Side navigation, DESIGN.md §3.6: 36px items, radius 6, 8px from the edges.
+      // Side navigation, DESIGN.md §3.6: 38px items, radius 10, 12px from the edges.
       Menu: {
         itemBg: 'transparent',
-        itemHeight: 36,
-        itemBorderRadius: 6,
-        itemMarginInline: 8,
+        itemHeight: 38,
+        itemBorderRadius: 10,
+        itemMarginInline: 12,
         itemColor: palette.textPrimary,
         itemHoverBg: palette.bgSubtle,
         itemSelectedBg: palette.bgSelected,
         itemSelectedColor: palette.accentPressed,
-        iconSize: 20,
-        collapsedIconSize: 20,
-        collapsedWidth: 56,
+        iconSize: 18,
+        collapsedIconSize: 18,
+        collapsedWidth: 64,
         activeBarBorderWidth: 0,
+      },
+      // Table, DESIGN.md §3.12: header without a fill, hairline rows, no vertical lines.
+      Table: {
+        headerBg: 'transparent',
+        headerColor: palette.textMuted,
+        headerSplitColor: 'transparent',
+        borderColor: palette.border,
+        rowHoverBg: palette.bgSubtle,
+        rowSelectedBg: palette.bgSelected,
+        rowSelectedHoverBg: palette.bgSelected,
+        cellPaddingBlock: 14,
       },
     },
   }
@@ -131,14 +155,21 @@ export const darkTheme = buildTheme(darkPalette, theme.darkAlgorithm)
 
 // Sizes that AntD and lucide take as numbers, not CSS (DESIGN.md §2.2, §3.0, §3.20, §3.21).
 export const SIZES = {
-  siderWidth: 240,
-  siderCollapsedWidth: 56,
+  siderWidth: 232,
+  siderCollapsedWidth: 64,
   iconSm: 16,
+  iconNav: 18,
   iconMd: 20,
   iconEmpty: 48,
-  iconStroke: 1.5,
+  iconStroke: 1.75,
   drawerWidth: 480,
 } as const
 
-/** Width at which the side navigation collapses and the padding shrinks (inclusive). */
+/** Width at which the side navigation collapses to icons with tooltips (DESIGN.md §9.3). */
+export const COMPACT_SCREEN = '(max-width: 1279px)'
+
+/** Width at which the side navigation leaves the page for a drawer in the header (inclusive). */
 export const NARROW_SCREEN = '(max-width: 1024px)'
+
+/** Width at which tables become card lists and the page action sticks to the bottom (inclusive). */
+export const PHONE_SCREEN = '(max-width: 768px)'

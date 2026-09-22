@@ -1,4 +1,4 @@
-"""Templates of the letters to providers in the admin panel (T-60; ТЗ п. 17, п. 20; ADR-011):
+"""Templates of the letters to providers in the admin panel (T-86; ТЗ п. 17, п. 20; ADR-011):
 list, create, change, and the template a draft is written by.
 
 Exactly one active template is the default: the draft of T-47 takes it when the editor names no

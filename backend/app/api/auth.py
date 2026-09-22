@@ -5,8 +5,14 @@ in the httpOnly cookie ``refresh_token``, sent back only to ``/api/auth``. Refre
 cookie; logout raises ``users.token_version``, and every token of the user issued before dies —
 access tokens too, since ``current_user`` compares the version on each request. Every sign-in,
 successful or not, is written to ``audit_log`` (ТЗ п. 12).
+
+«Забыли пароль?» of T-65 lives here too: ``/password-reset`` answers the same 204 for every
+address, ``/password-reset/confirm`` spends the link and sets the new password, and
+``/login-info`` tells the sign-in screen whether to show the link or the contact of the
+administrator (``app/services/password_reset.py``).
 """
 
+import dataclasses
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
@@ -14,7 +20,7 @@ from fastapi import APIRouter, Depends, Request, Response, Security, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.audit import record_login
+from app.auth.audit import record_login, record_self_change
 from app.auth.deps import AuthUser, account_blocked, current_user
 from app.core.config import get_settings
 from app.core.db import get_session
@@ -29,8 +35,18 @@ from app.core.security import (
     verify_password_async,
 )
 from app.models import Region, User
-from app.schemas.auth import AccessTokenResponse, CurrentUser, LoginRequest, UserScope
+from app.schemas.auth import (
+    AccessTokenResponse,
+    CurrentUser,
+    LoginInfo,
+    LoginRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    ProfileUpdate,
+    UserScope,
+)
 from app.schemas.errors import Problem
+from app.services import password_reset
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -39,6 +55,11 @@ REFRESH_TOKEN_TTL = timedelta(days=14)
 REFRESH_COOKIE = "refresh_token"
 # The cookie goes only to the endpoints that read it.
 REFRESH_COOKIE_PATH = "/api/auth"
+
+INVALID_RESET_TOKEN: dict[str, Any] = {
+    "model": Problem,
+    "description": "Ссылка недействительна или устарела (type invalid_reset_token)",
+}
 
 ACCOUNT_BLOCKED: dict[str, Any] = {
     "model": Problem,
@@ -199,11 +220,58 @@ async def logout(
     )
 
 
-@router.get("/me", summary="Текущий пользователь: роль, область видимости, права")
-async def get_current_user(
-    user: Annotated[AuthUser, Depends(current_user)],
+@router.post(
+    "/password-reset",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Запросить ссылку на смену пароля",
+    description=(
+        "Ответ одинаков для любого адреса: есть такая учётная запись или нет, заблокирована "
+        "она или нет, настроен SMTP или нет — 204 и пустое тело, чтобы эндпоинт не выдавал "
+        "чужие e-mail (T-65). Письмо со ссылкой уходит, только когда настроен SMTP и учётная "
+        "запись активна; срок ссылки — password_reset_ttl_minutes из настроек."
+    ),
+)
+async def request_password_reset(
+    body: PasswordResetRequest,
+    request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> CurrentUser:
+) -> None:
+    await password_reset.request_reset(session, request, body, now=datetime.now(UTC))
+
+
+@router.post(
+    "/password-reset/confirm",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Задать новый пароль по ссылке из письма",
+    description=(
+        "Ссылка действует один раз и до истечения срока; после смены пароля остальные ссылки "
+        "пользователя погашены, а его открытые сессии завершены. Недействительная, погашенная "
+        "и истёкшая ссылка отвечают одинаково."
+    ),
+    responses={400: INVALID_RESET_TOKEN},
+)
+async def confirm_password_reset(
+    body: PasswordResetConfirm,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> None:
+    await password_reset.confirm_reset(session, request, body, now=datetime.now(UTC))
+
+
+@router.get(
+    "/login-info",
+    summary="Что показать на экране входа: ссылку сброса или контакт",
+    description=(
+        "Без авторизации: настроен ли SMTP (иначе ссылка «Забыли пароль?» не показывается) и "
+        "контакт администратора из настроек — пустая строка, если контакт не заполнен (T-65)."
+    ),
+)
+async def get_login_info(session: Annotated[AsyncSession, Depends(get_session)]) -> LoginInfo:
+    return await password_reset.login_info(session)
+
+
+async def me(session: AsyncSession, user: AuthUser) -> CurrentUser:
+    """Answer of ``/me``: the user of the token with the name of his district."""
     region_name = (
         await session.scalar(select(Region.name).where(Region.id == user.region_id))
         if user.region_id is not None
@@ -221,4 +289,42 @@ async def get_current_user(
             school_id=user.school_id,
         ),
         permissions=sorted(user.permissions),
+        locale=user.locale,
     )
+
+
+@router.get("/me", summary="Текущий пользователь: роль, область видимости, права")
+async def get_current_user(
+    user: Annotated[AuthUser, Depends(current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> CurrentUser:
+    return await me(session, user)
+
+
+@router.patch(
+    "/me",
+    summary="Изменить свой профиль: язык панели",
+    description=(
+        "Пользователь меняет только свой язык интерфейса (T-66); роль, область видимости и "
+        "пароль здесь не меняются. Панель выбирает словарь подписей один раз при загрузке, "
+        "поэтому после ответа она перезагружает страницу. Смена языка пишется в журнал."
+    ),
+)
+async def update_current_user(
+    body: ProfileUpdate,
+    request: Request,
+    user: Annotated[AuthUser, Depends(current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> CurrentUser:
+    # ``current_user`` has just read the row, so this is the same object of the session.
+    row = await session.get_one(User, user.id)
+    if row.locale != body.locale:
+        record_self_change(
+            session,
+            request,
+            user=user,
+            changes={"locale": {"old": row.locale, "new": body.locale}},
+        )
+        row.locale = body.locale
+        await session.commit()
+    return await me(session, dataclasses.replace(user, locale=body.locale))

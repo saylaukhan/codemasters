@@ -1,12 +1,19 @@
-import { useNotification } from '@refinedev/core'
-import { Checkbox, DatePicker, Segmented, Select } from 'antd'
+import { useNotification, usePermissions } from '@refinedev/core'
+import { Checkbox, DatePicker, Segmented, Select, Tabs } from 'antd'
 import dayjs from 'dayjs'
 import { useMemo, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router'
 
 import type { ExportColumn, ExportFormat, ExportMode, QualityStatus } from '../../api/types'
+import { DigestList } from '../../components/exports/DigestList'
 import { ExportList } from '../../components/exports/ExportList'
 import styles from '../../components/exports/Exports.module.css'
-import { useBuildExport, useDeviceOptions, useSchoolOptions } from '../../components/exports/queries'
+import {
+  useBuildExport,
+  useDeviceOptions,
+  useExportEstimate,
+  useSchoolOptions,
+} from '../../components/exports/queries'
 import {
   AGGREGATE_COLUMNS,
   ALL_COLUMNS,
@@ -21,12 +28,16 @@ import { ErrorState } from '../../components/ui/ErrorState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, formatNumber } from '../../lib/format'
 import {
+  DIGEST_LABELS,
   EXPORT_AGGREGATE_COLUMN_LABELS,
   EXPORT_COLUMN_LABELS,
+  EXPORT_ESTIMATE_LABELS,
   EXPORT_FORMAT_LABELS,
   EXPORT_MODE_LABELS,
+  EXPORT_TAB_LABELS,
   QUALITY_STATUS_LABELS,
   SECTION_LABELS,
+  type ExportTabKey,
 } from '../../lib/labels'
 
 // The PDF report of a school is built from its card (T-32): here it is shown but not chosen.
@@ -56,6 +67,13 @@ interface Option {
   label: string
 }
 
+/** «≈ 12 480 строк» of the summary; while it is counted and after a failure — its own wording (T-64). */
+function estimatedRows(rowsCount: number | undefined, failed: boolean): string {
+  if (failed) return EXPORT_ESTIMATE_LABELS.error
+  if (rowsCount === undefined) return EXPORT_ESTIMATE_LABELS.loading
+  return `${EXPORT_ESTIMATE_LABELS.approximate} ${formatNumber(rowsCount, 0)} ${EXPORT_ESTIMATE_LABELS.rows}`
+}
+
 function Step({ number, title, children }: { number: number; title: string; children: ReactNode }) {
   return (
     <section className={styles.card}>
@@ -72,13 +90,14 @@ function Step({ number, title, children }: { number: number; title: string; chil
  * Export constructor (ТЗ п. 9, DESIGN.md §3.24): raw measurements or the aggregates per school of
  * the scope in XLSX, CSV or JSON; big exports are built in the background and wait in the list below (T-33).
  */
-export function ExportsPage() {
+function ExportBuilder() {
   const [draft, setDraft] = useState(initialDraft)
   const [school, setSchool] = useState<Option>()
   const [search, setSearch] = useState('')
   const schools = useSchoolOptions(search)
   const devices = useDeviceOptions(draft.schoolId)
   const build = useBuildExport()
+  const estimate = useExportEstimate(draft)
   const { open } = useNotification()
 
   const set = (patch: Partial<ExportDraft>) => setDraft((current) => ({ ...current, ...patch }))
@@ -122,7 +141,6 @@ export function ExportsPage() {
 
   return (
     <>
-      <PageHeader title={SECTION_LABELS.exports} subtitle="Замеры вашей области видимости в файл" />
       <div className={styles.layout}>
         <div className={styles.steps}>
           <Step number={1} title="Тип данных">
@@ -275,6 +293,10 @@ export function ExportsPage() {
             <dt>Формат</dt>
             <dd>{EXPORT_FORMAT_LABELS[draft.format]}</dd>
           </dl>
+          <p className={styles.estimate}>
+            {EXPORT_ESTIMATE_LABELS.title}
+            <strong>{estimatedRows(estimate.data?.rowsCount, estimate.isError)}</strong>
+          </p>
           {build.isError && (
             <div className={styles.error}>
               <ErrorState error={build.error} />
@@ -288,6 +310,39 @@ export function ExportsPage() {
       <div className={styles.list}>
         <ExportList />
       </div>
+    </>
+  )
+}
+
+// Рассылку сводки настраивают те же роли, что системные настройки: вкладка скрыта, а не
+// выключена, если права нет (ТЗ п. 16, ADR-008).
+const DIGEST_PERMISSION = 'settings:manage'
+
+/**
+ * «Отчёты и экспорт» (T-30, T-67): конструктор выгрузок и рассылка сводки для руководителя на
+ * одном экране. Вкладка живёт в адресе, как фильтры остальных списков (DESIGN.md §2.6).
+ */
+export function ExportsPage() {
+  const [params, setParams] = useSearchParams()
+  const { data: permissions } = usePermissions<string[]>({})
+  const digests = permissions?.includes(DIGEST_PERMISSION) ?? false
+  const tab: ExportTabKey = digests && params.get('tab') === 'digests' ? 'digests' : 'builder'
+  const tabs: ExportTabKey[] = digests ? ['builder', 'digests'] : ['builder']
+
+  return (
+    <>
+      <PageHeader
+        title={SECTION_LABELS.exports}
+        subtitle={tab === 'digests' ? DIGEST_LABELS.subtitle : 'Замеры вашей области видимости в файл'}
+      />
+      {digests && (
+        <Tabs
+          activeKey={tab}
+          items={tabs.map((key) => ({ key, label: EXPORT_TAB_LABELS[key] }))}
+          onChange={(key) => setParams({ tab: key }, { replace: true })}
+        />
+      )}
+      {tab === 'digests' ? <DigestList /> : <ExportBuilder />}
     </>
   )
 }

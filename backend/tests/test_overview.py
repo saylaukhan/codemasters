@@ -182,6 +182,66 @@ async def test_the_kpis_count_main_line_measurements_without_wifi(
     assert old["avg_download_mbps"] is None
 
 
+async def test_the_status_strip_is_counted_before_the_status_filter(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """The strip does not move when one of its own columns is clicked (T-60, §4.1).
+
+    The counters cover the schools the district, provider and connection-type filters select,
+    so their sum stays the size of the selection while ``schools_count`` narrows with the status
+    filter. A switched-off school is in neither, but stays in «350 из 366 в реестре».
+    """
+    await two_districts(session)
+    switched_off = await create_school(session, school_code="VKO-C-001")
+    switched_off.is_active = False
+    await session.flush()
+    oblast = bearer(await create_user(session, "oblast"))
+
+    summary = await get(api_client, "/api/dashboard/summary", oblast)
+    only_critical = await get(api_client, "/api/dashboard/summary", oblast, status="critical")
+
+    assert summary["status_counts"] == {
+        "normal": 1,
+        "unstable": 0,
+        "critical": 1,
+        "offline": 0,
+        "no_data": 0,
+    }
+    assert only_critical["status_counts"] == summary["status_counts"]
+    assert sum(summary["status_counts"].values()) == summary["schools_count"] == 2
+    assert only_critical["schools_count"] == 1
+    assert summary["schools_total_count"] == only_critical["schools_total_count"] == 3
+
+
+async def test_the_previous_period_answers_only_while_it_holds_data(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """A delta is shown only while there is a previous period to compare with (T-60, §4.1).
+
+    The previous period is the 24 h before the current ones, counted over the same schools, so
+    only the period-dependent numbers of ТЗ п. 4 have a previous value at all.
+    """
+    school_a, _ = await two_districts(session)
+    device = (await session.scalars(select(Device).where(Device.device_uid == "VKO-A-001"))).one()
+    line_id = await session.scalar(select(Line.id).where(Line.school_id == school_a.id))
+    assert line_id is not None
+    oblast = bearer(await create_user(session, "oblast"))
+
+    # Everything two_districts builds sits inside the last 24 h: the 24 h before them are empty.
+    empty = await get(api_client, "/api/dashboard/summary", oblast)
+    await measured(session, device, line_id, hours_ago=30, status="normal", download=40.0)
+    filled = await get(api_client, "/api/dashboard/summary", oblast)
+
+    assert empty["previous"] is None
+    assert filled["previous"]["measurements_count"] == 1
+    assert filled["previous"]["avg_download_mbps"] == 40.0
+    assert filled["previous"]["active_devices_count"] == 1
+    assert filled["previous"]["problem_devices_count"] == 0
+    # A school count has no previous value: the same schools answer both periods.
+    assert "schools_count" not in filled["previous"]
+    assert filled["measurements_count"] == empty["measurements_count"] == 5
+
+
 async def test_region_boundaries_are_geojson_for_every_role(
     session: AsyncSession, api_client: AsyncClient
 ) -> None:

@@ -1,4 +1,4 @@
-// Letter templates of the administration (T-60, ТЗ п. 17, ADR-011): the values of the form and the bodies of
+// Letter templates of the administration (T-86, ТЗ п. 17, ADR-011): the values of the form and the bodies of
 // POST and PATCH. The server fills `{{name}}` with the facts of the appeal and the model writes by the result.
 import type { AppealKind, AppealTemplateCreate, AppealTemplateDetail, AppealTemplateUpdate } from '../../api/types'
 import { changedFields, optionalText } from './form'

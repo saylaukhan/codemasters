@@ -34,7 +34,11 @@ type HeartbeatOptions struct {
 	// means the server knows which version runs here: that is what confirms a
 	// self-update (T-50).
 	OnSuccess func(at time.Time)
-	Logger    *slog.Logger
+	// OnMeasureRequest, when set, gets the moment of a measurement asked for
+	// in the admin panel (T-79). The server repeats it in every answer until
+	// the measurement reaches it, so the handler decides what is new.
+	OnMeasureRequest func(requestedAt time.Time)
+	Logger           *slog.Logger
 	// Now is the clock, time.Now when nil; tests replace it.
 	Now func() time.Time
 }
@@ -99,7 +103,7 @@ func (h *heartbeat) run(ctx context.Context) {
 // beat sends one heartbeat and records what it says about the connection.
 func (h *heartbeat) beat(ctx context.Context) {
 	at := h.opts.Now()
-	err := h.opts.Client.SendHeartbeat(ctx, at)
+	answer, err := h.opts.Client.SendHeartbeat(ctx, at)
 	if ctx.Err() != nil {
 		return
 	}
@@ -117,6 +121,9 @@ func (h *heartbeat) beat(ctx context.Context) {
 	default:
 		if h.opts.OnSuccess != nil {
 			h.opts.OnSuccess(at)
+		}
+		if answer.MeasureRequestedAt != nil && h.opts.OnMeasureRequest != nil {
+			h.opts.OnMeasureRequest(*answer.MeasureRequestedAt)
 		}
 	}
 

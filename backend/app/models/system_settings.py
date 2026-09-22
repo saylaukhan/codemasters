@@ -62,7 +62,29 @@ class SystemSettings(TimestampMixin, Base):
     enrollment_code_ttl_days: Mapped[int] = mapped_column(server_default=text("7"))
     # A resolved incident is closed after this many hours (ADR-007, T-40).
     incident_auto_close_hours: Mapped[int] = mapped_column(server_default=text("24"))
+    # Windows of «Требуют внимания» of the main screen (T-60, docs/design/README.md §4.1, §6.3):
+    # an open incident left without a responsible person for this long, and an appeal the
+    # provider has not moved for this long, ask for a person.
+    attention_incident_unassigned_hours: Mapped[int] = mapped_column(server_default=text("24"))
+    attention_appeal_no_answer_hours: Mapped[int] = mapped_column(server_default=text("48"))
     # Days an agent keeps a measurement in its SQLite queue, and the depth of history the server
     # accepts from it: the agent gets it from GET /api/agent/config, nothing is hard-coded on
     # either side (ТЗ п. 11, п. 20; ADR-004, ADR-006).
     agent_queue_retention_days: Mapped[int] = mapped_column(server_default=text("30"))
+    # Silence of an installed agent that long puts its school into «молчит» of «Внедрение»
+    # (T-69, docs/design/README.md §6.4); «на связи» is decided by ``offline_after_s``.
+    rollout_silent_days: Mapped[int] = mapped_column(server_default=text("7"))
+    # How long a «Забыли пароль?» link stays valid, and the contact the sign-in screen shows
+    # instead of the link on an installation without SMTP (T-65, docs/design/README.md §4.6).
+    password_reset_ttl_minutes: Mapped[int] = mapped_column(server_default=text("30"))
+    support_contact: Mapped[str] = mapped_column(server_default=text("''"))
+    # Score of a provider (T-68, ТЗ п. 14, docs/design/README.md §6.3): 100 minus the penalty of
+    # every part, each part weighted here, and the score below ``provider_score_pass_pct`` is
+    # «ниже нормы». The reaction norm is the answer time an incident is expected to get; a
+    # median twice as long is the whole penalty of that part.
+    provider_score_weight_below_contract: Mapped[float] = mapped_column(server_default=text("40"))
+    provider_score_weight_availability: Mapped[float] = mapped_column(server_default=text("20"))
+    provider_score_weight_reaction: Mapped[float] = mapped_column(server_default=text("25"))
+    provider_score_weight_incidents: Mapped[float] = mapped_column(server_default=text("15"))
+    provider_score_pass_pct: Mapped[float] = mapped_column(server_default=text("70"))
+    provider_score_reaction_norm_hours: Mapped[float] = mapped_column(server_default=text("4"))

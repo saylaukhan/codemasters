@@ -30,6 +30,9 @@ type Run struct {
 	// CatchUp is true when the run was moved to after a service start or a
 	// wake from sleep, instead of the planned moment inside the slot.
 	CatchUp bool
+	// Manual is true for a measurement asked for in the admin panel (T-79):
+	// it belongs to no slot and leaves the schedule of the day as it was.
+	Manual bool
 }
 
 // Options configure a Scheduler.
@@ -63,6 +66,9 @@ type Scheduler struct {
 	changed bool
 	// update tells Run that the schedule changed, so it stops waiting at once.
 	update chan struct{}
+	// manual carries a measurement asked for in the panel (T-79); one pending
+	// request is enough, so the channel holds a single value.
+	manual chan struct{}
 }
 
 // New creates a scheduler that counts the service as started now.
@@ -73,7 +79,13 @@ func New(opts Options) *Scheduler {
 	if opts.Logger == nil {
 		opts.Logger = slog.Default()
 	}
-	s := &Scheduler{opts: opts, last: opts.Last, sched: opts.Schedule, update: make(chan struct{}, 1)}
+	s := &Scheduler{
+		opts:   opts,
+		last:   opts.Last,
+		sched:  opts.Schedule,
+		update: make(chan struct{}, 1),
+		manual: make(chan struct{}, 1),
+	}
 	now := opts.Now()
 	if s.last.After(now) {
 		s.last = now // the clock went back: do not skip slots until it catches up
@@ -90,11 +102,33 @@ func (s *Scheduler) Run(ctx context.Context) {
 		case <-ctx.Done():
 			timer.Stop()
 			return
+		case <-s.manual:
+			timer.Stop()
+			s.measureNow(ctx)
 		case <-s.update:
 			timer.Stop()
 		case <-timer.C:
 		}
 	}
+}
+
+// Trigger starts one measurement outside the schedule: an administrator asked
+// for it in the panel (T-79). Safe to call from another goroutine; the
+// measurement runs in the goroutine of Run, so it never overlaps a scheduled
+// one, and it does not close a slot — the measurements of the day stay 3–5 as
+// the schedule says (ТЗ п. 2).
+func (s *Scheduler) Trigger() {
+	select {
+	case s.manual <- struct{}{}:
+	default: // a request is already waiting for Run
+	}
+}
+
+// measureNow takes the measurement Trigger asked for.
+func (s *Scheduler) measureNow(ctx context.Context) {
+	now := s.opts.Now()
+	s.opts.Logger.Info("замер по запросу из панели", "at", now)
+	s.opts.Measure(ctx, Run{At: now, Manual: true})
 }
 
 // SetSchedule replaces the schedule of the running agent: a schedule changed
