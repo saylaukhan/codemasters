@@ -49,7 +49,7 @@ HTTPS/TLS отправляет результаты в API, а тот сохра
 | БД | PostgreSQL 16 + TimescaleDB + PostGIS |
 | Панель | React 18 + TypeScript + Vite, Refine + Ant Design, TanStack Query |
 | Карта и графики | MapLibre GL JS + GeoJSON районов ВКО; Apache ECharts |
-| Экспорт и AI | openpyxl (XLSX), csv, WeasyPrint + Jinja2 (PDF); LLM через адаптер `LLMProvider` |
+| Экспорт и AI | openpyxl (XLSX), csv, WeasyPrint + Jinja2 (PDF); LLM через адаптер `LLMProvider` — Claude API, DeepSeek или Ollama |
 | Инфраструктура | Docker Compose, Caddy (TLS), GitHub Actions |
 | Эксплуатация | pgBackRest (бэкап БД), Sentry, Prometheus + Grafana |
 
