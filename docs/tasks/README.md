@@ -1316,7 +1316,7 @@ seed` отрабатывает, у `notifications` остаются `ck_notifica
 `ck_notifications_digest_target`.
 
 ### T-81 · Кнопка «Отправить сейчас» для сводки падает на политике RLS · S · v1
-**Статус:** todo
+**Статус:** done (2026-09-22)
 **Зачем:** найдено прогоном `make check-backend` после T-80 (2026-09-22). Миграция T-67 сделала
 `notifications.user_id` и `incident_id` необязательными для `kind = 'digest_sent'`, но политика
 `scope ON notifications` из T-42 осталась прежней: `USING (user_id = rls_user_id())`. Под ролью
@@ -1328,11 +1328,12 @@ test_send_now_journals_every_channel_and_stamps_the_mailing` и
 **Где:** новая ревизия в `backend/alembic/versions/`, `backend/app/services/digest_admin.py`,
 `backend/tests/test_digest.py`
 **Зависит от:** T-42, T-67
-**Сделано, когда:** решение принято лидом и записано: либо политика разрешает строку сводки
-(`kind = 'digest_sent' AND user_id IS NULL`) — читающие запросы `app/services/notifications.py`
-и так фильтруют по `user_id`, а колокольчик соединяется с `users` внутренним join, поэтому
-сводка в него не попадает; либо отправка из панели идёт отдельной сессией владельца, как в
-`app/workers/tasks/digest.py`. Оба теста зелёные, `make check-backend` зелёный целиком.
+**Сделано, когда:** выбран первый вариант — ревизия `d4f8b2e6c917` переписывает политики
+`scope` на `notifications` и `notification_log` так, что строка сводки (`kind = 'digest_sent'`
+с пустым `user_id`) своя для любой панельной сессии. Читать её некому: запросы
+`app/services/notifications.py` фильтруют по `user_id` вызывающего, а колокольчик соединяется с
+`users` внутренним join — тест на это стоит рядом с тестами отправки. Оба упавших теста зелёные,
+`make check` зелёный целиком.
 
 ## M. Доработки после демо (v1)
 

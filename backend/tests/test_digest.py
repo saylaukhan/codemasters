@@ -25,6 +25,7 @@ from app.services.digest_admin import due_digests
 from app.services.notifications import CHANNEL_OFF
 from tests.factories import bearer, create_user
 from tests.test_admin_incident_rules import ok, problem
+from tests.test_notifications import NOTIFICATIONS
 from tests.test_overview import WORKDAY, two_districts
 
 DIGESTS = "/api/admin/digests"
@@ -143,6 +144,23 @@ async def test_send_now_journals_every_channel_and_stamps_the_mailing(
     ]
     await session.refresh(mailing)
     assert mailing.last_sent_at is not None
+
+
+async def test_the_row_of_a_digest_is_written_by_the_panel_and_shown_to_nobody(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    await two_districts(session)
+    mailing = await a_mailing(session)
+    oblast = bearer(await create_user(session, "oblast"))
+
+    ok(await api_client.post(f"{DIGESTS}/{mailing.id}/send-now", headers=oblast))
+
+    # Строку сводки пишет сессия панели, а у неё роль ``vko_panel``: политика RLS пропускает
+    # уведомление без владельца (T-81), иначе «Отправить сейчас» падало бы на вставке.
+    assert list(await session.scalars(select(Notification.kind))) == ["digest_sent"]
+    # Читать её всё равно некому: в колокольчике только уведомления самого пользователя.
+    assert ok(await api_client.get(NOTIFICATIONS, headers=oblast))["items"] == []
+    assert ok(await api_client.get(f"{NOTIFICATIONS}/unread-count", headers=oblast))["unread"] == 0
 
 
 async def test_without_smtp_the_letter_is_recorded_as_not_sent(
