@@ -1029,6 +1029,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Доступен ли помощник по интерфейсу
+         * @description Панель показывает кнопку «Помощник» в шапке, только когда available=true: помощник включён (ASSISTANT_ENABLED) и модель ADR-011 настроена. Запроса к модели здесь нет.
+         */
+        get: operations["get_assistant_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Вопрос помощнику по интерфейсу
+         * @description Диалог целиком и код открытого экрана; последняя реплика — вопрос. Модель получает описание панели, профиль роли и открытый экран — и ничего из данных школ; ответ — текст с абзацами, списками и **жирным**. Ничего не сохраняется и в журнал не пишется. Помощник выключен, модель не настроена или не ответила — 503 problem+json.
+         */
+        post: operations["ask_assistant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/appeals/draft": {
         parameters: {
             query?: never;
@@ -2510,6 +2550,58 @@ export interface components {
              */
             comment?: string | null;
         };
+        /**
+         * AssistantAnswer
+         * @description Answer of the model; nothing is stored (T-84).
+         */
+        AssistantAnswer: {
+            /**
+             * Text
+             * @description Ответ помощника: абзацы, списки и **жирный**, как в черновике обращения
+             */
+            text: string;
+        };
+        /** @enum {string} */
+        AssistantAuthor: "user" | "assistant";
+        /**
+         * AssistantMessage
+         * @description One line of the dialog.
+         */
+        AssistantMessage: {
+            author: components["schemas"]["AssistantAuthor"];
+            /** Text */
+            text: string;
+        };
+        /**
+         * AssistantQuestion
+         * @description The open screen and the dialog so far; the last line is the question.
+         */
+        AssistantQuestion: {
+            /** @description Открытый экран панели: помощник отвечает с учётом него */
+            screen: components["schemas"]["AssistantScreen"];
+            /**
+             * Messages
+             * @description Диалог целиком, последняя реплика — вопрос пользователя
+             */
+            messages: components["schemas"]["AssistantMessage"][];
+        };
+        /** @enum {string} */
+        AssistantScreen: "overview" | "map" | "schools" | "school_card" | "school_cabinet" | "device_card" | "incidents" | "incident_card" | "appeals" | "appeal_draft" | "appeal_card" | "providers" | "rollout" | "analytics" | "exports" | "admin" | "other";
+        /**
+         * AssistantStatus
+         * @description Whether the panel shows the button of the assistant (T-84).
+         */
+        AssistantStatus: {
+            /**
+             * Available
+             * @description Помощник включён и модель настроена: панель показывает кнопку в шапке
+             */
+            available: boolean;
+            /** @description Почему недоступен; null — доступен */
+            reason?: components["schemas"]["AssistantUnavailableReason"] | null;
+        };
+        /** @enum {string} */
+        AssistantUnavailableReason: "disabled" | "llm_not_configured";
         /**
          * AttentionItem
          * @description One row of «Требуют внимания»: what is wrong, where, and since when (§4.1).
@@ -9646,6 +9738,86 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": unknown;
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_assistant_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantStatus"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    ask_assistant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantQuestion"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantAnswer"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Помощник выключен, модель не настроена или не ответила (type assistant_disabled, llm_not_configured, llm_unavailable) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Ошибка (RFC 9457) */
