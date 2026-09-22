@@ -165,8 +165,17 @@ export type UserUpdate = Schema<'UserUpdate'>
 // Notifications (T-42): the bell of the header and its panel; every row is about an incident.
 export type NotificationKind = Schemas['NotificationKind']
 export type NotificationListItem = Schema<'NotificationListItem'>
+export type NotificationChannel = Schemas['NotificationChannel']
+export type NotificationResult = Schemas['NotificationResult']
 
 // Audit log of the administration (T-39): sign-ins, changes, rejected agent requests; read-only.
 export type AuditLogListItem = Schema<'AuditLogListItem'>
 export type AuditAction = Schemas['AuditAction']
 export type AuditEntityType = Schemas['AuditEntityType']
+
+// Рассылки сводки для руководителя (T-67): охват, расписание, каналы и итог отправки.
+export type DigestScope = Schemas['DigestScope']
+export type DigestSettingsDetail = Schema<'DigestSettingsDetail'>
+export type DigestSettingsCreate = Schema<'DigestSettingsCreate'>
+export type DigestSettingsUpdate = Schema<'DigestSettingsUpdate'>
+export type DigestSendResult = Schema<'DigestSendResult'>

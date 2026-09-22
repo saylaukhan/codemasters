@@ -3,11 +3,13 @@
 // lines refer to the references, a profile, a schedule or a rule is switched off, a user is blocked; a PATCH changes
 // only the fields present.
 // The audit log is read-only (T-39).
-import { apiRequest, type QueryValue } from './client'
+import { apiDownload, apiRequest, type QueryValue } from './client'
 import type { components } from './generated/schema'
 import type {
   ConnectionTypeCreate,
   ConnectionTypeUpdate,
+  DigestSettingsCreate,
+  DigestSettingsUpdate,
   IncidentRuleCreate,
   IncidentRuleUpdate,
   ProviderCreate,
@@ -99,3 +101,22 @@ export const updateUser = (userId: number, body: UserUpdate) =>
 
 export const getAuditLog = (query: Record<string, QueryValue>, signal?: AbortSignal) =>
   apiRequest<Schemas['AuditLogListItemPage']>('/admin/audit-log', { query, signal })
+
+// Рассылки сводки для руководителя (T-67): раздел администрирования, право settings:manage.
+// Предпросмотр приходит тем же PDF, что уходит письмом, поэтому он скачивается как выгрузка.
+export const getDigests = (query: Record<string, QueryValue>, signal?: AbortSignal) =>
+  apiRequest<Schemas['DigestSettingsDetailPage']>('/admin/digests', { query, signal })
+
+export const createDigest = (body: DigestSettingsCreate) =>
+  apiRequest<Schemas['DigestSettingsDetail']>('/admin/digests', { method: 'POST', body })
+
+export const updateDigest = (digestId: number, body: DigestSettingsUpdate) =>
+  apiRequest<Schemas['DigestSettingsDetail']>(`/admin/digests/${digestId}`, { method: 'PATCH', body })
+
+export const deleteDigest = (digestId: number) =>
+  apiRequest<never>(`/admin/digests/${digestId}`, { method: 'DELETE' })
+
+export const sendDigestNow = (digestId: number) =>
+  apiRequest<Schemas['DigestSendResult']>(`/admin/digests/${digestId}/send-now`, { method: 'POST' })
+
+export const downloadDigestPreview = (digestId: number) => apiDownload(`/admin/digests/${digestId}/preview`)

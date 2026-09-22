@@ -11,6 +11,7 @@ from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.connection_type import ConnectionType
 from app.models.device import Device
+from app.models.digest_settings import DigestSettings
 from app.models.enrollment_code import EnrollmentCode
 from app.models.export import Export
 from app.models.heartbeat import Heartbeat
@@ -45,6 +46,7 @@ __all__ = [
     "Base",
     "ConnectionType",
     "Device",
+    "DigestSettings",
     "EnrollmentCode",
     "Export",
     "Heartbeat",

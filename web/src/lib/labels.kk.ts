@@ -5,12 +5,13 @@
 // files, the length of an array or the type of a value stop matching.
 import type {
   AnalyticsLevel,
+  AnalyticsPeriod,
   AppealDeliveryStatus,
   AttentionReason,
   AuditAction,
   AuditEntityType,
-  AnalyticsPeriod,
   DeviceStatus,
+  DigestScope,
   ExportAggregateColumn,
   ExportColumn,
   ExportFormat,
@@ -21,7 +22,9 @@ import type {
   IncidentMetric,
   IncidentStatus,
   LineStatus,
+  NotificationChannel,
   NotificationKind,
+  NotificationResult,
   QualityStatus,
   ScheduleScope,
   SchoolStatus,
@@ -932,4 +935,91 @@ export const HEADER_LABELS = {
   darkTheme: 'Қараңғы тақырып',
   logout: 'Шығу',
   profileMenu: 'Профиль мәзірі',
+} as const
+
+/** Вкладки экрана «Отчёты и экспорт» (T-67): конструктор выгрузок и рассылка сводки. */
+export const EXPORT_TAB_LABELS = {
+  builder: 'Жүктеп алулар',
+  digests: 'Жиынтықтар',
+} as const
+
+
+/** День недели рассылки: 1 — понедельник, как хранит digest_settings (ADR-014). */
+export const DIGEST_WEEKDAY_LABELS: Record<number, string> = {
+  1: 'Дүйсенбі',
+  2: 'Сейсенбі',
+  3: 'Сәрсенбі',
+  4: 'Бейсенбі',
+  5: 'Жұма',
+  6: 'Сенбі',
+  7: 'Жексенбі',
+}
+
+/** Охват выпуска сводки (T-67, §6.2 дизайна). */
+export const DIGEST_SCOPE_LABELS: Record<DigestScope, string> = {
+  oblast: 'Бүкіл облыс',
+  region: 'Аудан немесе қала',
+}
+
+/** Канал доставки сводки и что из него вышло: те же коды, что notification_log (ТЗ п. 18). */
+export const DIGEST_CHANNEL_LABELS: Record<NotificationChannel, string> = {
+  panel: 'Панель',
+  telegram: 'Telegram',
+  email: 'Пошта',
+}
+
+export const DIGEST_RESULT_LABELS: Record<NotificationResult, string> = {
+  sent: 'жіберілді',
+  failed: 'жіберілмеді',
+  skipped: 'арна бапталмаған',
+}
+
+/**
+ * Рассылка сводки для руководителя (T-67, §6.2 дизайна, DESIGN.md §3.32): список, drawer,
+ * «Отправить сейчас» с подтверждением и «Предпросмотр», который скачивает тот же PDF.
+ */
+export const DIGEST_LABELS = {
+  title: 'Басшыға арналған жиынтық',
+  subtitle: 'Аптасына бір бет: пошта және Telegram',
+  lead:
+    'Шығарылым апта бойғы панель деректері бойынша жиналады және кесте бойынша PDF қоса ' +
+    'берілген хатпен және Telegram хабарымен кетеді. Әрбір жіберілім хабарлама журналына түседі.',
+  add: 'Жаңа жіберілім',
+  addAction: 'Жіберілім қосу',
+  edit: 'Жіберілімді өзгерту',
+  emptyTitle: 'Әзірге жіберілім жоқ',
+  emptyDescription: 'Жіберілім қосыңыз: қамту, апта күні, сағат және алушылар.',
+  scope: 'Қамту',
+  region: 'Аудан немесе қала',
+  regionPlaceholder: 'Тізімнен таңдаңыз',
+  regionRequired: 'Аудан немесе қала таңдаңыз',
+  when: 'Қашан',
+  weekday: 'Апта күні',
+  hour: 'Сағат',
+  hourHint: 'Алматы уақыты; кесте жіберілім баптауында сақталады.',
+  recipients: 'Алушылар',
+  recipientsPlaceholder: 'Мекенжайды енгізіп, Enter басыңыз',
+  recipientsHint: 'Басшылардың электрондық пошта мекенжайлары.',
+  recipientsInvalid: 'name@example.kz түріндегі мекенжайды енгізіңіз',
+  channels: 'Арналар',
+  telegram: 'Telegram чаты',
+  telegramPlaceholder: 'Чат идентификаторы',
+  active: 'Жіберілім қолданыста',
+  activeHint: 'Өшірілген жіберілім кесте бойынша кетпейді, «Қазір жіберу» жұмыс істейді.',
+  lastSent: 'Соңғы жіберілім',
+  neverSent: 'Әлі кеткен жоқ',
+  sendNow: 'Қазір жіберу',
+  sendConfirmTitle: 'Жиынтықты қазір жіберу керек пе?',
+  sendConfirmText: 'PDF қоса берілген хат пен Telegram хабары алушыларға кестеден тыс кетеді.',
+  sendConfirmOk: 'Жіберу',
+  sendConfirmCancel: 'Болдырмау',
+  sent: 'Жиынтық жіберілді',
+  preview: 'Алдын ала қарау',
+  previewFailed: 'Алдын ала қарау жасалмады',
+  remove: 'Жою',
+  removeConfirmTitle: 'Жіберілімді жою керек пе?',
+  removeConfirmText: 'Бұрын кеткен шығарылымдар хабарлама журналында қалады.',
+  removed: 'Жіберілім жойылды',
+  created: 'Жіберілім қосылды',
+  changed: 'Жіберілім өзгертілді',
 } as const

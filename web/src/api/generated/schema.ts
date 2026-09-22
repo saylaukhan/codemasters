@@ -1491,6 +1491,91 @@ export interface paths {
         patch: operations["update_incident_rule"];
         trace?: never;
     };
+    "/api/admin/digests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Рассылки сводки для руководителя */
+        get: operations["list_digests"];
+        put?: never;
+        /**
+         * Создать рассылку сводки
+         * @description scope=oblast — выпуск по всей области, scope=region — по одному району, и тогда обязателен region_id. weekday (1 — понедельник) и hour — в settings.timezone (Asia/Almaty): расписание хранится в таблице, а не в коде (ТЗ п. 11, п. 20). Без адресов и без чата Telegram — 422: отправлять некуда.
+         */
+        post: operations["create_digest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/digests/{digest_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Удалить рассылку сводки
+         * @description Рассылка — настройка, а не история: удаление ничего не теряет.
+         */
+        delete: operations["delete_digest"];
+        options?: never;
+        head?: never;
+        /**
+         * Изменить или отключить рассылку сводки
+         * @description Охват рассылки не меняется: для другого района создайте новую рассылку.
+         */
+        patch: operations["update_digest"];
+        trace?: never;
+    };
+    "/api/admin/digests/{digest_id}/send-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отправить сводку сейчас
+         * @description Тот же выпуск, что уходит по расписанию, вне расписания. Каждая попытка каждого канала пишется в notification_log (ТЗ п. 18): установка без SMTP или без бота Telegram даёт skipped с причиной, а не ошибку запроса.
+         */
+        post: operations["send_digest_now"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/digests/{digest_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Предпросмотр сводки одной страницей PDF
+         * @description Страница A4 выпуска за неделю, которая заканчивается сейчас. Тот же генератор, что письмо рассылки, поэтому предпросмотр совпадает с PDF.
+         */
+        get: operations["preview_digest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/agent-releases": {
         parameters: {
             query?: never;
@@ -2725,6 +2810,130 @@ export interface components {
             /** Update Channel */
             update_channel?: components["schemas"]["AgentChannel"];
         };
+        /**
+         * DigestDelivery
+         * @description Одна попытка доставки сводки: канал, адресат и что из этого вышло (ТЗ п. 18).
+         */
+        DigestDelivery: {
+            channel: components["schemas"]["NotificationChannel"];
+            /** @description skipped — канал не настроен на сервере */
+            result: components["schemas"]["NotificationResult"];
+            /** Target */
+            target: string | null;
+            /**
+             * Error
+             * @description Причина skipped или failed; null у доставленной
+             */
+            error: string | null;
+        };
+        /** @description Час отправки в settings.timezone */
+        DigestHour: number;
+        /** @description Адреса рассылки; пустой список — сводка уходит только в Telegram */
+        DigestRecipients: string[];
+        /** @enum {string} */
+        DigestScope: "oblast" | "region";
+        /**
+         * DigestSendResult
+         * @description Итог «Отправить сейчас»: каждая попытка записана в notification_log (ТЗ п. 18).
+         */
+        DigestSendResult: {
+            /**
+             * Sent At
+             * Format: date-time
+             */
+            sent_at: string;
+            /** Deliveries */
+            deliveries: components["schemas"]["DigestDelivery"][];
+        };
+        /**
+         * DigestSettingsCreate
+         * @description Новая рассылка сводки; охват «region» требует region_id, «oblast» — запрещает.
+         */
+        DigestSettingsCreate: {
+            scope: components["schemas"]["DigestScope"];
+            /**
+             * Region Id
+             * @description Только и обязательно при scope=region
+             */
+            region_id?: number | null;
+            weekday: components["schemas"]["DigestWeekday"];
+            hour: components["schemas"]["DigestHour"];
+            /** @default [] */
+            recipients: components["schemas"]["DigestRecipients"];
+            /**
+             * Telegram Chat Id
+             * @description Чат Telegram; null — канал не используется
+             */
+            telegram_chat_id?: string | null;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+        };
+        /**
+         * DigestSettingsDetail
+         * @description Рассылка сводки с наименованием района и временем последней отправки.
+         */
+        DigestSettingsDetail: {
+            /** Id */
+            id: number;
+            scope: components["schemas"]["DigestScope"];
+            /**
+             * Region Id
+             * @description Только при scope=region
+             */
+            region_id: number | null;
+            /** Region Name */
+            region_name: string | null;
+            weekday: components["schemas"]["DigestWeekday"];
+            hour: components["schemas"]["DigestHour"];
+            recipients: components["schemas"]["DigestRecipients"];
+            /** Telegram Chat Id */
+            telegram_chat_id: string | null;
+            /**
+             * Is Active
+             * @description Отключённая рассылка не уходит по расписанию
+             */
+            is_active: boolean;
+            /**
+             * Last Sent At
+             * @description null — сводка ещё не уходила
+             */
+            last_sent_at: string | null;
+        };
+        /**
+         * DigestSettingsDetailPage
+         * @description Страница рассылок сводки.
+         */
+        DigestSettingsDetailPage: {
+            /** Items */
+            items: components["schemas"]["DigestSettingsDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * DigestSettingsUpdate
+         * @description Изменения рассылки; охват и его цель не меняются.
+         */
+        DigestSettingsUpdate: {
+            /** Weekday */
+            weekday?: components["schemas"]["DigestWeekday"];
+            /** Hour */
+            hour?: components["schemas"]["DigestHour"];
+            /** Recipients */
+            recipients?: components["schemas"]["DigestRecipients"];
+            /** Telegram Chat Id */
+            telegram_chat_id?: string | null;
+            /** Is Active */
+            is_active?: boolean;
+        };
+        /** @description 1 — понедельник, 7 — воскресенье */
+        DigestWeekday: number;
         /**
          * EnrollmentCodeCreate
          * @description Request for a one-time agent installation code for a school (plan.md §4.1).
@@ -3963,6 +4172,8 @@ export interface components {
             is_primary?: boolean;
         };
         /** @enum {string} */
+        NotificationChannel: "panel" | "telegram" | "email";
+        /** @enum {string} */
         NotificationKind: "incident_opened" | "incident_status_changed" | "incident_restored";
         /**
          * NotificationListItem
@@ -4019,6 +4230,8 @@ export interface components {
             /** Page Size */
             page_size: number;
         };
+        /** @enum {string} */
+        NotificationResult: "sent" | "failed" | "skipped";
         /**
          * NotificationUnreadCount
          * @description Counter on the bell of the header (DESIGN.md §3.5).
@@ -10135,6 +10348,289 @@ export interface operations {
                 };
             };
             /** @description Правило не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_digests: {
+        parameters: {
+            query?: {
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DigestSettingsDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_digest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DigestSettingsCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DigestSettingsDetail"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_digest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                digest_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Рассылка сводки не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_digest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                digest_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DigestSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DigestSettingsDetail"];
+                };
+            };
+            /** @description Рассылка сводки не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    send_digest_now: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                digest_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DigestSendResult"];
+                };
+            };
+            /** @description Рассылка сводки не найдена */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_digest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                digest_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Рассылка сводки не найдена */
             404: {
                 headers: {
                     [name: string]: unknown;
