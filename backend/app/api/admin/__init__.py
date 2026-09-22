@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.api.admin import (
     agent_releases,
     audit_log,
+    calendar,
     connection_types,
     digests,
     incident_rules,
@@ -31,5 +32,6 @@ for resource in (
     digests,
     agent_releases,
     audit_log,
+    calendar,
 ):
     router.include_router(resource.router)

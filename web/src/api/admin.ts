@@ -6,6 +6,8 @@
 import { apiDownload, apiRequest, type QueryValue } from './client'
 import type { components } from './generated/schema'
 import type {
+  CalendarEventCreate,
+  CalendarEventUpdate,
   ConnectionTypeCreate,
   ConnectionTypeUpdate,
   DigestSettingsCreate,
@@ -120,3 +122,19 @@ export const sendDigestNow = (digestId: number) =>
   apiRequest<Schemas['DigestSendResult']>(`/admin/digests/${digestId}/send-now`, { method: 'POST' })
 
 export const downloadDigestPreview = (digestId: number) => apiDownload(`/admin/digests/${digestId}/preview`)
+
+export const getCalendarEvents = (query: Record<string, QueryValue>, signal?: AbortSignal) =>
+  apiRequest<Schemas['CalendarEventDetailPage']>('/admin/calendar', { query, signal })
+
+export const createCalendarEvent = (body: CalendarEventCreate) =>
+  apiRequest<Schemas['CalendarEventDetail']>('/admin/calendar', { method: 'POST', body })
+
+export const updateCalendarEvent = (eventId: number, body: CalendarEventUpdate) =>
+  apiRequest<Schemas['CalendarEventDetail']>(`/admin/calendar/${eventId}`, { method: 'PATCH', body })
+
+export const deleteCalendarEvent = (eventId: number) =>
+  apiRequest<void>(`/admin/calendar/${eventId}`, { method: 'DELETE' })
+
+/** Импорт календаря из таблицы: содержимое файла CSV уходит одной строкой (T-70). */
+export const importCalendar = (text: string) =>
+  apiRequest<Schemas['CalendarImportResult']>('/admin/calendar/import', { method: 'POST', body: { text } })

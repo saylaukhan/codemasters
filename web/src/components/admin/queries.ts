@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import {
+  createCalendarEvent,
   createConnectionType,
   createIncidentRule,
   createProvider,
@@ -8,7 +9,9 @@ import {
   createSchedule,
   createThresholdProfile,
   createUser,
+  deleteCalendarEvent,
   getAuditLog,
+  getCalendarEvents,
   getConnectionTypes,
   getIncidentRules,
   getProviders,
@@ -17,6 +20,8 @@ import {
   getSettings,
   getThresholdProfiles,
   getUsers,
+  importCalendar,
+  updateCalendarEvent,
   updateConnectionType,
   updateIncidentRule,
   updateProvider,
@@ -297,3 +302,31 @@ export const useAuditLog = (query: Record<string, QueryValue>) =>
     queryFn: ({ signal }) => getAuditLog(query, signal),
     placeholderData: keepPreviousData,
   })
+
+// Календарь каникул, праздников и плановых работ (T-70): он меняет статусы, доступность и оценку
+// поставщика, поэтому правка события обновляет всё, что показывает эти числа.
+export const useCalendarEvents = (view: AdminListView) =>
+  useQuery({
+    queryKey: ['admin', 'calendar', view],
+    queryFn: ({ signal }) => getCalendarEvents(listQuery(view), signal),
+    placeholderData: keepPreviousData,
+  })
+
+export const useSaveCalendarEvent = () => useSave(createCalendarEvent, updateCalendarEvent)
+
+export const useDeleteCalendarEvent = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteCalendarEvent,
+    onSuccess: () => invalidateShown(queryClient),
+  })
+}
+
+/** Импорт календаря из таблицы: файл читается в панели и уходит текстом (T-70). */
+export const useImportCalendar = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: importCalendar,
+    onSuccess: () => invalidateShown(queryClient),
+  })
+}

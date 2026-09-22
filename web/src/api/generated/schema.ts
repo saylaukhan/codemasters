@@ -1754,6 +1754,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * События календаря: каникулы, праздники, плановые работы
+         * @description Ближайшие сверху. В каникулы и праздники доступность не считается и инциденты не создаются, окно плановых работ не входит в оценку поставщика (ТЗ п. 14).
+         */
+        get: operations["list_calendar_events"];
+        put?: never;
+        /**
+         * Добавить событие календаря
+         * @description scope=oblast — вся область, scope=district — район (обязателен region_id), scope=school — школа (обязателен school_id). provider_id указывается только при kind=planned_works. Границы каникул и праздника — целые местные сутки.
+         */
+        post: operations["create_calendar_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/calendar/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Удалить событие календаря
+         * @description Событие — настройка, а не история: удаление ничего не теряет.
+         */
+        delete: operations["delete_calendar_event"];
+        options?: never;
+        head?: never;
+        /**
+         * Изменить событие календаря
+         * @description Тип и цель события не меняются: для другой цели заведите новое событие.
+         */
+        patch: operations["update_calendar_event"];
+        trace?: never;
+    };
+    "/api/admin/calendar/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Импорт календаря из таблицы
+         * @description Содержимое файла CSV с заголовком kind,title,start,end и необязательными school_code, region_code и comment. Дата YYYY-MM-DD — целые местные сутки, последний день входит целиком. Строка с ошибкой не останавливает импорт: она возвращается в errors.
+         */
+        post: operations["import_calendar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2567,6 +2635,163 @@ export interface components {
             /** Page Size */
             page_size: number;
         };
+        /** @description Комментарий, например приказ */
+        CalendarComment: string | null;
+        /**
+         * CalendarEventCreate
+         * @description Новое событие календаря; поставщик указывается только у плановых работ.
+         */
+        CalendarEventCreate: {
+            /**
+             * Starts At
+             * Format: date-time
+             * @description Начало периода, со смещением часового пояса
+             */
+            starts_at: string;
+            /**
+             * Ends At
+             * Format: date-time
+             * @description Конец периода, не включается
+             */
+            ends_at: string;
+            kind: components["schemas"]["CalendarKind"];
+            scope: components["schemas"]["CalendarScope"];
+            /**
+             * Region Id
+             * @description Только и обязательно при scope=district
+             */
+            region_id?: number | null;
+            /**
+             * School Id
+             * @description Только и обязательно при scope=school
+             */
+            school_id?: number | null;
+            /**
+             * Provider Id
+             * @description Только при kind=planned_works: окно линий этого поставщика
+             */
+            provider_id?: number | null;
+            title: components["schemas"]["CalendarTitle"];
+            comment?: components["schemas"]["CalendarComment"];
+        };
+        /**
+         * CalendarEventDetail
+         * @description Событие календаря с наименованиями его цели.
+         */
+        CalendarEventDetail: {
+            /**
+             * Starts At
+             * Format: date-time
+             * @description Начало периода, со смещением часового пояса
+             */
+            starts_at: string;
+            /**
+             * Ends At
+             * Format: date-time
+             * @description Конец периода, не включается
+             */
+            ends_at: string;
+            /** Id */
+            id: number;
+            kind: components["schemas"]["CalendarKind"];
+            scope: components["schemas"]["CalendarScope"];
+            /**
+             * Region Id
+             * @description Только при scope=district
+             */
+            region_id: number | null;
+            /** Region Name */
+            region_name: string | null;
+            /**
+             * School Id
+             * @description Только при scope=school
+             */
+            school_id: number | null;
+            /** School Name */
+            school_name: string | null;
+            /**
+             * Provider Id
+             * @description Только при kind=planned_works
+             */
+            provider_id: number | null;
+            /** Provider Name */
+            provider_name: string | null;
+            /** Title */
+            title: string;
+            /** Comment */
+            comment: string | null;
+        };
+        /**
+         * CalendarEventDetailPage
+         * @description Страница событий календаря.
+         */
+        CalendarEventDetailPage: {
+            /** Items */
+            items: components["schemas"]["CalendarEventDetail"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /**
+         * CalendarEventUpdate
+         * @description Изменения события: период, название и комментарий; тип и цель не меняются.
+         */
+        CalendarEventUpdate: {
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at?: string;
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at?: string;
+            /** Title */
+            title?: components["schemas"]["CalendarTitle"];
+            /** Comment */
+            comment?: string | null;
+        };
+        /**
+         * CalendarImportRequest
+         * @description Импорт календаря из таблицы: содержимое файла CSV одной строкой (T-70).
+         *
+         *     Колонки: ``kind``, ``title``, ``start``, ``end`` обязательны, ``school_code``,
+         *     ``region_code`` и ``comment`` — нет. Дата ``YYYY-MM-DD`` — целые местные сутки
+         *     ``settings.timezone``, ``YYYY-MM-DDTHH:MM`` — момент этих суток.
+         */
+        CalendarImportRequest: {
+            /**
+             * Text
+             * @description Содержимое файла CSV с заголовком kind,title,start,end
+             */
+            text: string;
+        };
+        /**
+         * CalendarImportResult
+         * @description Итог импорта: сколько событий заведено и что не удалось прочитать.
+         */
+        CalendarImportResult: {
+            /**
+             * Created
+             * @description Сколько событий добавлено
+             */
+            created: number;
+            /**
+             * Errors
+             * @description Строки файла, которые не удалось прочитать
+             */
+            errors: string[];
+        };
+        /** @enum {string} */
+        CalendarKind: "vacation" | "holiday" | "planned_works";
+        /** @enum {string} */
+        CalendarScope: "oblast" | "district" | "school";
+        /** @description Название события в календаре */
+        CalendarTitle: string;
         /** @enum {string} */
         ConnectionStatus: "online" | "offline";
         /**
@@ -2826,6 +3051,8 @@ export interface components {
             update_channel: components["schemas"]["AgentChannel"];
             /** @description По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data */
             current_status: components["schemas"]["SchoolStatus"];
+            /** @description Почему нет данных: событие календаря школы на этот момент; null — обычный */
+            quiet_reason?: components["schemas"]["CalendarKind"] | null;
             latest_measurement: components["schemas"]["LatestMeasurement"] | null;
             /** Os */
             os: string | null;
@@ -2904,6 +3131,8 @@ export interface components {
             update_channel: components["schemas"]["AgentChannel"];
             /** @description По правилу T-16: heartbeat в рабочие часы и последний замер; вне рабочих часов — no_data */
             current_status: components["schemas"]["SchoolStatus"];
+            /** @description Почему нет данных: событие календаря школы на этот момент; null — обычный */
+            quiet_reason?: components["schemas"]["CalendarKind"] | null;
             latest_measurement: components["schemas"]["LatestMeasurement"] | null;
         };
         /**
@@ -11818,6 +12047,238 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLogListItemPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_calendar_events: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["CalendarKind"] | null;
+                /** @description Конец события позже этого */
+                period_from?: string | null;
+                /** @description Начало события не позже этого */
+                period_to?: string | null;
+                /** @description Номер страницы, с 1 */
+                page?: number;
+                /** @description Размер страницы */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventDetailPage"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_calendar_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventDetail"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_calendar_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Событие календаря не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_calendar_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarEventUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventDetail"];
+                };
+            };
+            /** @description Событие календаря не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    import_calendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarImportResult"];
                 };
             };
             /** @description Ошибка валидации запроса */

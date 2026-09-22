@@ -16,6 +16,10 @@ is open for the detection, a new violation only moves ``last_violation_at``; M n
 in a row after the last violation set ``restored_at`` to the first of them. Status is changed
 by people only (T-41): the detection never moves it. A run never reaches back past the moment an
 earlier incident of the same line and rule was restored.
+
+Readings taken inside a quiet interval of the calendar — the vacations and the holidays of the
+school, a planned-works window of the provider of the line — are dropped before any of this, so
+such a reading opens no incident and extends no open one (T-70, docs/design/README.md §6.5).
 """
 
 from collections.abc import Sequence
@@ -41,6 +45,7 @@ from app.models import (
     SystemSettings,
 )
 from app.models.incident import OPEN_FOR_DETECTION
+from app.services.calendar import covers, line_windows, quiet_periods
 from app.services.settings import system_settings
 from app.services.status import WIFI
 from app.services.working_hours import is_working_time, school_hours, working_windows
@@ -279,9 +284,23 @@ async def detect_line(session: AsyncSession, line_id: int, *, now: datetime) -> 
 
     settings = await system_settings(session)
     readings = await line_readings(session, line_id, now)
+    # The calendar over the history that was read: a vacation of the school, a holiday of the
+    # oblast, a works window of this provider (T-70).
+    quiet = line_windows(
+        (
+            await quiet_periods(
+                session,
+                [line.school_id],
+                start=readings[-1].measured_at if readings else now,
+                end=now,
+            )
+        )[line.school_id],
+        line.provider_id,
+    )
+    readings = [item for item in readings if not covers(quiet, item.measured_at)]
     silence = (
         await silent_since(session, line, settings, now)
-        if any(rule.metric == NO_CONNECTION for rule in rules)
+        if any(rule.metric == NO_CONNECTION for rule in rules) and not covers(quiet, now)
         else None
     )
     open_incidents = {
