@@ -25,6 +25,7 @@ from app.models.monitoring_point import MonitoringPoint
 from app.models.notification import Notification
 from app.models.notification_log import NotificationLog
 from app.models.outage import Outage
+from app.models.password_reset_token import PasswordResetToken
 from app.models.provider import Provider
 from app.models.region import Region
 from app.models.role import Role
@@ -58,6 +59,7 @@ __all__ = [
     "Notification",
     "NotificationLog",
     "Outage",
+    "PasswordResetToken",
     "Provider",
     "Region",
     "Role",
