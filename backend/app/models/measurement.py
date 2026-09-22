@@ -11,7 +11,7 @@ from datetime import datetime
 from ipaddress import IPv4Address, IPv6Address
 from typing import Any
 
-from sqlalchemy import CheckConstraint, ForeignKey, Identity, Index, func
+from sqlalchemy import CheckConstraint, ForeignKey, Identity, Index, func, text
 from sqlalchemy.dialects.postgresql import INET
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,6 +32,7 @@ class Measurement(Base):
             "quality_status IN ('normal', 'unstable', 'critical', 'offline')",
             name="quality_status",
         ),
+        CheckConstraint("source IN ('schedule', 'manual')", name="source"),
     )
 
     id: Mapped[int] = mapped_column(Identity(), primary_key=True)
@@ -48,6 +49,9 @@ class Measurement(Base):
     jitter_ms: Mapped[float | None]
     packet_loss_pct: Mapped[float | None]
     connection_status: Mapped[str]
+    # By the schedule of the agent or by «Замерить сейчас» in the panel (T-79, ADR-016); both
+    # are measurements of the same line, the history says which is which.
+    source: Mapped[str] = mapped_column(server_default=text("'schedule'"))
     duration_s: Mapped[float | None]
     external_ip: Mapped[IPv4Address | IPv6Address | None] = mapped_column(INET)
     server: Mapped[str | None]
