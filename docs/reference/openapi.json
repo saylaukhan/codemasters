@@ -143,7 +143,7 @@
           "agent"
         ],
         "summary": "Сигнал «агент жив»",
-        "description": "Record that the agent is alive and remember the version it runs (ТЗ п. 3, ADR-014).\n\nThe moment is the clock of the database, not ``sent_at`` of the computer: the status of a\nschool and its availability are counted against one clock, and a machine whose time is off\nmust not look silent or alive by mistake. ``sent_at`` stays in the contract as what the\nagent believes the time is.",
+        "description": "Ответ несёт `measure_requested_at`, если администратор запросил замер (T-79): агент делает один внеплановый замер, запоминает момент запроса и по нему же отличает повтор того же запроса от нового. Запрос старше часа не выдаётся.",
         "operationId": "send_heartbeat",
         "requestBody": {
           "content": {
@@ -156,8 +156,15 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "Successful Response"
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeartbeatResponse"
+                }
+              }
+            }
           },
           "401": {
             "description": "Токен устройства отсутствует или недействителен",
@@ -3927,6 +3934,74 @@
         "summary": "Запросить замену токена устройства",
         "description": "Токен здесь не выдаётся: агент видит token_rotation_required в GET /api/agent/config, вызывает POST /api/agent/token текущим токеном и получает новый; старый сразу перестаёт работать. Пока агент не забрал токен, token_rotation_requested_at заполнен. Агент, потерявший ответ, регистрируется заново новым кодом установки своей школы.",
         "operationId": "request_token_rotation",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{device_id}/measure": {
+      "post": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Запросить внеплановый замер",
+        "description": "Замер здесь не выполняется: агент видит measure_requested_at в ответе на POST /api/devices/heartbeat, делает один замер и присылает его как обычно, не дожидаясь слота. Расписание устройства не меняется (ТЗ п. 2). Пока замер не пришёл, measure_requested_at заполнен; запрос старше часа агенту не выдаётся, и повторное нажатие тогда создаёт новый.",
+        "operationId": "request_measurement",
         "security": [
           {
             "BearerAuth": []
@@ -12527,6 +12602,19 @@
             ],
             "title": "Token Rotation Requested At",
             "description": "Запрошена замена токена; пусто — агент уже получил новый или замены не было"
+          },
+          "measure_requested_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measure Requested At",
+            "description": "Запрошен внеплановый замер и запрос ещё ждёт агента; пусто — замер уже пришёл, запроса не было или он старше часа"
           }
         },
         "type": "object",
@@ -12550,7 +12638,8 @@
           "school_code",
           "school_name",
           "registered_at",
-          "token_rotation_requested_at"
+          "token_rotation_requested_at",
+          "measure_requested_at"
         ],
         "title": "DeviceDetail",
         "description": "Device card (ТЗ п. 4): the list row plus the school, the OS and the registration time."
@@ -13723,6 +13812,26 @@
         ],
         "title": "HeartbeatRequest",
         "description": "Liveness signal of the agent, every 5 minutes by default (plan.md §4.2)."
+      },
+      "HeartbeatResponse": {
+        "properties": {
+          "measure_requested_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measure Requested At",
+            "description": "Администратор запросил замер: агент делает один внеплановый замер и запоминает этот момент, чтобы не повторить запрос после перезапуска службы. Пусто — запроса нет или он старше часа"
+          }
+        },
+        "type": "object",
+        "title": "HeartbeatResponse",
+        "description": "Answer of a heartbeat: what the server asks of the agent besides its schedule (T-79)."
       },
       "IfaceType": {
         "type": "string",

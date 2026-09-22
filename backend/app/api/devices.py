@@ -177,3 +177,24 @@ async def request_token_rotation(
     changes = await device_admin.request_token_rotation(session, device_id)
     describe_action(request, changes=changes or None)
     return await device_detail(session, device_id, now=datetime.now(UTC))
+
+
+@router.post(
+    "/{device_id}/measure",
+    dependencies=[Depends(require("devices:manage"))],
+    summary="Запросить внеплановый замер",
+    description=(
+        "Замер здесь не выполняется: агент видит measure_requested_at в ответе на POST "
+        "/api/devices/heartbeat, делает один замер и присылает его как обычно, не дожидаясь "
+        "слота. Расписание устройства не меняется (ТЗ п. 2). Пока замер не пришёл, "
+        "measure_requested_at заполнен; запрос старше часа агенту не выдаётся, и повторное "
+        "нажатие тогда создаёт новый."
+    ),
+    responses={404: DEVICE_NOT_FOUND},
+)
+async def request_measurement(
+    device_id: int, request: Request, session: Annotated[AsyncSession, Depends(get_session)]
+) -> DeviceDetail:
+    changes = await device_admin.request_measurement(session, device_id)
+    describe_action(request, changes=changes or None)
+    return await device_detail(session, device_id, now=datetime.now(UTC))
