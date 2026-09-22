@@ -1,4 +1,5 @@
-// Panel authentication (plan.md §10, ADR-009): /api/auth/login, /refresh, /logout, /me.
+// Panel authentication (plan.md §10, ADR-009): /api/auth/login, /refresh, /logout, /me and the
+// password reset of the sign-in screen (T-65): /login-info, /password-reset, /password-reset/confirm.
 import { apiRequest, refreshAccessToken, setAccessToken } from './client'
 import type { components } from './generated/schema'
 import type { CurrentUser } from './types'
@@ -37,3 +38,19 @@ export function getCurrentUser(): Promise<CurrentUser> {
   })
   return currentUser
 }
+
+/** What the sign-in screen shows: the «Забыли пароль?» link, or the contact of the administrator. */
+export const getLoginInfo = (signal?: AbortSignal) =>
+  apiRequest<Schemas['LoginInfo']>('/auth/login-info', { auth: false, signal })
+
+/** Ask for a reset link; the answer is the same for every address, so it tells nothing (T-65). */
+export const requestPasswordReset = (email: string) =>
+  apiRequest<null>('/auth/password-reset', { method: 'POST', body: { email }, auth: false })
+
+/** Set the new password by the token of the link from the letter. */
+export const confirmPasswordReset = (token: string, password: string) =>
+  apiRequest<null>('/auth/password-reset/confirm', {
+    method: 'POST',
+    body: { token, password },
+    auth: false,
+  })

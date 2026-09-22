@@ -14,6 +14,9 @@ from pydantic.json_schema import SkipJsonSchema
 from app.schemas.agent import SpeedtestServers
 from app.schemas.schools import WorkingHours
 
+# Contact of the administrator on the sign-in screen: an e-mail and a telephone fit (T-65).
+SUPPORT_CONTACT_MAX_LENGTH = 255
+
 
 class SettingsDetail(BaseModel):
     """System-wide values used by the agent configuration, statuses, reports and exports."""
@@ -82,6 +85,17 @@ class SettingsDetail(BaseModel):
         description="Обращение «Передан поставщику» без движения дольше стольких часов "
         "считается оставшимся без ответа (T-60)",
     )
+    password_reset_ttl_minutes: int = Field(
+        ge=1,
+        examples=[30],
+        description="Срок действия ссылки «Забыли пароль?» в минутах (T-65)",
+    )
+    support_contact: str = Field(
+        max_length=SUPPORT_CONTACT_MAX_LENGTH,
+        examples=["admin@edu.vko.kz, +7 7232 00-00-00"],
+        description="Контакт администратора на экране входа, когда SMTP не настроен; "
+        "пусто — контакт не показывается (T-65)",
+    )
 
 
 class SettingsUpdate(BaseModel):
@@ -105,6 +119,10 @@ class SettingsUpdate(BaseModel):
     agent_queue_retention_days: Annotated[int, Field(ge=1, le=365)] | SkipJsonSchema[None] = None
     attention_incident_unassigned_hours: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
     attention_appeal_no_answer_hours: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    password_reset_ttl_minutes: Annotated[int, Field(ge=1)] | SkipJsonSchema[None] = None
+    support_contact: (
+        Annotated[str, Field(max_length=SUPPORT_CONTACT_MAX_LENGTH)] | SkipJsonSchema[None]
+    ) = None
 
     @field_validator(
         "speedtest",
@@ -123,6 +141,8 @@ class SettingsUpdate(BaseModel):
         "agent_queue_retention_days",
         "attention_incident_unassigned_hours",
         "attention_appeal_no_answer_hours",
+        "password_reset_ttl_minutes",
+        "support_contact",
         mode="before",
     )
     @classmethod

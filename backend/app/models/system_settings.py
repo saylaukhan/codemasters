@@ -71,3 +71,7 @@ class SystemSettings(TimestampMixin, Base):
     # accepts from it: the agent gets it from GET /api/agent/config, nothing is hard-coded on
     # either side (ТЗ п. 11, п. 20; ADR-004, ADR-006).
     agent_queue_retention_days: Mapped[int] = mapped_column(server_default=text("30"))
+    # How long a «Забыли пароль?» link stays valid, and the contact the sign-in screen shows
+    # instead of the link on an installation without SMTP (T-65, docs/design/README.md §4.6).
+    password_reset_ttl_minutes: Mapped[int] = mapped_column(server_default=text("30"))
+    support_contact: Mapped[str] = mapped_column(server_default=text("''"))

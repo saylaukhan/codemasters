@@ -1055,6 +1055,138 @@
         ]
       }
     },
+    "/api/auth/password-reset": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Запросить ссылку на смену пароля",
+        "description": "Ответ одинаков для любого адреса: есть такая учётная запись или нет, заблокирована она или нет, настроен SMTP или нет — 204 и пустое тело, чтобы эндпоинт не выдавал чужие e-mail (T-65). Письмо со ссылкой уходит, только когда настроен SMTP и учётная запись активна; срок ссылки — password_reset_ttl_minutes из настроек.",
+        "operationId": "request_password_reset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password-reset/confirm": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Задать новый пароль по ссылке из письма",
+        "description": "Ссылка действует один раз и до истечения срока; после смены пароля остальные ссылки пользователя погашены, а его открытые сессии завершены. Недействительная, погашенная и истёкшая ссылка отвечают одинаково.",
+        "operationId": "confirm_password_reset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetConfirm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Ссылка недействительна или устарела (type invalid_reset_token)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login-info": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Что показать на экране входа: ссылку сброса или контакт",
+        "description": "Без авторизации: настроен ли SMTP (иначе ссылка «Забыли пароль?» не показывается) и контакт администратора из настроек — пустая строка, если контакт не заполнен (T-65).",
+        "operationId": "get_login_info",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginInfo"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/me": {
       "get": {
         "tags": [
@@ -12978,6 +13110,30 @@
         "title": "LineUpdate",
         "description": "Changes of a line; ``status = disabled`` switches it off and keeps its measurements."
       },
+      "LoginInfo": {
+        "properties": {
+          "password_reset_available": {
+            "type": "boolean",
+            "title": "Password Reset Available",
+            "description": "SMTP настроен — на входе показывается ссылка «Забыли пароль?»"
+          },
+          "support_contact": {
+            "type": "string",
+            "title": "Support Contact",
+            "description": "Контакт администратора, когда сброс недоступен; пусто — не показывать",
+            "examples": [
+              "admin@edu.vko.kz, +7 7232 00-00-00"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "password_reset_available",
+          "support_contact"
+        ],
+        "title": "LoginInfo",
+        "description": "What the sign-in screen needs before a sign-in: the reset link or the contact (T-65)."
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -13904,6 +14060,53 @@
         ],
         "title": "OutageCreate",
         "description": "Period without connection recorded by the agent (T-12).\n\nIdempotency key is the device (from the token) plus ``started_at``: a resent outage gets\n409 ``duplicate_outage``, which, like 201, means \"delete from the queue\" (ADR-006)."
+      },
+      "PasswordResetConfirm": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Token",
+            "description": "Токен из ссылки письма (параметр token)"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "format": "password",
+            "title": "Password",
+            "description": "Новый пароль; хранится только хэшем",
+            "writeOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "password"
+        ],
+        "title": "PasswordResetConfirm",
+        "description": "New password by the link from the letter; the password never shows up in logs."
+      },
+      "PasswordResetRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 1,
+            "title": "Email",
+            "description": "E-mail учётной записи; ответ не зависит от того, есть ли такая",
+            "examples": [
+              "admin@example.kz"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "PasswordResetRequest",
+        "description": "Request of a reset link; the answer is the same for every address (T-65)."
       },
       "Problem": {
         "properties": {
@@ -15808,6 +16011,24 @@
             "examples": [
               48
             ]
+          },
+          "password_reset_ttl_minutes": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Password Reset Ttl Minutes",
+            "description": "Срок действия ссылки «Забыли пароль?» в минутах (T-65)",
+            "examples": [
+              30
+            ]
+          },
+          "support_contact": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Support Contact",
+            "description": "Контакт администратора на экране входа, когда SMTP не настроен; пусто — контакт не показывается (T-65)",
+            "examples": [
+              "admin@edu.vko.kz, +7 7232 00-00-00"
+            ]
           }
         },
         "type": "object",
@@ -15827,7 +16048,9 @@
           "incident_auto_close_hours",
           "agent_queue_retention_days",
           "attention_incident_unassigned_hours",
-          "attention_appeal_no_answer_hours"
+          "attention_appeal_no_answer_hours",
+          "password_reset_ttl_minutes",
+          "support_contact"
         ],
         "title": "SettingsDetail",
         "description": "System-wide values used by the agent configuration, statuses, reports and exports."
@@ -15914,6 +16137,16 @@
             "type": "integer",
             "minimum": 1.0,
             "title": "Attention Appeal No Answer Hours"
+          },
+          "password_reset_ttl_minutes": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Password Reset Ttl Minutes"
+          },
+          "support_contact": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Support Contact"
           }
         },
         "type": "object",

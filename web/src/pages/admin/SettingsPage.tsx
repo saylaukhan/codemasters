@@ -36,6 +36,8 @@ const FIELDS = [
   'incidentAutoCloseHours',
   'attentionIncidentUnassignedHours',
   'attentionAppealNoAnswerHours',
+  'passwordResetTtlMinutes',
+  'supportContact',
 ]
 
 const valuesOf = ({ speedtest, defaultWorkingHours, ...rest }: SettingsDetail): SettingsValues => ({
@@ -174,6 +176,22 @@ function SettingsForm({ settings }: { settings: SettingsDetail }) {
               label="Обращение без ответа, ч"
               extra="Через столько часов обращение «Передан поставщику» считается оставшимся без ответа."
             />
+          </section>
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Вход в панель</h3>
+            <NumberField
+              name="passwordResetTtlMinutes"
+              label="Срок ссылки на смену пароля, мин"
+              extra="Сколько минут действует ссылка из письма «Забыли пароль?»."
+            />
+            <Form.Item
+              label="Контакт администратора"
+              name="supportContact"
+              extra="Показывается на входе вместо ссылки, когда SMTP не настроен. Пусто — не показывать."
+              rules={[maxLength(255)]}
+            >
+              <Input autoComplete="off" />
+            </Form.Item>
           </section>
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>Агент и выгрузки</h3>
