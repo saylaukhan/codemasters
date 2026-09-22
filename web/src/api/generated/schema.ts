@@ -348,7 +348,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Изменить свой профиль: язык панели
+         * @description Пользователь меняет только свой язык интерфейса (T-66); роль, область видимости и пароль здесь не меняются. Панель выбирает словарь подписей один раз при загрузке, поэтому после ответа она перезагружает страницу. Смена языка пишется в журнал.
+         */
+        patch: operations["update_current_user"];
         trace?: never;
     };
     "/api/dashboard/summary": {
@@ -2420,6 +2424,8 @@ export interface components {
              *     ]
              */
             permissions: string[];
+            /** @description Язык панели пользователя (T-66); меняется PATCH /auth/me */
+            locale: components["schemas"]["Locale"];
         };
         /**
          * DashboardPeriodKpis
@@ -3627,6 +3633,8 @@ export interface components {
             /** Ip Ranges */
             ip_ranges?: string[];
         };
+        /** @enum {string} */
+        Locale: "ru" | "kk";
         /**
          * LoginInfo
          * @description What the sign-in screen needs before a sign-in: the reset link or the contact (T-65).
@@ -4107,6 +4115,14 @@ export interface components {
              * @description Путь запроса
              */
             instance?: string | null;
+        };
+        /**
+         * ProfileUpdate
+         * @description What a user changes in his own account (T-66): so far only the language of the panel.
+         */
+        ProfileUpdate: {
+            /** @description Язык панели: ru или kk (DESIGN.md §5.1) */
+            locale: components["schemas"]["Locale"];
         };
         /**
          * ProviderCreate
@@ -6351,6 +6367,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurrentUser"];
+                };
+            };
+            /** @description Ошибка (RFC 9457) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_current_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentUser"];
+                };
+            };
+            /** @description Ошибка валидации запроса */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblem"];
                 };
             };
             /** @description Ошибка (RFC 9457) */

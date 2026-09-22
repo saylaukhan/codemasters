@@ -39,5 +39,8 @@ type IncidentMetric = Literal[
 # Day of the week in Asia/Almaty: working hours of a school, analytics heatmap (ADR-014).
 type Weekday = Literal["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
+# Language of the panel: Russian and Kazakh (DESIGN.md §5.1, T-66).
+type Locale = Literal["ru", "kk"]
+
 # Five roles of ТЗ п. 16 (ADR-008): Школа, Район/город, Область, Провайдер, Администратор.
 type UserRole = Literal["school", "district", "oblast", "provider", "admin"]

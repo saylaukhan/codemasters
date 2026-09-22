@@ -39,6 +39,15 @@ export function getCurrentUser(): Promise<CurrentUser> {
   return currentUser
 }
 
+/**
+ * Remember the language of the panel in the profile (T-66): the browser of this person keeps
+ * the same choice, so the account opens in that language on another computer too.
+ */
+export async function updateProfileLocale(locale: Schemas['Locale']): Promise<void> {
+  await apiRequest<Schemas['CurrentUser']>('/auth/me', { method: 'PATCH', body: { locale } })
+  currentUser = null
+}
+
 /** What the sign-in screen shows: the «Забыли пароль?» link, or the contact of the administrator. */
 export const getLoginInfo = (signal?: AbortSignal) =>
   apiRequest<Schemas['LoginInfo']>('/auth/login-info', { auth: false, signal })

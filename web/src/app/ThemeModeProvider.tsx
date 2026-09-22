@@ -1,14 +1,21 @@
 import { App as AntdApp, ConfigProvider } from 'antd'
+import kkKZ from 'antd/locale/kk_KZ'
 import ruRU from 'antd/locale/ru_RU'
 import dayjs from 'dayjs'
+import 'dayjs/locale/kk'
 import 'dayjs/locale/ru'
 import { useCallback, useLayoutEffect, useMemo, useState, type PropsWithChildren } from 'react'
 
+import { activeLocale } from '../lib/locale'
 import { PHONE_SCREEN, darkTheme, lightTheme } from '../styles/theme'
 import { ThemeModeContext, initialThemeMode, rememberThemeMode, type ThemeMode } from './themeMode'
 import { useMediaQuery } from './useMediaQuery'
 
-dayjs.locale('ru')
+// The language is decided once per page load (lib/locale.ts): the calendars and the built-in
+// captions of AntD follow it together with the dictionaries of labels.ts (T-66).
+const KAZAKH = activeLocale() === 'kk'
+
+dayjs.locale(KAZAKH ? 'kk' : 'ru')
 
 /** AntD theme and `data-theme` on <html> switch together, so tokens.css follows the same mode. */
 export function ThemeModeProvider({ children }: PropsWithChildren) {
@@ -36,7 +43,7 @@ export function ThemeModeProvider({ children }: PropsWithChildren) {
     <ThemeModeContext.Provider value={value}>
       <ConfigProvider
         theme={mode === 'dark' ? darkTheme : lightTheme}
-        locale={ruRU}
+        locale={KAZAKH ? kkKZ : ruRU}
         componentSize={phone ? 'large' : 'middle'}
       >
         <AntdApp>{children}</AntdApp>

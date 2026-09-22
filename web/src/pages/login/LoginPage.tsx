@@ -7,8 +7,9 @@ import { useState } from 'react'
 import { getLoginInfo } from '../../api/auth'
 import { ApiError } from '../../api/client'
 import { Button } from '../../components/ui/Button'
+import { LocaleSwitch } from '../../components/ui/LocaleSwitch'
 import { APP_NAME } from '../../lib/app-info'
-import { PASSWORD_RESET_LABELS } from '../../lib/labels'
+import { PASSWORD_RESET_LABELS, SIGN_IN_LABELS } from '../../lib/labels'
 import { SIZES } from '../../styles/theme'
 import styles from './LoginPage.module.css'
 import { PasswordResetModal } from './PasswordResetModal'
@@ -19,9 +20,13 @@ interface LoginValues {
 }
 
 const messageOf = (error: unknown): string =>
-  error instanceof ApiError ? (error.detail ?? error.title) : 'Не удалось войти, попробуйте ещё раз'
+  error instanceof ApiError ? (error.detail ?? error.title) : SIGN_IN_LABELS.failed
 
-/** Sign-in by e-mail and password (DESIGN.md §3.26); the error stays inline above the button. */
+/**
+ * Sign-in by e-mail and password (DESIGN.md §3.26); the error stays inline above the button.
+ * The language switch stands in the corner above the card: the screen is picked before anyone
+ * is signed in, so the choice lives in the browser until a profile can keep it (T-66).
+ */
 export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [resetOpen, setResetOpen] = useState(false)
@@ -54,21 +59,24 @@ export function LoginPage() {
 
   return (
     <main className={styles.page}>
+      <div className={styles.locale}>
+        <LocaleSwitch />
+      </div>
       <Card className={styles.card}>
         <div className={styles.brand}>
           <Wifi size={SIZES.iconMd} strokeWidth={SIZES.iconStroke} aria-hidden />
           {APP_NAME}
         </div>
-        <h1 className={styles.title}>Вход в систему</h1>
+        <h1 className={styles.title}>{SIGN_IN_LABELS.title}</h1>
         <Form<LoginValues> layout="vertical" size="large" requiredMark={false} onFinish={onFinish}>
           <Form.Item
-            label="E-mail"
+            label={SIGN_IN_LABELS.email}
             name="email"
-            rules={[{ required: true, message: 'Введите e-mail' }]}
+            rules={[{ required: true, message: SIGN_IN_LABELS.emailRequired }]}
           >
             <Input type="email" autoComplete="username" autoFocus />
           </Form.Item>
-          <Form.Item label="Пароль" name="password" rules={[{ required: true, message: 'Введите пароль' }]}>
+          <Form.Item label={SIGN_IN_LABELS.password} name="password" rules={[{ required: true, message: SIGN_IN_LABELS.passwordRequired }]}>
             <Input.Password autoComplete="current-password" />
           </Form.Item>
           {loginInfo.data?.passwordResetAvailable && (
@@ -78,7 +86,7 @@ export function LoginPage() {
           )}
           {error && <Alert className={styles.error} type="error" showIcon message={error} />}
           <Button kind="action" htmlType="submit" size="large" block loading={isPending}>
-            Войти
+            {SIGN_IN_LABELS.submit}
           </Button>
         </Form>
         {loginInfo.data && !loginInfo.data.passwordResetAvailable && loginInfo.data.supportContact && (

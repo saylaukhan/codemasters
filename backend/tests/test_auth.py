@@ -69,10 +69,37 @@ async def test_login_issues_tokens_and_me_shows_role_scope_and_permissions(
             "school_id": None,
         },
         "permissions": sorted(ROLE_PERMISSIONS["district"]),
+        "locale": "ru",
     }
     await session.refresh(user)
     assert user.last_login_at is not None
     assert await audit_rows(session) == [("login_success", user.id, "district@example.kz", None)]
+
+
+async def test_a_user_changes_his_own_language_and_the_change_is_logged(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """T-66: the language of the panel lives in the profile; only its owner changes it."""
+    school = await create_school(session)
+    user = await create_user(session, "school", school_id=school.id)
+    headers = bearer(user)
+
+    changed = await api_client.patch(ME, json={"locale": "kk"}, headers=headers)
+
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["locale"] == "kk"
+    await session.refresh(user)
+    assert user.locale == "kk"
+    again = await api_client.get(ME, headers=headers)
+    assert again.json()["locale"] == "kk"
+    assert await audit_rows(session) == [("update", user.id, user.email, None)]
+    changes = await session.scalar(select(AuditLog.changes).order_by(AuditLog.id.desc()))
+    assert changes == {"locale": {"old": "ru", "new": "kk"}}
+    # A language outside the two of DESIGN.md §5.1 is refused, and the profile keeps its own.
+    problem(
+        await api_client.patch(ME, json={"locale": "en"}, headers=headers), 422, "validation_error"
+    )
+    problem(await api_client.patch(ME, json={"locale": "kk"}), 401, "unauthorized")
 
 
 async def test_wrong_password_and_unknown_email_are_refused_and_logged(
