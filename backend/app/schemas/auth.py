@@ -6,7 +6,7 @@ user's own e-mail and full name.
 
 from pydantic import BaseModel, Field, SecretStr
 
-from app.schemas.statuses import UserRole
+from app.schemas.statuses import Locale, UserRole
 
 # Upper bound of a password: argon2 hashes whatever it gets, a cap keeps login cheap.
 PASSWORD_MAX_LENGTH = 128
@@ -59,6 +59,13 @@ class CurrentUser(BaseModel):
         examples=[["schools:read", "incidents:read", "appeals:create"]],
         description="Коды прав роли для require(permission); матрица — T-20",
     )
+    locale: Locale = Field(description="Язык панели пользователя (T-66); меняется PATCH /auth/me")
+
+
+class ProfileUpdate(BaseModel):
+    """What a user changes in his own account (T-66): so far only the language of the panel."""
+
+    locale: Locale = Field(description="Язык панели: ru или kk (DESIGN.md §5.1)")
 
 
 class PasswordResetRequest(BaseModel):

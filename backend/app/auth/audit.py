@@ -164,6 +164,30 @@ def record_login(
     session.add(entry.row())
 
 
+def record_self_change(
+    session: AsyncSession,
+    request: Request,
+    *,
+    user: AuthUser,
+    changes: dict[str, Any],
+) -> None:
+    """Add an ``update`` record of a user changing his own account (no commit).
+
+    The middleware skips the sign-in module (``AUTH_MODULE``), so the endpoints of a profile
+    write their record themselves, the way ``record_login`` does.
+    """
+    entry = AuditEntry(
+        action="update",
+        entity_type="user",
+        entity_id=user.id,
+        user_id=user.id,
+        user_email=user.email,
+        changes=changes,
+        ip=client_ip(request.scope),
+    )
+    session.add(entry.row())
+
+
 def response_json(body: bytes) -> dict[str, Any]:
     try:
         parsed = json.loads(body)

@@ -5,8 +5,9 @@ import { Activity, LogOut, Menu as MenuIcon, Moon, Sun } from 'lucide-react'
 import type { CurrentUser } from '../api/types'
 import { NotificationBell } from '../components/notifications/NotificationBell'
 import { Button } from '../components/ui/Button'
+import { LocaleSwitch } from '../components/ui/LocaleSwitch'
 import { APP_NAME } from '../lib/app-info'
-import { NAVIGATION_LABELS, ROLE_LABELS } from '../lib/labels'
+import { HEADER_LABELS, NAVIGATION_LABELS, ROLE_LABELS } from '../lib/labels'
 import { SIZES } from '../styles/theme'
 import styles from './AppLayout.module.css'
 import { useThemeMode } from './themeMode'
@@ -30,9 +31,10 @@ interface AppHeaderProps {
 /**
  * Header, DESIGN.md §3.5: 64px on `--bg-page` without a line under it. On the left the 28px mark
  * and «Jyldam» 16/600, preceded by the menu button once the side navigation has moved into a
- * drawer; on the right the bell with its counter, the theme switch and the 40px profile chip,
- * which is the avatar alone at 1024px and narrower (§9.3). The panel has no header search —
- * search belongs to each screen through `components/ui/SearchInput`; the language switch is T-66.
+ * drawer; on the right the language pill «Қаз · Рус», the bell with its counter, the theme
+ * switch and the 40px profile chip, which is the avatar alone at 1024px and narrower (§9.3).
+ * The panel has no header search — search belongs to each screen through
+ * `components/ui/SearchInput`.
  */
 export function AppHeader({ onOpenNavigation }: AppHeaderProps) {
   const { mode, toggle } = useThemeMode()
@@ -47,7 +49,7 @@ export function AppHeader({ onOpenNavigation }: AppHeaderProps) {
         { type: 'divider' },
         {
           key: 'logout',
-          label: 'Выйти',
+          label: HEADER_LABELS.logout,
           icon: <LogOut size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} />,
           onClick: () => logout(),
         },
@@ -71,10 +73,11 @@ export function AppHeader({ onOpenNavigation }: AppHeaderProps) {
         {APP_NAME}
       </div>
       <div className={styles.tools}>
+        <LocaleSwitch />
         {user?.permissions.includes(NOTIFICATIONS_PERMISSION) && <NotificationBell />}
         <Button
           kind="flat"
-          tooltip={mode === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+          tooltip={mode === 'dark' ? HEADER_LABELS.lightTheme : HEADER_LABELS.darkTheme}
           icon={
             mode === 'dark' ? (
               <Sun size={SIZES.iconSm} strokeWidth={SIZES.iconStroke} />
@@ -86,7 +89,7 @@ export function AppHeader({ onOpenNavigation }: AppHeaderProps) {
         />
         {user && (
           <Dropdown menu={{ items: profileItems }} trigger={['click']} placement="bottomRight">
-            <button type="button" className={styles.profile} aria-label="Меню профиля">
+            <button type="button" className={styles.profile} aria-label={HEADER_LABELS.profileMenu}>
               <span className={styles.avatar}>{initials(user.fullName)}</span>
               <span className={styles.profileMeta}>
                 <strong>{user.fullName}</strong>

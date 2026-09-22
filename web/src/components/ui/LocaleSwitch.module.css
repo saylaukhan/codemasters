@@ -1,0 +1,38 @@
+/* Language switch, DESIGN.md §3.5: a 34px pill of two segments on --bg-surface, the chosen one
+ * on --accent-soft; the same pill stands in the corner of the sign-in screen (§3.26). */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: var(--space-1);
+  height: var(--locale-switch-height);
+  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+}
+
+.option {
+  height: 100%;
+  padding-inline: var(--space-3);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--motion-duration) var(--motion-easing),
+    color var(--motion-duration) var(--motion-easing);
+}
+
+.option:hover {
+  color: var(--text-primary);
+}
+
+.option[data-active] {
+  background: var(--accent-soft);
+  color: var(--accent-pressed);
+  font-weight: var(--font-weight-semibold);
+}

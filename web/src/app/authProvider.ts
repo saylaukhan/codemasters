@@ -4,6 +4,7 @@ import type { AccessControlProvider, AuthProvider } from '@refinedev/core'
 
 import { getCurrentUser, login, logout, restoreSession } from '../api/auth'
 import { ApiError, hasAccessToken } from '../api/client'
+import { adoptProfileLocale } from '../lib/locale'
 import { SECTIONS, canOpenSection } from './sections'
 
 export const authProvider: AuthProvider = {
@@ -34,7 +35,12 @@ export const authProvider: AuthProvider = {
     return {}
   },
 
-  getIdentity: () => getCurrentUser(),
+  async getIdentity() {
+    const user = await getCurrentUser()
+    // A browser that never chose a language takes the one of the profile (T-66).
+    adoptProfileLocale(user.locale)
+    return user
+  },
 
   getPermissions: async () => (await getCurrentUser()).permissions,
 }
