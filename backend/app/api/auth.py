@@ -12,6 +12,7 @@ address, ``/password-reset/confirm`` spends the link and sets the new password, 
 administrator (``app/services/password_reset.py``).
 """
 
+import dataclasses
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
@@ -19,7 +20,7 @@ from fastapi import APIRouter, Depends, Request, Response, Security, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.audit import record_login
+from app.auth.audit import record_login, record_self_change
 from app.auth.deps import AuthUser, account_blocked, current_user
 from app.core.config import get_settings
 from app.core.db import get_session
@@ -41,6 +42,7 @@ from app.schemas.auth import (
     LoginRequest,
     PasswordResetConfirm,
     PasswordResetRequest,
+    ProfileUpdate,
     UserScope,
 )
 from app.schemas.errors import Problem
@@ -268,11 +270,8 @@ async def get_login_info(session: Annotated[AsyncSession, Depends(get_session)])
     return await password_reset.login_info(session)
 
 
-@router.get("/me", summary="Текущий пользователь: роль, область видимости, права")
-async def get_current_user(
-    user: Annotated[AuthUser, Depends(current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> CurrentUser:
+async def me(session: AsyncSession, user: AuthUser) -> CurrentUser:
+    """Answer of ``/me``: the user of the token with the name of his district."""
     region_name = (
         await session.scalar(select(Region.name).where(Region.id == user.region_id))
         if user.region_id is not None
@@ -290,4 +289,42 @@ async def get_current_user(
             school_id=user.school_id,
         ),
         permissions=sorted(user.permissions),
+        locale=user.locale,
     )
+
+
+@router.get("/me", summary="Текущий пользователь: роль, область видимости, права")
+async def get_current_user(
+    user: Annotated[AuthUser, Depends(current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> CurrentUser:
+    return await me(session, user)
+
+
+@router.patch(
+    "/me",
+    summary="Изменить свой профиль: язык панели",
+    description=(
+        "Пользователь меняет только свой язык интерфейса (T-66); роль, область видимости и "
+        "пароль здесь не меняются. Панель выбирает словарь подписей один раз при загрузке, "
+        "поэтому после ответа она перезагружает страницу. Смена языка пишется в журнал."
+    ),
+)
+async def update_current_user(
+    body: ProfileUpdate,
+    request: Request,
+    user: Annotated[AuthUser, Depends(current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> CurrentUser:
+    # ``current_user`` has just read the row, so this is the same object of the session.
+    row = await session.get_one(User, user.id)
+    if row.locale != body.locale:
+        record_self_change(
+            session,
+            request,
+            user=user,
+            changes={"locale": {"old": row.locale, "new": body.locale}},
+        )
+        row.locale = body.locale
+        await session.commit()
+    return await me(session, dataclasses.replace(user, locale=body.locale))

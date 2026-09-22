@@ -24,7 +24,7 @@ from app.core.deps import user_token
 from app.core.errors import ApiError
 from app.core.security import decode_jwt
 from app.models import User, UserScope
-from app.schemas.statuses import UserRole
+from app.schemas.statuses import Locale, UserRole
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,8 @@ class AuthUser:
     email: str
     full_name: str
     role: UserRole
+    # Language the panel of this user speaks (T-66); the panel keeps the same choice locally.
+    locale: Locale
     region_id: int | None
     provider_id: int | None
     school_id: int | None
@@ -69,6 +71,7 @@ async def load_user(session: AsyncSession, user: User) -> AuthUser:
         email=user.email,
         full_name=user.full_name,
         role=cast(UserRole, user.role),
+        locale=cast(Locale, user.locale),
         region_id=scope.region_id if scope else None,
         provider_id=scope.provider_id if scope else None,
         school_id=scope.school_id if scope else None,
