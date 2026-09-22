@@ -32,6 +32,7 @@ const ADMIN_PERMISSIONS = [
   'thresholds:manage',
   'schedules:manage',
   'incident_rules:manage',
+  'appeal_templates:manage',
   'settings:manage',
   'users:manage',
   'devices:manage',

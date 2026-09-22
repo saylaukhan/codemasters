@@ -26,6 +26,7 @@ from app.auth.deps import AuthUser
 from app.core.config import Settings, get_settings
 from app.models import Appeal, AppealEvent, SystemSettings
 from app.schemas.appeals import AppealCreate, AppealDetail
+from app.services.appeal_templates import template_for_draft
 from app.services.appeals.card import appeal_detail
 from app.services.appeals.context import appeal_facts
 from app.services.appeals.pdf import AppealLetter, appeal_pdf
@@ -94,11 +95,15 @@ async def create_appeal(
 ) -> AppealDetail:
     """Send the appeal of ``body``: a row with a number and a PDF, then the letter itself."""
     facts = await appeal_facts(session, body, now=now)
+    # The kind of the letter is the template's: a claim stays a claim in the list and the PDF.
+    template = await template_for_draft(session, body.template_id)
     settings = await system_settings(session)
     context = facts.context
     appeal = Appeal(
         number=await appeal_number(session, settings, now),
         status=SENT_STATUS,
+        kind=template.kind,
+        template_id=template.id,
         incident_id=body.incident_id,
         line_id=context.line_id,
         school_id=context.school_id,
@@ -115,6 +120,7 @@ async def create_appeal(
     appeal.pdf = appeal_pdf(
         AppealLetter(
             number=appeal.number,
+            kind=appeal.kind,
             subject=appeal.subject,
             text=appeal.text,
             user_comment=appeal.user_comment,

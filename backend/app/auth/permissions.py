@@ -6,8 +6,9 @@ permitted request sees is decided separately, by the scope and RLS (``app/auth/r
 
 Rule of the matrix: Школа — view and appeals; Район/город — plus analytics, incidents,
 appeals; Провайдер — view of its lines and the status of incidents and appeals; Область —
-everything except technical administration: thresholds, schedules, incident rules,
-references, settings; Администратор — the same plus users, devices, agent releases and logs.
+everything except technical administration: thresholds, schedules, incident rules, letter
+templates, references, settings; Администратор — the same plus users, devices, agent releases
+and logs.
 """
 
 from app.schemas.statuses import UserRole
@@ -36,6 +37,7 @@ MONITORING_SETUP = frozenset(
         "thresholds:manage",
         "schedules:manage",
         "incident_rules:manage",
+        "appeal_templates:manage",
         "settings:manage",
     }
 )

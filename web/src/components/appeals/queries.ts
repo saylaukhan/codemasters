@@ -6,6 +6,7 @@ import {
   downloadAppealPdf,
   getAppeal,
   getAppeals,
+  getAppealTemplateOptions,
   updateAppeal,
 } from '../../api/appeals'
 import { ApiError } from '../../api/client'
@@ -41,6 +42,14 @@ export const useAppealDraft = (target: AppealDraftRequest | null) =>
     staleTime: Infinity,
     retry: false,
     refetchOnWindowFocus: false,
+  })
+
+/** Templates the editor may write the letter by (T-60): a short fixed list, the default first. */
+export const useAppealTemplateOptions = () =>
+  useQuery({
+    queryKey: ['appeals', 'templates'],
+    queryFn: ({ signal }) => getAppealTemplateOptions(signal),
+    select: (page) => page.items,
   })
 
 export const useAppeals = (view: AppealListView) =>

@@ -77,8 +77,16 @@ export function appealTargetQuery(target: AppealDraftRequest): URLSearchParams {
   if (target.lineId != null) params.set('line_id', String(target.lineId))
   params.set('period_from', target.periodFrom)
   params.set('period_to', target.periodTo)
+  // The template of the letter (T-60): absent, the server takes the default one.
+  if (target.templateId != null) params.set('template_id', String(target.templateId))
   return params
 }
+
+/** The same target written by another template: the editor asks the model again (T-60). */
+export const withTemplate = (target: AppealDraftRequest, templateId: number): AppealDraftRequest => ({
+  ...target,
+  templateId,
+})
 
 const readId = (value: string | null): number | undefined => {
   const id = Number(value ?? undefined)
@@ -99,11 +107,13 @@ export function readAppealTarget(params: URLSearchParams): AppealDraftRequest | 
   const periodFrom = readInstant(params.get('period_from'))
   const periodTo = readInstant(params.get('period_to'))
   if (!periodFrom || !periodTo || periodFrom >= periodTo) return null
+  const templateId = readId(params.get('template_id'))
+  const template = templateId === undefined ? {} : { templateId }
   const incidentId = readId(params.get('incident_id'))
-  if (incidentId !== undefined) return { incidentId, periodFrom, periodTo }
+  if (incidentId !== undefined) return { incidentId, periodFrom, periodTo, ...template }
   const schoolId = readId(params.get('school_id'))
   const lineId = readId(params.get('line_id'))
-  if (schoolId !== undefined && lineId !== undefined) return { schoolId, lineId, periodFrom, periodTo }
+  if (schoolId !== undefined && lineId !== undefined) return { schoolId, lineId, periodFrom, periodTo, ...template }
   return null
 }
 

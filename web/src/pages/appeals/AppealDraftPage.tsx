@@ -1,29 +1,37 @@
 import { useNotification } from '@refinedev/core'
-import { Alert, Input } from 'antd'
+import { Alert, Input, Select } from 'antd'
 import { MailX, Sparkles } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 
 import { ApiError } from '../../api/client'
 import type { AppealDraft, AppealDraftRequest } from '../../api/types'
-import { appealCardPath } from '../../app/sections'
+import { appealCardPath, appealDraftPath } from '../../app/sections'
 import styles from '../../components/appeals/Appeal.module.css'
 import {
   appealCreateBody,
+  appealTargetQuery,
   COMMENT_MAX_LENGTH,
   fallbackDraft,
   periodCaption,
   readAppealTarget,
   SUBJECT_MAX_LENGTH,
   TEXT_MAX_LENGTH,
+  withTemplate,
 } from '../../components/appeals/appeals'
 import { AppealFacts } from '../../components/appeals/AppealFacts'
-import { useAppealDraft, useCreateAppeal } from '../../components/appeals/queries'
+import { useAppealDraft, useAppealTemplateOptions, useCreateAppeal } from '../../components/appeals/queries'
 import { Button } from '../../components/ui/Button'
 import { ContentSkeleton } from '../../components/ui/ContentSkeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { APPEAL_FIELD_LABELS, APPEAL_FORM_LABELS, APPEAL_LABELS, SECTION_LABELS } from '../../lib/labels'
+import {
+  APPEAL_FIELD_LABELS,
+  APPEAL_FORM_LABELS,
+  APPEAL_KIND_LABELS,
+  APPEAL_LABELS,
+  SECTION_LABELS,
+} from '../../lib/labels'
 import { SIZES } from '../../styles/theme'
 
 // Letter of an official appeal: the field is as tall as a page of it, and grows with the text.
@@ -46,20 +54,25 @@ interface AppealEditorProps {
   draft: AppealDraft | undefined
   asking: boolean
   onRetry: () => void
+  /** Another template of the letter (T-60): the address changes and the model is asked anew. */
+  onTemplateChange: (templateId: number) => void
 }
 
 /**
  * The letter and the facts of one draft. The text is state of the page, not of the server: a draft is not stored
  * anywhere until «Отправить» (ADR-011), and a new answer from the model replaces the whole editor.
  */
-function AppealEditor({ target, draft, asking, onRetry }: AppealEditorProps) {
+function AppealEditor({ target, draft, asking, onRetry, onTemplateChange }: AppealEditorProps) {
   const template = fallbackDraft(target)
   const [subject, setSubject] = useState(draft?.subject || template.subject)
   const [text, setText] = useState(draft?.text || template.text)
   const [comment, setComment] = useState('')
   const send = useCreateAppeal()
+  const templates = useAppealTemplateOptions()
   const { open: notify } = useNotification()
   const navigate = useNavigate()
+  // The template of the letter: the one the draft was written by, else the one of the address, else the default.
+  const templateId = draft?.templateId ?? target.templateId ?? templates.data?.find((item) => item.isDefault)?.id
   // An empty letter is not sent: the API answers 422 for it anyway (backend/app/schemas/appeals.py).
   const ready = subject.trim() !== '' && text.trim() !== ''
 
@@ -87,6 +100,8 @@ function AppealEditor({ target, draft, asking, onRetry }: AppealEditorProps) {
           <span className={styles.meta}>
             {draft && (
               <>
+                <span>{APPEAL_KIND_LABELS[draft.kind]}</span>
+                <span>·</span>
                 <span>{draft.context.schoolName}</span>
                 <span>·</span>
                 <span>{draft.context.providerName}</span>
@@ -146,6 +161,22 @@ function AppealEditor({ target, draft, asking, onRetry }: AppealEditorProps) {
           <section className={styles.panel} aria-label={APPEAL_LABELS.letter}>
             <h2 className={styles.panelTitle}>{APPEAL_LABELS.letter}</h2>
             {draft?.aiGenerated && <p className={styles.note}>{APPEAL_LABELS.aiNote}</p>}
+            <Field
+              label={APPEAL_FORM_LABELS.template}
+              hint="Обращение или претензия: сервер заполняет шаблон фактами, модель пишет письмо по нему. Смена шаблона заменяет текст в редакторе."
+            >
+              <Select<number>
+                value={templateId}
+                options={templates.data?.map((item) => ({
+                  value: item.id,
+                  label: `${item.name} · ${APPEAL_KIND_LABELS[item.kind]}`,
+                }))}
+                loading={templates.isPending || asking}
+                disabled={asking}
+                placeholder="Шаблон по умолчанию"
+                onChange={onTemplateChange}
+              />
+            </Field>
             <Field label={APPEAL_FORM_LABELS.subject}>
               <Input
                 value={subject}
@@ -202,6 +233,7 @@ function AppealEditor({ target, draft, asking, onRetry }: AppealEditorProps) {
  */
 export function AppealDraftPage() {
   const [params] = useSearchParams()
+  const navigate = useNavigate()
   const target = useMemo(() => readAppealTarget(params), [params])
   const draft = useAppealDraft(target)
 
@@ -218,6 +250,9 @@ export function AppealDraftPage() {
       draft={draft.data}
       asking={draft.isFetching}
       onRetry={() => void draft.refetch()}
+      onTemplateChange={(templateId) =>
+        void navigate(appealDraftPath(appealTargetQuery(withTemplate(target, templateId))), { replace: true })
+      }
     />
   )
 }
