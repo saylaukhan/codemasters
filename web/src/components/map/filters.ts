@@ -1,8 +1,9 @@
 // Filters of the overview and the map (DESIGN.md §2.6, §3.9). They live in the URL under the names
 // of the API parameters, so a link opens the same view and one panel drives both the KPIs and the map.
 import type { QueryValue } from '../../api/client'
-import type { SchoolStatus } from '../../api/types'
-import { SCHOOL_STATUS_LABELS } from '../../lib/labels'
+import type { MapFilterOptions, SchoolStatus } from '../../api/types'
+import { formatDate } from '../../lib/format'
+import { MAP_FILTER_LABELS, SCHOOL_STATUS_LABELS } from '../../lib/labels'
 
 export interface MapFilters {
   regionId?: number
@@ -74,6 +75,43 @@ export const isFiltered = (filters: MapFilters): boolean =>
   [filters.regionId, filters.providerId, filters.connectionTypeId, filters.periodFrom, filters.periodTo].some(
     (value) => value !== undefined,
   )
+
+/** Dimensions that are set: the number of the «Фильтры · N» button of DESIGN.md §9.3. */
+export const countFilters = (filters: MapFilters): number =>
+  [filters.regionId, filters.providerId, filters.connectionTypeId].filter((id) => id !== undefined).length +
+  (filters.status.length > 0 ? 1 : 0) +
+  (filters.periodFrom !== undefined || filters.periodTo !== undefined ? 1 : 0)
+
+const nameOf = (options: readonly { id: number; name: string }[] | undefined, id: number): string =>
+  options?.find((option) => option.id === id)?.name ?? String(id)
+
+/**
+ * Active values listed under the button of the sheet (DESIGN.md §9.3): «Район: Усть-Каменогорск».
+ * The analytics has the same three dimensions and a period but no statuses, so they are optional.
+ */
+export function filterSummary(
+  filters: Omit<MapFilters, 'status'> & { status?: readonly SchoolStatus[] },
+  options: MapFilterOptions | undefined,
+): string[] {
+  const parts: string[] = []
+  if (filters.regionId !== undefined) {
+    parts.push(`${MAP_FILTER_LABELS.region}: ${nameOf(options?.regions, filters.regionId)}`)
+  }
+  if (filters.providerId !== undefined) {
+    parts.push(`${MAP_FILTER_LABELS.provider}: ${nameOf(options?.providers, filters.providerId)}`)
+  }
+  if (filters.connectionTypeId !== undefined) {
+    parts.push(`${MAP_FILTER_LABELS.connectionType}: ${nameOf(options?.connectionTypes, filters.connectionTypeId)}`)
+  }
+  if (filters.status && filters.status.length > 0) {
+    parts.push(`${MAP_FILTER_LABELS.status}: ${filters.status.map((status) => SCHOOL_STATUS_LABELS[status]).join(', ')}`)
+  }
+  if (filters.periodFrom !== undefined) {
+    const until = filters.periodTo === undefined ? '' : ` — ${formatDate(filters.periodTo)}`
+    parts.push(`${MAP_FILTER_LABELS.period}: ${formatDate(filters.periodFrom)}${until}`)
+  }
+  return parts
+}
 
 /** Query of GET /api/dashboard/summary and GET /api/map/schools; the client turns keys to snake_case. */
 export const filtersQuery = (filters: MapFilters): Record<string, QueryValue> => ({

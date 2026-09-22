@@ -588,6 +588,29 @@ export const FILTER_BAR_LABELS = {
   clear: 'Очистить фильтр',
 } as const
 
+/** Dimensions of the filter bar of the map, the overview and the analytics (DESIGN.md §3.9). */
+export const MAP_FILTER_LABELS = {
+  level: 'Уровень',
+  region: 'Район',
+  provider: 'Провайдер',
+  connectionType: 'Тип подключения',
+  status: 'Статус',
+  period: 'Период',
+} as const
+
+/** Bottom sheet the filters fold into on a phone (DESIGN.md §9.3, row «Панель фильтров»). */
+export const FILTER_SHEET_LABELS = {
+  open: 'Фильтры',
+  title: 'Фильтры',
+} as const
+
+/** Legend of the map (DESIGN.md §3.13); on a narrow screen it folds into one button (§9.3). */
+export const MAP_LEGEND_LABELS = {
+  title: 'Легенда',
+  show: 'Показать легенду',
+  hide: 'Скрыть легенду',
+} as const
+
 /** Bar «fact against the threshold» under a metric tile (DESIGN.md §3.10, §3.27). */
 export const FACT_BAR_LABELS = {
   normFrom: 'норма от',
