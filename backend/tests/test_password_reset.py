@@ -78,7 +78,7 @@ async def test_the_answer_is_the_same_for_a_known_and_an_unknown_email(
     user = await create_user(session, "oblast")
     sent = letters(monkeypatch, offline)
 
-    known = await api_client.post(REQUEST, json={"email": " School@Example.KZ "})
+    known = await api_client.post(REQUEST, json={"email": " Oblast@Example.KZ "})
     unknown = await api_client.post(REQUEST, json={"email": "nobody@example.kz"})
 
     assert (known.status_code, known.text) == (204, "")
