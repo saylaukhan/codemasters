@@ -7923,6 +7923,410 @@
         }
       }
     },
+    "/api/admin/digests": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Рассылки сводки для руководителя",
+        "operationId": "list_digests",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Номер страницы, с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Номер страницы, с 1"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Page Size"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DigestSettingsDetailPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Создать рассылку сводки",
+        "description": "scope=oblast — выпуск по всей области, scope=region — по одному району, и тогда обязателен region_id. weekday (1 — понедельник) и hour — в settings.timezone (Asia/Almaty): расписание хранится в таблице, а не в коде (ТЗ п. 11, п. 20). Без адресов и без чата Telegram — 422: отправлять некуда.",
+        "operationId": "create_digest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DigestSettingsCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DigestSettingsDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/digests/{digest_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Изменить или отключить рассылку сводки",
+        "description": "Охват рассылки не меняется: для другого района создайте новую рассылку.",
+        "operationId": "update_digest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "digest_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Digest Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DigestSettingsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DigestSettingsDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Рассылка сводки не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Удалить рассылку сводки",
+        "description": "Рассылка — настройка, а не история: удаление ничего не теряет.",
+        "operationId": "delete_digest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "digest_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Digest Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Рассылка сводки не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/digests/{digest_id}/send-now": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Отправить сводку сейчас",
+        "description": "Тот же выпуск, что уходит по расписанию, вне расписания. Каждая попытка каждого канала пишется в notification_log (ТЗ п. 18): установка без SMTP или без бота Telegram даёт skipped с причиной, а не ошибку запроса.",
+        "operationId": "send_digest_now",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "digest_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Digest Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DigestSendResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Рассылка сводки не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/digests/{digest_id}/preview": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Предпросмотр сводки одной страницей PDF",
+        "description": "Страница A4 выпуска за неделю, которая заканчивается сейчас. Тот же генератор, что письмо рассылки, поэтому предпросмотр совпадает с PDF.",
+        "operationId": "preview_digest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "digest_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Digest Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Рассылка сводки не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Ошибка (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/agent-releases": {
       "get": {
         "tags": [
@@ -10957,6 +11361,314 @@
         "title": "DeviceUpdate",
         "description": "Changes of a device: its monitoring point (T-36) and its update channel (T-50).\n\nThe school and the line of new measurements follow the point, measurements already taken\nkeep theirs (ADR-005); the channel decides which release the agent installs."
       },
+      "DigestDelivery": {
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/NotificationChannel"
+          },
+          "result": {
+            "$ref": "#/components/schemas/NotificationResult",
+            "description": "skipped — канал не настроен на сервере"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Причина skipped или failed; null у доставленной"
+          }
+        },
+        "type": "object",
+        "required": [
+          "channel",
+          "result",
+          "target",
+          "error"
+        ],
+        "title": "DigestDelivery",
+        "description": "Одна попытка доставки сводки: канал, адресат и что из этого вышло (ТЗ п. 18)."
+      },
+      "DigestHour": {
+        "type": "integer",
+        "maximum": 23.0,
+        "minimum": 0.0,
+        "description": "Час отправки в settings.timezone"
+      },
+      "DigestRecipients": {
+        "items": {
+          "type": "string",
+          "maxLength": 320,
+          "minLength": 3,
+          "pattern": "^[^@\\s]+@[^@\\s]+$"
+        },
+        "type": "array",
+        "maxItems": 100,
+        "description": "Адреса рассылки; пустой список — сводка уходит только в Telegram"
+      },
+      "DigestScope": {
+        "type": "string",
+        "enum": [
+          "oblast",
+          "region"
+        ]
+      },
+      "DigestSendResult": {
+        "properties": {
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sent At"
+          },
+          "deliveries": {
+            "items": {
+              "$ref": "#/components/schemas/DigestDelivery"
+            },
+            "type": "array",
+            "title": "Deliveries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sent_at",
+          "deliveries"
+        ],
+        "title": "DigestSendResult",
+        "description": "Итог «Отправить сейчас»: каждая попытка записана в notification_log (ТЗ п. 18)."
+      },
+      "DigestSettingsCreate": {
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/DigestScope"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Только и обязательно при scope=region"
+          },
+          "weekday": {
+            "$ref": "#/components/schemas/DigestWeekday"
+          },
+          "hour": {
+            "$ref": "#/components/schemas/DigestHour"
+          },
+          "recipients": {
+            "$ref": "#/components/schemas/DigestRecipients",
+            "default": []
+          },
+          "telegram_chat_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Chat Id",
+            "description": "Чат Telegram; null — канал не используется"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope",
+          "weekday",
+          "hour"
+        ],
+        "title": "DigestSettingsCreate",
+        "description": "Новая рассылка сводки; охват «region» требует region_id, «oblast» — запрещает."
+      },
+      "DigestSettingsDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/DigestScope"
+          },
+          "region_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Id",
+            "description": "Только при scope=region"
+          },
+          "region_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Name"
+          },
+          "weekday": {
+            "$ref": "#/components/schemas/DigestWeekday"
+          },
+          "hour": {
+            "$ref": "#/components/schemas/DigestHour"
+          },
+          "recipients": {
+            "$ref": "#/components/schemas/DigestRecipients"
+          },
+          "telegram_chat_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Chat Id"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "Отключённая рассылка не уходит по расписанию"
+          },
+          "last_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sent At",
+            "description": "null — сводка ещё не уходила"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "scope",
+          "region_id",
+          "region_name",
+          "weekday",
+          "hour",
+          "recipients",
+          "telegram_chat_id",
+          "is_active",
+          "last_sent_at"
+        ],
+        "title": "DigestSettingsDetail",
+        "description": "Рассылка сводки с наименованием района и временем последней отправки."
+      },
+      "DigestSettingsDetailPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DigestSettingsDetail"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "DigestSettingsDetailPage",
+        "description": "Страница рассылок сводки."
+      },
+      "DigestSettingsUpdate": {
+        "properties": {
+          "weekday": {
+            "$ref": "#/components/schemas/DigestWeekday",
+            "title": "Weekday"
+          },
+          "hour": {
+            "$ref": "#/components/schemas/DigestHour",
+            "title": "Hour"
+          },
+          "recipients": {
+            "$ref": "#/components/schemas/DigestRecipients",
+            "title": "Recipients"
+          },
+          "telegram_chat_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Chat Id"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "DigestSettingsUpdate",
+        "description": "Изменения рассылки; охват и его цель не меняются."
+      },
+      "DigestWeekday": {
+        "type": "integer",
+        "maximum": 7.0,
+        "minimum": 1.0,
+        "description": "1 — понедельник, 7 — воскресенье"
+      },
       "EnrollmentCodeCreate": {
         "properties": {
           "school_id": {
@@ -13887,6 +14599,14 @@
         "title": "MonitoringPointUpdate",
         "description": "Changes of a point; a new ``line_id`` moves its computers to that line."
       },
+      "NotificationChannel": {
+        "type": "string",
+        "enum": [
+          "panel",
+          "telegram",
+          "email"
+        ]
+      },
       "NotificationKind": {
         "type": "string",
         "enum": [
@@ -14010,6 +14730,14 @@
         ],
         "title": "NotificationListItemPage",
         "description": "Page of the notifications of the caller, newest first."
+      },
+      "NotificationResult": {
+        "type": "string",
+        "enum": [
+          "sent",
+          "failed",
+          "skipped"
+        ]
       },
       "NotificationUnreadCount": {
         "properties": {

@@ -6,6 +6,7 @@ from app.api.admin import (
     agent_releases,
     audit_log,
     connection_types,
+    digests,
     incident_rules,
     providers,
     regions,
@@ -27,6 +28,7 @@ for resource in (
     schedules,
     settings,
     incident_rules,
+    digests,
     agent_releases,
     audit_log,
 ):
