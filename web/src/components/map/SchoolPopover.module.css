@@ -69,3 +69,11 @@
 .row dd[data-alert] {
   color: var(--status-critical-text);
 }
+
+/* DESIGN.md §9.3: inside the bottom sheet of a phone the popover takes the whole width. */
+@media (max-width: 768px) {
+  .popover {
+    width: 100%;
+    max-width: none;
+  }
+}

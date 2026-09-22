@@ -1,7 +1,8 @@
 import { Drawer, type FormInstance } from 'antd'
 import { useEffect, type ReactNode } from 'react'
 
-import { SIZES } from '../../styles/theme'
+import { useMediaQuery } from '../../app/useMediaQuery'
+import { PHONE_SCREEN, SIZES } from '../../styles/theme'
 import { Button } from '../ui/Button'
 import { ErrorState } from '../ui/ErrorState'
 import styles from './Admin.module.css'
@@ -38,6 +39,8 @@ export function FormDrawer({
   ready = true,
   children,
 }: FormDrawerProps) {
+  const phone = useMediaQuery(PHONE_SCREEN)
+
   useEffect(() => {
     const placed = formErrors(error, fields).fields
     if (placed.length > 0) form.setFields(placed)
@@ -48,7 +51,8 @@ export function FormDrawer({
       title={title}
       open={open}
       onClose={onClose}
-      width={SIZES.drawerWidth}
+      // DESIGN.md §9.3, row «Drawer и модалка»: 480px, and the whole width at 768px and narrower.
+      width={phone ? '100%' : SIZES.drawerWidth}
       footer={
         <div className={styles.footer}>
           <Button kind="outlined" onClick={onClose}>

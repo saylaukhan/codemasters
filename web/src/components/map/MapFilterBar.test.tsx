@@ -2,7 +2,15 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
 import type { MapFilterOptions } from '../../api/types'
-import { NO_FILTERS, filtersQuery, isFiltered, readFilters, writeFilters } from './filters'
+import {
+  NO_FILTERS,
+  countFilters,
+  filterSummary,
+  filtersQuery,
+  isFiltered,
+  readFilters,
+  writeFilters,
+} from './filters'
 import { MapFilterBar } from './MapFilterBar'
 
 const OPTIONS: MapFilterOptions = {
@@ -58,6 +66,22 @@ describe('filters in the URL', () => {
       periodFrom: undefined,
       periodTo: undefined,
     })
+  })
+})
+
+describe('the «Фильтры · N» button of a phone', () => {
+  it('counts every dimension that is set once', () => {
+    expect(countFilters(NO_FILTERS)).toBe(0)
+    expect(countFilters({ regionId: 7, status: ['critical', 'offline'], periodFrom: '2026-09-01T00:00:00Z' })).toBe(3)
+  })
+
+  it('lists the active values by their names', () => {
+    expect(filterSummary({ regionId: 7, providerId: 99, status: ['offline'] }, OPTIONS)).toEqual([
+      'Район: Усть-Каменогорск',
+      'Провайдер: 99',
+      'Статус: Нет соединения',
+    ])
+    expect(filterSummary(NO_FILTERS, OPTIONS)).toEqual([])
   })
 })
 

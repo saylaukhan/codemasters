@@ -6,12 +6,35 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  margin: 0;
   padding: var(--space-2);
-  list-style: none;
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-card);
   background: var(--bg-surface);
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* DESIGN.md §9.3: at 1024px and narrower the legend is one button with the total. */
+.toggle {
+  min-height: var(--control-height-s);
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+  text-align: start;
+  cursor: pointer;
 }
 
 .item {
@@ -67,4 +90,12 @@
 }
 .item[data-status='no_data'] {
   --legend-main: var(--status-no-data-main);
+}
+
+/* The touch area of a legend row is 44px at 768px and narrower (DESIGN.md §9.3). */
+@media (max-width: 768px) {
+  .item,
+  .toggle {
+    min-height: var(--touch-target);
+  }
 }

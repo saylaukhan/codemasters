@@ -32,6 +32,18 @@ export interface HeatmapChartData {
   rows: readonly string[]
   /** cells[row][column]; null — nothing measured there. */
   cells: readonly (readonly (HeatmapCell | null)[])[]
+  /**
+   * Columns a phone keeps, `[first, last]` inclusive (DESIGN.md §9.3, row «Тепловая карта»):
+   * the builder does not know that its columns are hours, so the data names the range itself.
+   */
+  compactRange?: readonly [number, number]
+}
+
+/** Columns of `compact` mode: the named range, or all of them when the data names none. */
+export function compactColumns<T>(values: readonly T[], range: HeatmapChartData['compactRange']): T[] {
+  if (!range) return [...values]
+  const [first, last] = range
+  return values.slice(Math.max(first, 0), Math.min(last, values.length - 1) + 1)
 }
 
 /** Middle of two #rrggbb colors: the intermediate steps of DESIGN.md §4.4; anything else — the first. */
@@ -47,7 +59,10 @@ interface TooltipItem {
   value: [number, number, number]
 }
 
-export function buildHeatmapOption(data: HeatmapChartData): EChartsCoreOption {
+/** `compact` — the heatmap of a phone (DESIGN.md §9.3): fewer columns, every second one labelled. */
+export function buildHeatmapOption(data: HeatmapChartData, compact = false): EChartsCoreOption {
+  const columns = compact ? compactColumns(data.columns, data.compactRange) : [...data.columns]
+  const shift = compact && data.compactRange ? Math.max(data.compactRange[0], 0) : 0
   const textStyle = { color: token('--text-muted'), fontSize: 12 }
   const [bad, mid, good] = ['--chart-heatmap-bad', '--chart-heatmap-mid', '--chart-heatmap-good'].map(token)
   const colors = [good, mixColors(good, mid), mid, mixColors(mid, bad), bad]
@@ -67,7 +82,7 @@ export function buildHeatmapOption(data: HeatmapChartData): EChartsCoreOption {
         return `<div style="margin-bottom:4px">${cell.title}</div><div>${data.name}: <b>${formatPercent(cell.value)}</b></div><div style="${muted}">${cell.note}</div>`
       },
     },
-    xAxis: { ...axis, data: data.columns },
+    xAxis: { ...axis, data: columns, ...(compact ? { axisLabel: { ...textStyle, interval: 1 } } : {}) },
     yAxis: { ...axis, data: data.rows, inverse: true },
     visualMap: {
       type: 'piecewise',
@@ -95,7 +110,9 @@ export function buildHeatmapOption(data: HeatmapChartData): EChartsCoreOption {
         type: 'heatmap',
         name: data.name,
         data: data.cells.flatMap((cells, row) =>
-          cells.map((cell, column) => [column, row, cell ? cell.value : EMPTY]),
+          cells
+            .slice(shift, shift + columns.length)
+            .map((cell, column) => [column, row, cell ? cell.value : EMPTY]),
         ),
         itemStyle: { borderColor: token('--bg-surface'), borderWidth: 2, borderRadius: 4 },
         emphasis: { itemStyle: { borderColor: token('--border-strong'), borderWidth: 1 } },

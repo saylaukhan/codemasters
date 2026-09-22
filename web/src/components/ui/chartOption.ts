@@ -72,7 +72,14 @@ interface TooltipItem {
   color: string
 }
 
-export function buildOption(data: TimeChartData): EChartsCoreOption {
+/**
+ * Labels only at the ends of a category axis (DESIGN.md §9.3, row «Графики»): on a phone the
+ * axis shows the first and the last moment and nothing between them.
+ */
+export const edgeLabels = (count: number) => (index: number) => index === 0 || index === count - 1
+
+/** `compact` — the chart of a phone (DESIGN.md §9.3): a tighter grid and only the extreme labels. */
+export function buildOption(data: TimeChartData, compact = false): EChartsCoreOption {
   const muted = token('--text-muted')
   const textStyle = { color: muted, fontSize: 12 }
   const markStyle = {
@@ -89,13 +96,14 @@ export function buildOption(data: TimeChartData): EChartsCoreOption {
     backgroundColor: 'transparent',
     animation: false,
     textStyle: { fontFamily: token('--font-sans') },
-    grid: { left: 8, right: 8, top: 48, bottom: 8, containLabel: true },
+    grid: { left: 8, right: 8, top: compact ? 28 : 48, bottom: 8, containLabel: true },
     legend: {
       left: 0,
       top: 0,
       icon: 'circle',
       itemWidth: 8,
       itemHeight: 8,
+      ...(compact ? { itemGap: 8 } : {}),
       textStyle: { color: token('--text-secondary'), fontSize: 13 },
     },
     tooltip: {
@@ -117,7 +125,7 @@ export function buildOption(data: TimeChartData): EChartsCoreOption {
       boundaryGap: data.series.some((series) => series.kind === 'bar'),
       axisTick: { show: false },
       axisLine: { lineStyle: { color: token('--border') } },
-      axisLabel: textStyle,
+      axisLabel: compact ? { ...textStyle, interval: edgeLabels(data.moments.length) } : textStyle,
       splitLine: { show: false },
     },
     yAxis: data.axes.map((axis, index) => ({

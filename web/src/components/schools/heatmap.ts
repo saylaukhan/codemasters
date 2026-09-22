@@ -31,6 +31,8 @@ export function problemHeatmap(report: AnalyticsReport): HeatmapChartData {
     name: 'Проблемные замеры',
     columns: Array.from({ length: HOURS }, (_, column) => String(column).padStart(2, '0')),
     rows: WEEKDAY_ORDER.map((day) => WEEKDAY_LABELS[day]),
+    // Hours a phone keeps (DESIGN.md §9.3, row «Тепловая карта»): the school day, 08:00–17:00.
+    compactRange: [8, 17],
     cells: heatmapMatrix(report.heatmap).map((cells, row) =>
       cells.map(
         (cell, column) =>
