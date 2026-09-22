@@ -13,9 +13,17 @@
   margin-bottom: var(--space-4);
 }
 
-@media (max-width: 1280px) {
+/* DESIGN.md §9.3 «Полосы показателей»: 6 columns, then 4, then 2, then one row per card. */
+@media (max-width: 1279px) {
   .kpis {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Two columns of KPI here, and DESIGN.md §9.3 «Графики»: in a row down to 1025, a column from 1024. */
+@media (max-width: 1024px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .charts {
@@ -75,8 +83,23 @@
   align-items: start;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1024px) {
   .compare {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* A school name in a column header is free text: without an ellipsis it inflates the max-content
+   * width of the comparison table and scrolls the page (DESIGN.md §9.3). */
+  .compare :global(.ant-table-thead th) {
+    max-width: calc(var(--popover-width) / 2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }

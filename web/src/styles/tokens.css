@@ -236,6 +236,11 @@
   --day-cell-radius: 4px;
   /* Map of the main screen once the two cards stack, DESIGN.md §9.3: «столбцом: карта 360px». */
   --map-compact-height: 360px;
+  /* Map screen at 1024 and narrower, docs/design/README.md §2: the window minus the header and the
+   * padding the content keeps above and below it. */
+  --map-fill-height: calc(100vh - var(--header-height) - 2 * var(--space-5));
+  /* Column of the incident board, DESIGN.md §9.3: «колонка 280px» once the board scrolls. */
+  --board-column-width: 280px;
   /* Verdict of the school cabinet, DESIGN.md §3.27: a 14px status dot in a 5px ring of its own light
    * colour; a phone draws 12px in a 4px ring (School.html, SchoolPhone.html). */
   --verdict-dot: 14px;
