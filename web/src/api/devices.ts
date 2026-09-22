@@ -30,6 +30,10 @@ export const unblockDevice = (deviceId: number) =>
 export const requestTokenRotation = (deviceId: number) =>
   apiRequest<Schemas['DeviceDetail']>(`/devices/${deviceId}/token-rotation`, { method: 'POST' })
 
+/** The agent takes the request with its next heartbeat and measures outside the schedule (T-79). */
+export const requestMeasurement = (deviceId: number) =>
+  apiRequest<Schemas['DeviceDetail']>(`/devices/${deviceId}/measure`, { method: 'POST' })
+
 /** One-time code for ENROLL_CODE of the installer: shown once, the server keeps only its hash. */
 export const createEnrollmentCode = (body: EnrollmentCodeCreate) =>
   apiRequest<Schemas['EnrollmentCodeIssued']>('/devices/enrollment-codes', { method: 'POST', body })

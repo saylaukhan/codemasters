@@ -273,6 +273,9 @@ export const DEVICE_STATUS_FILTER_LABELS = {
 /** A new token of a device is requested and its agent has not taken it yet (T-36, ADR-005). */
 export const TOKEN_ROTATION_PENDING_LABEL = 'Ждёт замены токена'
 
+/** A measurement is asked for in the panel and its agent has not taken it yet (T-79). */
+export const MEASURE_PENDING_LABEL = 'Ждёт замера'
+
 /** Network interface of a measurement; Wi-Fi does not rate the line (ADR-012). */
 export const IFACE_LABELS: Record<IfaceType, string> = {
   ethernet: 'Ethernet',

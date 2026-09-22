@@ -31,6 +31,7 @@ import {
   blockDevice,
   createEnrollmentCode,
   getDevices,
+  requestMeasurement,
   requestTokenRotation,
   unblockDevice,
   updateDevice,
@@ -190,11 +191,16 @@ export const useAdminDevices = (view: AdminListView) =>
     placeholderData: keepPreviousData,
   })
 
-const DEVICE_ACTIONS = { block: blockDevice, unblock: unblockDevice, rotate: requestTokenRotation } as const
+const DEVICE_ACTIONS = {
+  block: blockDevice,
+  unblock: unblockDevice,
+  rotate: requestTokenRotation,
+  measure: requestMeasurement,
+} as const
 
 export type DeviceAction = keyof typeof DEVICE_ACTIONS
 
-/** Blocking, unblocking or a new token of a device, each after a confirmation. */
+/** Blocking, unblocking, a new token or a measurement of a device, each after a confirmation. */
 export const useDeviceAction = () => {
   const queryClient = useQueryClient()
   return useMutation({
