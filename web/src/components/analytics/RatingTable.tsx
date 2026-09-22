@@ -1,11 +1,11 @@
-import { Table, type TableColumnType } from 'antd'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import type { AnalyticsLevel } from '../../api/types'
 import { schoolCardPath } from '../../app/sections'
 import { formatMs, formatNumber, formatPercent, formatSpeed, NO_VALUE } from '../../lib/format'
-import { ANALYTICS_ENTITY_LABELS } from '../../lib/labels'
+import { ANALYTICS_ENTITY_LABELS, RATING_LABELS } from '../../lib/labels'
+import { ResponsiveTable, type ResponsiveColumn } from '../ui/ResponsiveTable'
 import styles from './Analytics.module.css'
 import { byValue, type RankedRow } from './report'
 
@@ -25,7 +25,7 @@ interface RatingTableProps {
 
 /** Rating of schools, districts or providers for the period: avg / min / max, count, availability (ТЗ п. 5). */
 export function RatingTable({ level, rows, availabilityMinPct, loading, empty }: RatingTableProps) {
-  const metric = (key: Metric, title: string, format: (value: number) => string): TableColumnType<RankedRow> => ({
+  const metric = (key: Metric, title: string, format: (value: number) => string): ResponsiveColumn<RankedRow> => ({
     key,
     title,
     align: 'right',
@@ -44,10 +44,13 @@ export function RatingTable({ level, rows, availabilityMinPct, loading, empty }:
     },
   })
 
-  const columns: TableColumnType<RankedRow>[] = [
+  // Analytics is the case of DESIGN.md §3.12 where the columns cannot be merged: at 769–1024 the
+  // place and the name stay pinned and the metrics page sideways; the counts go first.
+  const columns: ResponsiveColumn<RankedRow>[] = [
     {
       key: 'rank',
-      title: 'Место',
+      title: RATING_LABELS.place,
+      priority: 'primary',
       width: 72,
       align: 'right',
       defaultSortOrder: 'ascend',
@@ -57,18 +60,21 @@ export function RatingTable({ level, rows, availabilityMinPct, loading, empty }:
     {
       key: 'name',
       title: ANALYTICS_ENTITY_LABELS[level],
+      priority: 'primary',
+      fixed: 'left',
       width: 280,
       sorter: (a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'ru'),
       render: (_, row) =>
         level === 'school' && row.id !== null ? (
           <Link to={schoolCardPath(row.id)}>{row.name}</Link>
         ) : (
-          (row.name ?? 'Вся ВКО')
+          (row.name ?? RATING_LABELS.wholeRegion)
         ),
     },
     {
       key: 'measurements',
       title: 'Замеров',
+      priority: 'minor',
       align: 'right',
       sorter: byValue((row) => row.measurementsCount),
       render: (_, row) => number(formatNumber(row.measurementsCount, 0)),
@@ -76,6 +82,7 @@ export function RatingTable({ level, rows, availabilityMinPct, loading, empty }:
     {
       key: 'problems',
       title: 'Проблемных',
+      priority: 'minor',
       align: 'right',
       sorter: byValue((row) => row.problemPct),
       render: (_, row) => number(formatPercent(row.problemPct)),
@@ -97,6 +104,7 @@ export function RatingTable({ level, rows, availabilityMinPct, loading, empty }:
     {
       key: 'contract',
       title: 'Ниже договора',
+      priority: 'minor',
       align: 'right',
       sorter: byValue((row) => row.belowContractPct),
       render: (_, row) => number(formatPercent(row.belowContractPct)),
@@ -104,7 +112,7 @@ export function RatingTable({ level, rows, availabilityMinPct, loading, empty }:
   ]
 
   return (
-    <Table<RankedRow>
+    <ResponsiveTable<RankedRow>
       rowKey={(row) => row.id ?? 0}
       size="middle"
       columns={level === 'region' ? columns.slice(1) : columns}
@@ -113,6 +121,15 @@ export function RatingTable({ level, rows, availabilityMinPct, loading, empty }:
       scroll={{ x: 'max-content' }}
       locale={{ emptyText: empty }}
       showSorterTooltip={false}
+      card={{
+        title: (row) =>
+          level === 'school' && row.id !== null ? (
+            <Link to={schoolCardPath(row.id)}>{row.name}</Link>
+          ) : (
+            (row.name ?? RATING_LABELS.wholeRegion)
+          ),
+        status: (row) => (row.rank === null ? null : number(RATING_LABELS.placeOf(String(row.rank)))),
+      }}
       pagination={
         rows.length > 25 && {
           defaultPageSize: 25,
