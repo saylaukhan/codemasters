@@ -190,6 +190,31 @@ async def test_a_planned_works_window_drops_out_of_the_score(
     assert row["score"] is not None and row["score"] > row_a["score"]
 
 
+async def test_works_of_one_school_do_not_excuse_the_whole_oblast(
+    session: AsyncSession, api_client: AsyncClient
+) -> None:
+    """A window announced for one school leaves the incidents of the other schools in the score."""
+    school_a, school_b = await two_providers(session)
+    await slow_answer(session, school_a)
+    oblast = bearer(await create_user(session, "oblast"))
+
+    # The provider of school A announces works at school B alone: school A is not covered.
+    await add_event(
+        session,
+        kind="planned_works",
+        scope="school",
+        school_id=school_b.id,
+        provider_id=await provider_of(session, school_a),
+        starts_at=WORKDAY - timedelta(days=1),
+        ends_at=WORKDAY,
+        title="Замена оборудования узла",
+    )
+
+    answered: dict[str, Any] = await get(api_client, SCORE, oblast, **DAY)
+    [row] = [row for row in answered["rows"] if row["id"] == await provider_of(session, school_a)]
+    assert row["reaction_median_s"] == 12 * 3600
+
+
 async def test_a_district_sees_and_edits_only_its_own_events(
     session: AsyncSession, api_client: AsyncClient
 ) -> None:

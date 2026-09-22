@@ -3,7 +3,8 @@
 Каникулы и праздник — целые местные сутки, в которые школа не работает: замеры принимаются и
 хранятся, но доступность не считается, инциденты не создаются, а тишина агента показывается как
 «Нет данных · каникулы», а не «Нет соединения». Плановые работы — окно одного поставщика: по его
-линиям инциденты в это время не заводятся и окно не входит в его оценку (ТЗ п. 14).
+линиям инциденты в это время не заводятся, а те, что уже заведены в этом окне, не входят в его
+оценку — там и тогда, где окно объявлено (ТЗ п. 14).
 
 The bulk form is the one the wirings use: availability asks for hundreds of schools over a month
 (T-27), detection for one line per run (T-40), and the single moment of ``is_quiet`` is that same
@@ -16,7 +17,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import cast
 
-from sqlalchemy import ColumnElement, or_, select
+from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
@@ -134,23 +135,46 @@ async def is_quiet(session: AsyncSession, school_id: int, at: datetime) -> Calen
     return (await quiet_schools(session, [school_id], now=at)).get(school_id)
 
 
-def outside_planned_works(
+def inside_planned_works(
     provider_id: InstrumentedAttribute[int] | InstrumentedAttribute[int | None],
+    school_id: InstrumentedAttribute[int],
     moment: InstrumentedAttribute[datetime],
 ) -> ColumnElement[bool]:
-    """SQL condition: ``moment`` is not inside a planned-works window of ``provider_id``.
+    """SQL condition: ``moment`` is inside a planned-works window of that provider and school.
 
-    The score of a provider counts what happened outside the windows it announced (ТЗ п. 14):
-    the condition is added to the queries of ``provider_score.py`` instead of loading the
-    windows into Python.
+    The window counts only where it was announced, exactly as ``quiet_periods`` reads the scope
+    of an event: the whole oblast, the district of the school or that school alone. Without the
+    correlation a window of one school would erase the incidents of the provider everywhere.
+    The condition is added to the queries of ``provider_score.py`` instead of loading the windows
+    into Python.
     """
-    return ~(
+    region_of_school = (
+        select(School.region_id).where(School.id == school_id).correlate_except(School)
+    ).scalar_subquery()
+    return (
         select(CalendarEvent.id)
         .where(
             CalendarEvent.kind == PLANNED_WORKS,
             CalendarEvent.provider_id == provider_id,
             CalendarEvent.starts_at <= moment,
             CalendarEvent.ends_at > moment,
+            or_(
+                CalendarEvent.scope == "oblast",
+                and_(
+                    CalendarEvent.scope == "district",
+                    CalendarEvent.region_id == region_of_school,
+                ),
+                and_(CalendarEvent.scope == "school", CalendarEvent.school_id == school_id),
+            ),
         )
         .exists()
     )
+
+
+def outside_planned_works(
+    provider_id: InstrumentedAttribute[int] | InstrumentedAttribute[int | None],
+    school_id: InstrumentedAttribute[int],
+    moment: InstrumentedAttribute[datetime],
+) -> ColumnElement[bool]:
+    """SQL condition: ``moment`` is outside every such window of that provider and school."""
+    return ~inside_planned_works(provider_id, school_id, moment)
