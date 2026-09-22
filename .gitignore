@@ -35,6 +35,7 @@ venv/
 .ruff_cache/
 *.egg-info/
 backend/exports/
+backend/celerybeat-schedule
 htmlcov/
 
 # Node (web/)

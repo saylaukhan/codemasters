@@ -956,7 +956,9 @@ Celery видны в Grafana на готовом дашборде; при пус
 `simulator/` на генератор профилей.
 
 ### T-56 · Нагрузочный тест и индексы · S · v1
-**Статус:** in-progress
+**Статус:** in-progress (прогон 2026-09-21, `docs/worklog.md`: три эндпоинта в бюджете,
+`GET /api/analytics` — нет; кандидаты в индексы K1 и K2 опровергнуты EXPLAIN, K5 снят,
+миграции нет; закрывать после T-59 и повторного прогона)
 **Зачем:** п. 3 (масштабирование), этап 6 плана («нагрузочный тест (симулятор 1000
 агентов)»); ADR-003 (hypertables, агрегаты).
 **Где:** данные из T-55; сценарий нагрузки в `backend/tests/` (инструмент — решение лида, см.
@@ -1150,3 +1152,134 @@ SMTP заказчика, ссылка 30 минут, запись в `audit_log`
 **Зависит от:** T-60, T-42
 **Сделано, когда:** экран совпадает с `Wall.html` на 1920×1080; ниже 1280px перенаправляет на
 главную; Esc возвращает в панель.
+
+## L. Дефекты прогонов (этап 6)
+
+Заведены по контрольным прогонам 2026-09-21 (`docs/worklog.md`): T-56, T-57 и пункты
+`LOCAL-CHECKS.md`. Каждая задача — воспроизведённый дефект, а не предположение; приоритет
+назначает лид.
+
+### T-72 · `GET /api/analytics` в 20 раз медленнее на generic plan под ролью `vko_panel` · S · v1
+**Статус:** todo
+**Зачем:** найдено прогоном T-56 (2026-09-21, `docs/worklog.md`). PostgreSQL после пятого
+выполнения подготовленного запроса переходит с custom plan на generic (`plan_cache_mode =
+auto`). Под ролью `vko_panel` предикат RLS сравнивает `current_setting('app.user_scope')`
+(ADR-008), которого планировщик на generic plan не знает: оценка падает до `rows=1`, и два
+запроса аналитики по `m_daily` вместо 49 мс идут 4,95 с. В долгоживущем uvicorn это
+постоянное состояние соединения, а не всплеск: с шестого обращения аналитика отвечает ~5 с и
+быстрее уже не становится.
+**Где:** `backend/app/core/db.py` (движок и пул), `backend/app/auth/rls.py`, запросы
+`backend/app/services/` по `m_daily` и `m_hourly`; измерения — `backend/tests/test_load_endpoints.py`.
+**Зависит от:** T-56
+**Сделано, когда:** выбран и обоснован способ (`plan_cache_mode = force_custom_plan` на
+соединении, литералы вместо параметров в предикате RLS или иной — решение лида); после
+правки 20 подряд вызовов `GET /api/analytics?level=district&period=month` на данных
+симулятора укладываются в предложенный бюджет 3000 мс p95 без деградации после пятого;
+цифры до и после — в `docs/worklog.md`.
+
+### T-73 · Часовой пояс системы нельзя изменить из панели · XS · v1
+**Статус:** todo
+**Зачем:** найдено прогоном T-57 (2026-09-21, `docs/worklog.md`). `docs/product/admin-guide.md`
+§4 перечисляет «Часовой пояс — `Asia/Almaty`» среди значений вкладки «Настройки», но такого
+поля там нет: колонка `system_settings.timezone` существует и читается рабочими часами,
+выгрузками и обращениями, а в `SettingsDetail` / `SettingsUpdate` и в форме панели её нет.
+Администратор, идущий по инструкции, не находит поля и вынужден лезть в базу.
+**Где:** `backend/app/schemas/settings.py`, `backend/app/services/config_admin.py`,
+`web/src/pages/admin/SettingsPage.tsx`, `docs/product/admin-guide.md` §4.
+**Зависит от:** T-37
+**Сделано, когда:** либо поле добавлено в API и в форму «Настройки» (со списком поясов и
+тестом «чужой не видит»), либо строка убрана из `docs/product/admin-guide.md` §4 и пояс
+описан как значение окружения; `make openapi` перегенерирован, если менялся контракт.
+
+### T-74 · Тома `docker-compose.yml` без `:z`: на хосте с SELinux стек поднимается пустым · S · v1
+**Статус:** todo
+**Зачем:** найдено прогоном п. 6 `LOCAL-CHECKS.md` (2026-09-21, `docs/worklog.md`). На
+Fedora 44 с `SELinux=Enforcing` `docker compose up -d` даёт: `prometheus` в
+`Restarting (2)` с `open /etc/prometheus/prometheus.yml: permission denied`, а `grafana` —
+поднимается молча и провижинит **ноль** дашбордов и ноль источников данных, потому что
+`/etc/grafana/provisioning` и `/var/lib/grafana/dashboards` ему не читаются. В логе Grafana
+при этом стоит бодрое «finished to provision dashboards» — без ошибки. Причина не в правах
+файлов (0644), а в метке SELinux: bind-тома смонтированы без суффикса `:z`. Затронуты все
+монтирования репозитория, включая `deploy/Caddyfile` и `deploy/speedtest`.
+`docs/product/admin-guide.md` §1 не называет дистрибутив, так что администратор на
+RHEL / Rocky / AlmaLinux / Fedora упрётся в это на первом же шаге.
+**Где:** `docker-compose.yml` (тома `prometheus`, `grafana`, `caddy`, `speedtest`),
+`docker-compose.backup.yml`; упоминание в `docs/product/admin-guide.md` §11 «Что пошло не так».
+**Зависит от:** T-54
+**Сделано, когда:** на хосте с `SELinux=Enforcing` `docker compose up -d` поднимает
+`prometheus` и `grafana` без перезапусков, дашборд «Сервер мониторинга ВКО» и источник
+`vko-prometheus` видны в Grafana сразу после старта; проверено, что на хосте без SELinux
+ничего не сломалось.
+
+### T-75 · Панель «Доля ошибочных ответов за час» показывает «No data» вместо 0 % · XS · v1
+**Статус:** todo
+**Зачем:** найдено прогоном п. 6 `LOCAL-CHECKS.md` (2026-09-21). Выражение
+`sum(rate(vko_http_requests_total{status=~"5.."}[1h])) / clamp_min(…)` при полном отсутствии
+5xx не возвращает ни одной серии — делитель не спасает, пустой делимый обнуляет результат
+целиком. Дежурный видит «No data» ровно тогда, когда всё хорошо, и не может отличить это от
+неработающего сбора. Проверено на живом Prometheus: как есть — 0 серий, с
+`(sum(rate(…)) or vector(0))` — одна серия со значением 0.
+**Где:** `deploy/grafana/dashboards/server-health.json`, панель «Доля ошибочных ответов за час».
+**Зависит от:** T-54
+**Сделано, когда:** на стенде без единой 5xx панель показывает `0 %`, а не «No data»;
+остальные шесть панелей не затронуты.
+
+### T-76 · pgBackRest на `timescale/timescaledb-ha:pg16` не снимает ни одного бэкапа · M · v1
+**Статус:** todo
+**Зачем:** найдено прогоном п. 5 `LOCAL-CHECKS.md` (2026-09-21, `docs/worklog.md`).
+`docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d` оставляет контейнер
+`pgbackrest` в `Restarting (55)`, а `archive_command` базы падает на каждом сегменте:
+`pg_stat_archiver` — `archived_count 0`, `failed_count 6` за первые минуты. Бэкапа нет, значит
+и восстанавливать нечего: раздел «Восстановление» в `deploy/pgbackrest/README.md` прогнать
+невозможно. При этом `archive_mode=on` уже включён, и PostgreSQL копит WAL — та самая тихая
+утечка диска, о которой предупреждает шапка `docker-compose.backup.yml`. Три независимых
+причины, каждая проверена отдельно:
+
+1. Образ жёстко задаёт `PGBACKREST_CONFIG=/home/postgres/pgdata/backup/pgbackrest.conf`
+   (и `PGBACKREST_STANZA=poddb`). Проект монтирует свой конфиг в
+   `/etc/pgbackrest/pgbackrest.conf` и переменную не переопределяет ни у `db`, ни у
+   `pgbackrest` — файл не читается вовсе, команда падает с
+   `[055]: unable to open missing file … for read`.
+2. `deploy/pgbackrest/pgbackrest.conf` задаёт `pg1-user=postgres` и `pg1-database=postgres`,
+   но база создаётся с `POSTGRES_USER` / `POSTGRES_DB` из `.env`, и роли `postgres` в ней нет:
+   `FATAL: role "postgres" does not exist`. С исправленным путём к конфигу `stanza-create`
+   всё равно падает — `[056]: unable to find primary cluster`; с
+   `--pg1-user=<POSTGRES_USER> --pg1-database=<POSTGRES_DB>` проходит успешно.
+3. `PGBACKREST_BACKUP_AT` попадает в пространство имён переменных pgBackRest, и тот читает её
+   как опцию: `WARN: environment contains invalid option 'backup-at'`. Переменную надо назвать
+   вне префикса `PGBACKREST_`.
+
+Поправить `archive_command` на живой базе через `ALTER SYSTEM` нельзя: в
+`docker-compose.backup.yml` он задан ключом `-c`, а ключ командной строки старше
+`postgresql.auto.conf`.
+**Где:** `docker-compose.backup.yml` (env `PGBACKREST_CONFIG` для `db` и `pgbackrest`, имя
+переменной расписания), `deploy/pgbackrest/pgbackrest.conf` (`pg1-user`, `pg1-database`),
+`deploy/pgbackrest/backup.sh` (`pg_isready` тоже ходит от имени `postgres`),
+`deploy/pgbackrest/README.md` (раздел «Проверка»).
+**Зависит от:** T-53
+**Сделано, когда:** `docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d`
+даёт `pgbackrest` в `Up`, `pgbackrest --stanza=vko check` проходит, `pg_stat_archiver` растёт
+по `archived_count` и не растёт по `failed_count`; `make backup` кладёт полный бэкап, и раздел
+«Восстановление» `deploy/pgbackrest/README.md` проходится целиком с восстановлением на точку во
+времени; отчёт — в `docs/worklog.md`, как требует «Сделано, когда» T-53.
+
+### T-77 · `vko-agent configure` не проверяет формат кода установки · XS · v1
+**Статус:** todo
+**Зачем:** найдено прогоном п. 8 `LOCAL-CHECKS.md` (2026-09-21, `docs/worklog.md`). Команда
+принимает любую строку: проверено на собранном бинаре — `VKO-TEST-CI00`, `VKO-0001-ABCDE-FGHIJ`
+и просто `мусор` записываются в `agent.yaml` одинаково молча. Формат кода — `VKO-<4>-<5>-<5>`
+(`docs/product/admin-guide.md` §5), и сервер чужой формат отбивает 422
+(`invalid_enrollment_code`). Опечатка в коде при установке выясняется только потом и только в
+журнале агента, причём один раз до перезапуска службы (admin-guide §5), — администратор школы
+этого не увидит. Проверять надо там, где ошибку ещё можно исправить: в момент установки.
+Заодно: job `install-deb` в `.github/workflows/agent-linux.yml` ставит пакет с
+`VKO_ENROLL_CODE=VKO-TEST-CI00` — формат неверный, и после этой задачи CI на нём упадёт;
+пример надо поправить вместе с проверкой. Тот же старый формат остался в `plan.md` §4.1 —
+про него уже сказано в `docs/product/admin-guide.md` §5.
+**Где:** `agent/cmd/vko-agent` (команда `configure`), тест рядом с пакетом;
+`.github/workflows/agent-linux.yml` (значение `VKO_ENROLL_CODE`).
+**Зависит от:** T-52
+**Сделано, когда:** `vko-agent configure --enroll-code <мусор>` завершается ненулевым кодом с
+внятным сообщением про формат и ничего не пишет в конфигурацию; `VKO-<4>-<5>-<5>` принимается;
+пустой код по-прежнему допустим (берётся из `ENROLL_CODE`, `agent/dev.yaml`); тест на оба
+случая; CI ставит пакет с кодом верного формата.
