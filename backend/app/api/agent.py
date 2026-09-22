@@ -599,6 +599,7 @@ def measurement_row(
         "server": item.server,
         "iface_type": item.iface_type,
         "agent_version": item.agent_version,
+        "source": item.source,
         "quality_status": verdict.quality_status,
         "thresholds_snapshot": verdict.thresholds_snapshot,
         "contract_ok": verdict.contract_ok,

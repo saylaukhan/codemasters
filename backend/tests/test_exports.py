@@ -53,11 +53,11 @@ async def measured_school(session: AsyncSession, code: str) -> tuple[School, Dev
     device, _ = await register_device(session, point, device_uid=f"UID-{code}")
     device.hostname = f"PC-{code}"
     line = await session.get_one(Line, point.line_id)
-    for hour, status, download in [
-        (9, "normal", 95.5),
-        (13, "critical", 4.25),
-        (17, "unstable", 30.0),
-        (33, "normal", 90.0),
+    for hour, status, download, source in [
+        (9, "normal", 95.5, "schedule"),
+        (13, "critical", 4.25, "manual"),
+        (17, "unstable", 30.0, "schedule"),
+        (33, "normal", 90.0, "schedule"),
     ]:
         session.add(
             Measurement(
@@ -73,6 +73,7 @@ async def measured_school(session: AsyncSession, code: str) -> tuple[School, Dev
                 jitter_ms=1.5,
                 packet_loss_pct=0.0,
                 quality_status=status,
+                source=source,
                 external_ip="203.0.113.7",
             )
         )
@@ -170,7 +171,7 @@ async def test_csv_and_json_carry_the_same_records_and_the_chosen_columns(
     await create_settings(session)
     await measured_school(session, "VKO-EX-001")
     headers = bearer(await create_user(session, "oblast"))
-    columns = [*MIN_EXPORT_COLUMNS, "school_code", "iface_type", "external_ip"]
+    columns = [*MIN_EXPORT_COLUMNS, "school_code", "iface_type", "external_ip", "source"]
 
     csv_job = await export(api_client, headers, format="csv", columns=columns)
     json_job = await export(api_client, headers, format="json", columns=columns)
@@ -179,7 +180,7 @@ async def test_csv_and_json_carry_the_same_records_and_the_chosen_columns(
 
     assert csv_file.startswith("﻿".encode())
     csv_rows = list(csv.reader(io.StringIO(csv_file.decode("utf-8-sig")), delimiter=";"))
-    assert csv_rows[0] == [*HEADER, "School ID", "Интерфейс", "Внешний IP"]
+    assert csv_rows[0] == [*HEADER, "School ID", "Интерфейс", "Внешний IP", "Источник замера"]
     assert csv_rows[1] == [
         "Школа VKO-EX-001",
         "PC-VKO-EX-001",
@@ -195,6 +196,7 @@ async def test_csv_and_json_carry_the_same_records_and_the_chosen_columns(
         "VKO-EX-001",
         "Ethernet",
         "203.0.113.7",
+        "По расписанию",
     ]
     records = json_file.json()
     assert json_file.headers["content-type"] == "application/json"
@@ -214,6 +216,7 @@ async def test_csv_and_json_carry_the_same_records_and_the_chosen_columns(
         "school_code": "VKO-EX-001",
         "iface_type": "ethernet",
         "external_ip": "203.0.113.7",
+        "source": "manual",
     }
     assert json.loads(json_file.content)[0]["time"] == "09:05:07"
 

@@ -22,7 +22,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.schemas.statuses import ConnectionStatus, IfaceType
+from app.schemas.statuses import ConnectionStatus, IfaceType, MeasurementSource
 from app.schemas.thresholds import ThresholdValues
 
 MAX_BATCH_SIZE = 100
@@ -195,6 +195,11 @@ class MeasurementCreate(BaseModel):
     server: str | None = Field(default=None, description="Сервер и метод замера")
     iface_type: IfaceType | None = None
     agent_version: str = Field(max_length=32)
+    source: MeasurementSource = Field(
+        default="schedule",
+        description="Что запустило замер: расписание агента или запрос из панели (T-79). "
+        "Агент старой версии поля не шлёт, и замер считается плановым",
+    )
 
 
 class MeasurementAccepted(BaseModel):

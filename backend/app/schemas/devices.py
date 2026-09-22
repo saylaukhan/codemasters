@@ -19,6 +19,7 @@ from app.schemas.statuses import (
     DeviceStatus,
     IfaceType,
     LineStatus,
+    MeasurementSource,
     QualityStatus,
     SchoolStatus,
 )
@@ -128,6 +129,9 @@ class MeasurementListItem(LatestMeasurement):
     external_ip: IPvAnyAddress | None
     server: str | None = Field(description="Сервер и метод замера")
     agent_version: str | None
+    source: MeasurementSource = Field(
+        description="Замер по расписанию агента или по запросу «Замерить сейчас» из панели"
+    )
     contract_ok: bool | None = Field(
         description="Факт не ниже договорной скорости линии; пусто — договорных значений нет"
     )
