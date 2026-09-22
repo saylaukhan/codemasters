@@ -1,0 +1,196 @@
+/* Wall of the situation room, DESIGN.md §3.33 and `Wall.html`: one screen of 1920 × 1080 without
+ * the shell of the panel. The subtree redefines the type scale of the panel by the wall tokens, so
+ * the strips, the cards and the rows of the main screen come out readable from six metres without
+ * a single number of their own. */
+.wall {
+  --font-size-xs: var(--font-size-wall-caption);
+  --font-size-sm: var(--font-size-wall-caption);
+  --font-size-md: var(--font-size-wall-body);
+  --font-size-block: var(--font-size-wall-title);
+  --font-size-lg: var(--font-size-wall-title);
+  --font-size-3xl: var(--font-size-wall-figure);
+  --font-size-kpi: var(--font-size-wall-verdict);
+  --radius-card: var(--radius-wall-card);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-block);
+  height: 100vh;
+  padding: var(--wall-padding-block) var(--wall-padding-inline);
+  overflow: hidden;
+  background: var(--bg-page);
+  color: var(--text-primary);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: none;
+  min-width: 0;
+}
+
+/* The mark is the one place where colour is decoration and not meaning (DESIGN.md §1, rule 3). */
+.mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--wall-mark-size);
+  height: var(--wall-mark-size);
+  border-radius: var(--radius-control);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.brandName {
+  font-size: var(--font-size-wall-title);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.caption {
+  color: var(--text-secondary);
+  font-size: var(--font-size-wall-caption);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* «Сначала вердикт, потом цифры» (DESIGN.md §1, rule 5). */
+.verdict {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-wall-verdict);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-tight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: none;
+  min-width: 0;
+}
+
+.time {
+  font-size: var(--font-size-wall-clock);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: 1.1;
+}
+
+/* The map takes what the strips leave; «Требуют внимания» keeps its column. */
+.main {
+  display: flex;
+  gap: var(--space-block);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.mapCard {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-wall-card);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.map {
+  height: 100%;
+}
+
+.aside {
+  flex: none;
+  width: var(--wall-aside-width);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Line of the latest events of the stream of T-42: one row, what does not fit is cut off. */
+.ticker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex: none;
+  min-width: 0;
+  padding: var(--space-3) var(--space-5);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.tickerLabel {
+  flex: none;
+  color: var(--text-muted);
+  font-size: var(--font-size-wall-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.event {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  color: var(--text-secondary);
+  font-size: var(--font-size-wall-body);
+  white-space: nowrap;
+}
+
+.eventTime {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  flex: none;
+  margin-inline-start: auto;
+  padding-inline-start: var(--space-5);
+  color: var(--text-muted);
+  font-size: var(--font-size-wall-caption);
+  white-space: nowrap;
+}
+
+/* Status never by colour alone (DESIGN.md §1, rule 4): the dot stands next to the text of the event. */
+.dot {
+  flex: none;
+  width: var(--badge-dot);
+  height: var(--badge-dot);
+  border-radius: 50%;
+  background: var(--dot-main);
+}
+
+.dot[data-status='normal'] {
+  --dot-main: var(--status-normal-main);
+}
+
+.dot[data-status='unstable'] {
+  --dot-main: var(--status-unstable-main);
+}
+
+.dot[data-status='critical'] {
+  --dot-main: var(--status-critical-main);
+}
