@@ -63,8 +63,9 @@ export function App() {
               }
             >
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/password-reset" element={<PasswordResetPage />} />
             </Route>
+            {/* Ссылка из письма открывается и в браузере, где ещё жива старая сессия. */}
+            <Route path="/password-reset" element={<PasswordResetPage />} />
           </Routes>
           <DocumentTitleHandler handler={documentTitle} />
         </Refine>

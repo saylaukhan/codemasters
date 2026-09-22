@@ -94,7 +94,7 @@ async def send_link(settings: Settings, address: str, token: str, minutes: int) 
         await asyncio.to_thread(send_email, settings, address, LETTER_SUBJECT, text)
     except (OSError, smtplib.SMTPException) as error:
         # Neither the address nor the token gets into the log: only what went wrong.
-        logger.warning("ссылка на смену пароля не отправлена: %s", error)
+        logger.warning("ссылка на смену пароля не отправлена: %s", type(error).__name__)
 
 
 async def request_reset(
@@ -129,7 +129,8 @@ async def confirm_reset(
     if parsed is None:
         raise invalid_token()
     token_id, secret = parsed
-    row = await session.get(PasswordResetToken, token_id)
+    # Lock of the row: two confirms of one link arriving together do not both see it unused.
+    row = await session.get(PasswordResetToken, token_id, with_for_update=True)
     if row is None or not verify_token(secret, row.token_hash):
         raise invalid_token()
     if row.used_at is not None or row.expires_at <= now:
